@@ -16,147 +16,93 @@ namespace xk_System.Net.Server
 {
 	public class NetTCPServer : MonoBehaviour
 	{
-		public int port = 7878;
-		private void Start()
-		{
-			IoServer mIoSever = new IoServer (10000, 2048);
-			mIoSever.Start (port);
-		}
-	}
 		
-	/// <summary>
-	/// 与每个客户Socket相关联，进行Send和Receive投递时所需要的参数
-	/// </summary>
-	internal sealed class IoContextPool
-	{
-		List<SocketAsyncEventArgs> pool;        //为每一个Socket客户端分配一个SocketAsyncEventArgs，用一个List管理，在程序启动时建立。
-		Int32 capacity;                         //pool对象池的容量
-		Int32 boundary;                         //已分配和未分配对象的边界，大的是已经分配的，小的是未分配的
-
-		internal IoContextPool(Int32 capacity)
-		{
-			this.pool = new List<SocketAsyncEventArgs>(capacity);
-			this.boundary = 0;
-			this.capacity = capacity;
-		}
-			
-		internal bool Add(SocketAsyncEventArgs arg)
-		{
-			if (arg != null && pool.Count < capacity)
-			{
-				pool.Add(arg);
-				boundary++;
-				return true;
-			}
-			else
-				return false;
-		}
-
-		internal SocketAsyncEventArgs Pop()
-		{
-			lock (this.pool)
-			{
-				if (boundary > 0)
-				{
-					--boundary;
-					return pool[boundary];
-				}
-				else
-					return null;
-			}
-		}
-			
-		internal bool Push(SocketAsyncEventArgs arg)
-		{
-			if (arg != null)
-			{
-				lock (this.pool)
-				{
-					int index = this.pool.IndexOf(arg, boundary);  //找出被断开的客户,此处一定能查到，因此index不可能为-1，必定要大于0。
-					if (index == boundary)         //正好是边界元素
-						boundary++;
-					else
-					{
-						this.pool[index] = this.pool[boundary];     //将断开客户移到边界上，边界右移
-						this.pool[boundary++] = arg;
-					}
-				}
-				return true;
-			}
-			else
-				return false;
-		}
 	}
-
-
 
 	/// <summary>
 	/// 基于SocketAsyncEventArgs 实现 IOCP 服务器
 	/// </summary>
-	internal sealed class IoServer
+	internal sealed class SocketSystem_TCPServer:SocketSystem
 	{
-		/// <summary>
-		/// 监听Socket，用于接受客户端的连接请求
-		/// </summary>
-		private Socket listenSocket;
-
-		/// <summary>
-		/// 用于服务器执行的互斥同步对象
-		/// </summary>
 		private static Mutex mutex = new Mutex();
-
-		/// <summary>
-		/// 用于每个I/O Socket操作的缓冲区大小
-		/// </summary>
-		private Int32 bufferSize;
-
-		/// <summary>
-		/// 服务器上连接的客户端总数
-		/// </summary>
 		private Int32 numConnectedSockets;
-
-		/// <summary>
-		/// 服务器能接受的最大连接数量
-		/// </summary>
 		private Int32 numConnections;
+		private Int32 bufferSize;
+		private static SystemObjectPool<SocketAsyncEventArgs> ioContextPool;
 
-		/// <summary>
-		/// 完成端口上进行投递所用的IoContext对象池
-		/// </summary>
-		private IoContextPool ioContextPool;
-
-		//public MainForm mainForm;
-
-		/// <summary>
-		/// 构造函数，建立一个未初始化的服务器实例
-		/// </summary>
-		/// <param name="numConnections">服务器的最大连接数据</param>
-		/// <param name="bufferSize"></param>
-		internal IoServer(Int32 numConnections, Int32 bufferSize)
+		internal SocketSystem_TCPServer(Int32 numConnections = 10000 , Int32 bufferSize = 8192)
 		{
 			this.numConnectedSockets = 0;
 			this.numConnections = numConnections;
 			this.bufferSize = bufferSize;
 
-			this.ioContextPool = new IoContextPool(numConnections);
+			ioContextPool = SystemObjectPool<SocketAsyncEventArgs>.Instance;
 
-			// 为IoContextPool预分配SocketAsyncEventArgs对象
 			for (Int32 i = 0; i < this.numConnections; i++)
 			{
 				SocketAsyncEventArgs ioContext = new SocketAsyncEventArgs();
 				ioContext.Completed += new EventHandler<SocketAsyncEventArgs>(OnIOCompleted);
 				ioContext.SetBuffer(new Byte[this.bufferSize], 0, this.bufferSize);
-
-				// 将预分配的对象加入SocketAsyncEventArgs对象池中
-				this.ioContextPool.Add(ioContext);
+				ioContextPool.Push(ioContext);
 			}
 		}
 
-		/// <summary>
-		/// 当Socket上的发送或接收请求被完成时，调用此函数
-		/// </summary>
-		/// <param name="sender">激发事件的对象</param>
-		/// <param name="e">与发送或接收完成操作相关联的SocketAsyncEventArg对象</param>
+		public override void init (string ServerAddr, int ServerPort)
+		{
+			IPAddress[] addressList = Dns.GetHostEntry(Environment.MachineName).AddressList;
+			IPEndPoint localEndPoint = new IPEndPoint(addressList[addressList.Length - 1], ServerPort);
+
+			this.mSocket = new Socket(localEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+			this.mSocket.ReceiveBufferSize = bufferSize;
+			this.mSocket.SendBufferSize = bufferSize;
+
+			if (localEndPoint.AddressFamily == AddressFamily.InterNetworkV6)
+			{
+				this.mSocket.SetSocketOption(SocketOptionLevel.IPv6, (SocketOptionName)27, false);
+				this.mSocket.Bind(new IPEndPoint(IPAddress.IPv6Any, localEndPoint.Port));
+			}
+			else
+			{
+				this.mSocket.Bind(localEndPoint);
+			}
+				
+			this.mSocket.Listen(numConnections);
+			this.StartAccept(null);
+
+			mutex.WaitOne();
+		}
+
+		public override void SendNetStream(byte[] msg)
+		{
+			SocketError mError=SocketError.SocketError;
+			try
+			{
+				mSocket.Send(msg,0,msg.Length,SocketFlags.None,out mError);
+			}catch(Exception e)
+			{
+				DebugSystem.LogError("发送字节失败： "+e.Message+" | "+mError.ToString());
+			}
+		}
+			
+		private void StartAccept(SocketAsyncEventArgs acceptEventArg)
+		{
+			if (acceptEventArg == null)
+			{
+				acceptEventArg = new SocketAsyncEventArgs();
+				acceptEventArg.Completed += new EventHandler<SocketAsyncEventArgs>(OnAcceptCompleted);
+			}
+			else
+			{
+				// 重用前进行对象清理
+				acceptEventArg.AcceptSocket = null;
+			}
+
+			if (!this.mSocket.AcceptAsync(acceptEventArg))
+			{
+				this.ProcessAccept(acceptEventArg);
+			}
+		}
+			
 		private void OnIOCompleted(object sender, SocketAsyncEventArgs e)
 		{
 			// Determine which type of operation just completed and call the associated handler.
@@ -173,33 +119,19 @@ namespace xk_System.Net.Server
 			}
 		}
 
-		/// <summary>
-		///接收完成时处理函数
-		/// </summary>
-		/// <param name="e">与接收完成操作相关联的SocketAsyncEventArg对象</param>
 		private void ProcessReceive(SocketAsyncEventArgs e)
 		{
-			// 检查远程主机是否关闭连接
 			if (e.BytesTransferred > 0)
 			{
 				if (e.SocketError == SocketError.Success)
 				{
 					Socket s = (Socket)e.UserToken;
-					//判断所有需接收的数据是否已经完成
 					if (s.Available == 0)
 					{
-						// 设置发送数据
-						Array.Copy(e.Buffer, 0, e.Buffer, e.BytesTransferred, e.BytesTransferred);
-						e.SetBuffer(e.Offset, e.BytesTransferred * 2);
-						if (!s.SendAsync(e))        //投递发送请求，这个函数有可能同步发送出去，这时返回false，并且不会引发SocketAsyncEventArgs.Completed事件
-						{
-							// 同步发送时处理发送完成事件
-							this.ProcessSend(e);
-						}
+						mNetReceiveSystem.ReceiveSocketStream(e.Buffer);
 					}
-					else if (!s.ReceiveAsync(e))    //为接收下一段数据，投递接收请求，这个函数有可能同步完成，这时返回false，并且不会引发SocketAsyncEventArgs.Completed事件
+					else if (!s.ReceiveAsync(e))
 					{
-						// 同步接收时处理接收完成事件
 						this.ProcessReceive(e);
 					}
 				}
@@ -269,7 +201,7 @@ namespace xk_System.Net.Server
 			Interlocked.Decrement(ref this.numConnectedSockets);
 
 			// SocketAsyncEventArg 对象被释放，压入可重用队列。
-			this.ioContextPool.Push(e);            
+			ioContextPool.Push(e);            
 			string outStr = String.Format("客户 {0} 断开, 共有 {1} 个连接。", s.RemoteEndPoint.ToString(), this.numConnectedSockets);
 			DebugSystem.Log (outStr);        
 			//Console.WriteLine("A client has been disconnected from the server. There are {0} clients connected to the server", this.numConnectedSockets);
@@ -286,21 +218,12 @@ namespace xk_System.Net.Server
 				s.Close();
 			}
 		}
-
-		/// <summary>
-		/// accept 操作完成时回调函数
-		/// </summary>
-		/// <param name="sender">Object who raised the event.</param>
-		/// <param name="e">SocketAsyncEventArg associated with the completed accept operation.</param>
+			
 		private void OnAcceptCompleted(object sender, SocketAsyncEventArgs e)
 		{
 			this.ProcessAccept(e);
 		}
-
-		/// <summary>
-		/// 监听Socket接受处理
-		/// </summary>
-		/// <param name="e">SocketAsyncEventArg associated with the completed accept operation.</param>
+			
 		private void ProcessAccept(SocketAsyncEventArgs e)
 		{
 			Socket s = e.AcceptSocket;
@@ -308,25 +231,21 @@ namespace xk_System.Net.Server
 			{
 				try
 				{
-					SocketAsyncEventArgs ioContext = this.ioContextPool.Pop();
+					SocketAsyncEventArgs ioContext = ioContextPool.Pop();
 					if (ioContext != null)
 					{
-						// 从接受的客户端连接中取数据配置ioContext
-
 						ioContext.UserToken = s;
 
 						Interlocked.Increment(ref this.numConnectedSockets);
 						string outStr = String.Format("客户 {0} 连入, 共有 {1} 个连接。",  s.RemoteEndPoint.ToString(),this.numConnectedSockets);
 						DebugSystem.Log(outStr);
-						//Console.WriteLine("Client connection accepted. There are {0} clients connected to the server",
-						//this.numConnectedSockets);
 
 						if (!s.ReceiveAsync(ioContext))
 						{
 							this.ProcessReceive(ioContext);
 						}
 					}
-					else        //已经达到最大客户连接数量，在这接受连接，发送“连接已经达到最大数”，然后断开连接
+					else
 					{
 						s.Send(Encoding.Default.GetBytes("连接已经达到最大数!"));
 						string outStr = String.Format("连接已满，拒绝 {0} 的连接。", s.RemoteEndPoint);
@@ -339,7 +258,6 @@ namespace xk_System.Net.Server
 					Socket token = e.UserToken as Socket;
 					string outStr = String.Format("接收客户 {0} 数据出错, 异常信息： {1} 。", token.RemoteEndPoint, ex.ToString());
 					DebugSystem.LogError (outStr);
-					//Console.WriteLine("Error when processing data received from {0}:\r\n{1}", token.RemoteEndPoint, ex.ToString());
 				}
 				catch (Exception ex)
 				{
@@ -349,74 +267,10 @@ namespace xk_System.Net.Server
 				this.StartAccept(e);
 			}
 		}
-
-		/// <summary>
-		/// 从客户端开始接受一个连接操作
-		/// </summary>
-		/// <param name="acceptEventArg">The context object to use when issuing 
-		/// the accept operation on the server's listening socket.</param>
-		private void StartAccept(SocketAsyncEventArgs acceptEventArg)
+			
+		public override void CloseNet ()
 		{
-			if (acceptEventArg == null)
-			{
-				acceptEventArg = new SocketAsyncEventArgs();
-				acceptEventArg.Completed += new EventHandler<SocketAsyncEventArgs>(OnAcceptCompleted);
-			}
-			else
-			{
-				// 重用前进行对象清理
-				acceptEventArg.AcceptSocket = null;
-			}
-
-			if (!this.listenSocket.AcceptAsync(acceptEventArg))
-			{
-				this.ProcessAccept(acceptEventArg);
-			}
-		}
-
-		/// <summary>
-		/// 启动服务，开始监听
-		/// </summary>
-		/// <param name="port">Port where the server will listen for connection requests.</param>
-		internal void Start(Int32 port)
-		{
-			// 获得主机相关信息
-			IPAddress[] addressList = Dns.GetHostEntry(Environment.MachineName).AddressList;
-			IPEndPoint localEndPoint = new IPEndPoint(addressList[addressList.Length - 1], port);
-
-			// 创建监听socket
-			this.listenSocket = new Socket(localEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-			this.listenSocket.ReceiveBufferSize = this.bufferSize;
-			this.listenSocket.SendBufferSize = this.bufferSize;
-
-			if (localEndPoint.AddressFamily == AddressFamily.InterNetworkV6)
-			{
-				// 配置监听socket为 dual-mode (IPv4 & IPv6) 
-				// 27 is equivalent to IPV6_V6ONLY socket option in the winsock snippet below,
-				this.listenSocket.SetSocketOption(SocketOptionLevel.IPv6, (SocketOptionName)27, false);
-				this.listenSocket.Bind(new IPEndPoint(IPAddress.IPv6Any, localEndPoint.Port));
-			}
-			else
-			{
-				this.listenSocket.Bind(localEndPoint);
-			}
-
-			// 开始监听
-			this.listenSocket.Listen(this.numConnections);
-
-			// 在监听Socket上投递一个接受请求。
-			this.StartAccept(null);
-
-			// Blocks the current thread to receive incoming messages.
-			mutex.WaitOne();
-		}
-
-		/// <summary>
-		/// 停止服务
-		/// </summary>
-		internal void Stop()
-		{
-			this.listenSocket.Close();
+			this.mSocket.Close();
 			mutex.ReleaseMutex();
 		}
 

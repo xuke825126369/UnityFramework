@@ -27,6 +27,24 @@ public class ObjectPool<T> : Singleton<ObjectPool<T>> where T : ObjectPoolInterf
 	}
 }
 
+public class SystemObjectPool<T> : Singleton<SystemObjectPool<T>> where T:new()
+{
+	Queue<T> mObjectPool = new Queue<T>();
+	public T Pop()
+	{
+		if (mObjectPool.Count > 0) {
+			return mObjectPool.Dequeue ();
+		} else {
+			return new T ();
+		}
+	}
+
+	public void Push(T t)
+	{
+		mObjectPool.Enqueue (t);
+	}
+}
+
 //Unity GameObject 池子
 public class GameObjectPool<T> : Singleton<GameObjectPool> where T : MonoBehaviour,ObjectPoolInterface
 {
