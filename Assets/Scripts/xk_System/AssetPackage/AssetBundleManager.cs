@@ -11,7 +11,7 @@ namespace xk_System.AssetPackage
     /// </summary>
     public class AssetBundleManager : SingleTonMonoBehaviour<AssetBundleManager>
     {
-        private ResourcesABManager mResourcesABManager = new ResourcesABManager();
+		private AssetBundleManifestManager mResourcesABManager = new AssetBundleManifestManager();
         private Dictionary<string, AssetBundle> mBundleDic = new Dictionary<string, AssetBundle>();
         private Dictionary<string, Dictionary<string, UnityEngine.Object>> mAssetDic = new Dictionary<string, Dictionary<string, UnityEngine.Object>>();
         private List<string> mBundleLockList = new List<string>();
@@ -454,7 +454,7 @@ namespace xk_System.AssetPackage
         }
     }
 
-    public class ResourcesABManager
+	public class AssetBundleManifestManager
     {
         public int VersionId = -1;
         public List<AssetBundleInfo> mNeedLoadBundleList = new List<AssetBundleInfo>();

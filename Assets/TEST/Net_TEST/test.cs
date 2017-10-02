@@ -14,7 +14,7 @@ namespace Test
         void Start()
         {
 			mNetSystem = new NetSystem();
-            mNetSystem.init("192.168.1.109",7878);
+			mNetSystem.initNet("192.168.1.109",7878);
            // mNetSystem.addListenFun((int)ProtoCommand.PROTO_CHAT, ReceiveFun);
             ID++;
 
@@ -36,7 +36,7 @@ namespace Test
 
         void Update()
         {
-            mNetSystem.ReceiveData();
+			mNetSystem.handleNetData();
         }
 
         /*void SendFun()

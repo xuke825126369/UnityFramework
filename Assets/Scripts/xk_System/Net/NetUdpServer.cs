@@ -23,26 +23,26 @@ namespace xk_System.Net.Server
 		}
 	}
 		
-	public class UdpServer
+	public class UdpServer:SocketSystem
 	{
-		private Socket socket = null;
 		EndPoint ep = null;
-		void Init(int port)
-		{
-			 socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);//初始化一个Scoket实习,采用UDP传输
 
-			IPEndPoint iep = new IPEndPoint(IPAddress.Broadcast, port);//初始化一个发送广播和指定端口的网络端口实例
+		public override void init (string ServerAddr, int ServerPort)
+		{
+			mSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);//初始化一个Scoket实习,采用UDP传输
+
+			IPEndPoint iep = new IPEndPoint(IPAddress.Broadcast, ServerPort);//初始化一个发送广播和指定端口的网络端口实例
 			ep = (EndPoint)iep;
 
-			socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Broadcast, 1);//设置该scoket实例的发送形式
+			mSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Broadcast, 1);//设置该scoket实例的发送形式
 
 			string request = "你好,TEST SEND!";//初始化需要发送而的发送数据
 
 			byte[] buffer = Encoding.Unicode.GetBytes(request);
 
-			socket.SendTo(buffer, iep);
+			mSocket.SendTo(buffer, iep);
 
-			socket.Close();
+			mSocket.Close();
 
 			Thread mThread = new Thread (new ThreadStart(HandData));
 			mThread.Start ();
@@ -56,15 +56,23 @@ namespace xk_System.Net.Server
 				int length = 0;
 				try
 				{
-					length = socket.ReceiveFrom (data, ref ep);
+					length = mSocket.ReceiveFrom (data, ref ep);
 				}catch(Exception e)
 				{
 					DebugSystem.LogError ("UDP 接受 异常： " + length);
 					break;
 				}
-					
-				//Thread.Sleep (0.01f);
 			}
+		}
+
+		public override void SendNetStream (byte[] msg)
+		{
+			
+		}
+
+		public override void CloseNet ()
+		{
+			base.CloseNet ();
 		}
 	}
 }

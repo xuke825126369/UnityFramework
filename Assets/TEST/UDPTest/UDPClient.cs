@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using xk_System.Net;
 
-public class NetManager : MonoBehaviour
-{
-	public string ip = "192.168.1.109";
+public class UDPClient : MonoBehaviour {
+
+	public string ip = "127.0.0.1";
 	public int port = 7878;
 	private void Start()
 	{

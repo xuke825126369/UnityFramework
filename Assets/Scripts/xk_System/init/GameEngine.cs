@@ -31,7 +31,7 @@ public class GameEngine : MonoBehaviour
     public IEnumerator StartUpdate()
     {
         yield return AssetBundleHotUpdateManager.Instance.CheckUpdate();
-        yield return AssemblyManager.Instance.LoadAssembly();
+        //yield return AssemblyManager.Instance.LoadAssembly();
         yield return initManager.Instance.StartInitSystem();
     }
 }

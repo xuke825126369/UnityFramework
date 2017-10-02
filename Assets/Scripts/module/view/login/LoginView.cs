@@ -76,6 +76,7 @@ namespace xk_System.View.Modules
             }
             DebugSystem.Log("点击登陆");
             mLoginModel.send_LoginGame(mAccount.text.Trim(), mPassword.text.Trim());
+
         }
 
         private void OnClick_ShowRegisterView()

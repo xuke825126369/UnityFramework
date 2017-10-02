@@ -12,52 +12,54 @@ namespace xk_System.Net
 {
 	public class NetSystem : Singleton<NetSystem>
 	{
-		protected NetSendSystem mNetSendSystem;
-		protected NetReceiveSystem mNetReceiveSystem;
+		private NetSendSystem mNetSendSystem;
+		private NetReceiveSystem mNetReceiveSystem;
+		private SocketSystem mNetSocketSystem;
 
 		public NetSystem()
 		{
-			mNetSendSystem = new NetSendSystem_Protobuf();
-			mNetReceiveSystem = new NetReceiveSystem_Protobuf();
+			mNetSocketSystem = new SocketSystem_Thread ();
+
+			mNetSendSystem = new NetSendSystem_Protobuf(mNetSocketSystem);
+			mNetReceiveSystem = new NetReceiveSystem_Protobuf(mNetSocketSystem);
 		}
 
-		public void init(string ServerAddr, int ServerPort)
+		public void initNet(string ServerAddr, int ServerPort)
 		{
-			SocketSystem.Instance.init (ServerAddr, ServerPort);
+			mNetSocketSystem.init (ServerAddr, ServerPort);
 		}
 
-		public void SendInfo(byte[] msg)
+		public void sendNetData(int command, object package)
 		{
-			SocketSystem.Instance.SendInfo (msg);
+			mNetSendSystem.SendNetData(command, package);  
 		}
 
-		public void SendData(int command, object package)
+		//每帧处理一些事件
+		public void handleNetData()
 		{
-			mNetSendSystem.Send(this, command, package);  
+			mNetSendSystem.HandleNetPackage ();
+			mNetReceiveSystem.HandleNetPackage ();
 		}
 
-		public void ReceiveData()
-		{
-			mNetReceiveSystem.HandleData ();
-		}
-
-		public void addListenFun(int command, Action<Package> fun)
+		public void addNetListenFun(int command, Action<Package> fun)
 		{
 			mNetReceiveSystem.addListenFun(command,fun);
 		}
 
-		public void removeListenFun(int command, Action<Package> fun)
+		public void removeNetListenFun(int command, Action<Package> fun)
 		{
 			mNetReceiveSystem.removeListenFun(command, fun);
 		}
 
-		public void  CloseNet()
+		public void closeNet()
 		{
-			SocketSystem.Instance.CloseNet ();
+			mNetSocketSystem.CloseNet ();
+			mNetSendSystem.Destory ();
+			mNetReceiveSystem.Destory ();
 		}
 	}
 
-	public abstract class SocketSystem : Singleton<SocketSystem_Thread>
+	public abstract class SocketSystem
 	{
 		/// <summary>
 		/// 不设置，则系统默认是8192
@@ -70,90 +72,99 @@ namespace xk_System.Net
 		protected const int receiveTimeOut = 10000;
 		protected const int sendTimeOut = 5000;
 
-		protected NetSendSystem mNetSendSystem;
 		protected NetReceiveSystem mNetReceiveSystem;
 
 		protected Socket mSocket;
 		protected Queue<string> mNetErrorQueue;
 
 		public abstract void init(string ServerAddr, int ServerPort);
-		public abstract void SendInfo(byte[] msg);
+		public abstract void SendNetStream(byte[] msg);
 
+		public void initSystem(NetReceiveSystem mNetReceiveSystem)
+		{
+			this.mNetReceiveSystem = mNetReceiveSystem;
+		}
 		public virtual void CloseNet()
 		{
-			//Instance = null;
-			// mSocket.Shutdown(SocketShutdown.Receive);
 			mSocket.Close();
 			mSocket = null;
-			mNetSendSystem.Destory();
-			mNetReceiveSystem.Destory();
 			DebugSystem.Log("关闭客户端TCP连接");
 		}
 
 	}
 
 	//begin~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~网络发送系统~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	public abstract class  NetSendSystem
+	public class  NetSendSystem
 	{
-		private static NetSendSystem single;
-		static NetSendSystem_Protobuf single_Protobuf = new NetSendSystem_Protobuf();
-		protected PackageSendPool mSendPool = new PackageSendPool();
-		protected Package mPackage=new xk_Protobuf();  
-		protected NetSendSystem()
-		{
+		protected Queue<Package> mNeedHandleNetPackageQueue;
+		protected Queue<Package> mCanUseNetPackageQueue;
+		protected SocketSystem mSocketSystem;
 
+		protected NetSendSystem(SocketSystem socketSys)
+		{
+			this.mSocketSystem = socketSys;
+			mNeedHandleNetPackageQueue = new Queue<Package> ();
+			mCanUseNetPackageQueue = new Queue<Package> ();
 		}
 
-		public static T getSingle<T>() where T:NetSendSystem,new()
+		public virtual void SendNetData(int command,object data)
 		{
-			if(single==null)
+			Package mPackage = null;
+			if (mCanUseNetPackageQueue.Count> 0 )
 			{
-				single = new T();
+				mPackage = mCanUseNetPackageQueue.Dequeue ();
 			}
-			return (T)single;
+			else
+			{
+				mPackage = new xk_Protobuf ();
+			}
+
+			mPackage.command = command;
+			mPackage.data = data;
+
+			mNeedHandleNetPackageQueue.Enqueue (mPackage);
 		}
 
-		public static NetSendSystem_Protobuf getSingle()
-		{           
-			return single_Protobuf;
+		public void HandleNetPackage ()
+		{
+			int handlePackageCount = 0;
+			while (mNeedHandleNetPackageQueue.Count > 0) 
+			{
+				var mPackage = mNeedHandleNetPackageQueue.Dequeue ();
+				HandleNetStream (mPackage);
+				handlePackageCount++;
+			}
+
+			DebugSystem.LogError("发送包的数量： " + handlePackageCount);
 		}
 
-		public abstract void Send(NetSystem mNetSystem,int command,object data);
-
+		public void HandleNetStream(Package mPackage)
+		{
+			byte[] stream= mPackage.SerializePackage(mPackage.command, mPackage.data);
+			NetEncryptionStream.Encryption (stream);
+			mSocketSystem.SendNetStream (stream);
+		}
+			
 		public virtual void Destory()
 		{
-			mPackage.Destory();
+			
 		}
 	}
 
 	//begin~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~网络接受系统~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	public abstract class NetReceiveSystem
+	public class NetReceiveSystem
 	{
-		protected Dictionary<int, Action<Package>> mReceiveDic;
+		protected List<byte> mReceiveStreamList;
 		protected Queue<Package> mNeedHandlePackageQueue;
 		protected Queue<Package> mCanUsePackageQueue;
-		private static NetReceiveSystem single;
-		private static NetReceiveSystem_Protobuf single_Protobuf=new NetReceiveSystem_Protobuf();
-
-		protected NetReceiveSystem()
+		protected Dictionary<int, Action<Package>> mReceiveDic;
+		protected NetReceiveSystem(SocketSystem socketSys)
 		{
 			mReceiveDic = new Dictionary<int, Action<Package>>();
 			mNeedHandlePackageQueue = new Queue<Package>();
 			mCanUsePackageQueue = new Queue<Package>();
-		}
-
-		public static T getSingle<T>() where T : NetReceiveSystem, new()
-		{
-			if (single == null)
-			{
-				single = new T();
-			}
-			return (T)single;
-		}
-
-		public static NetReceiveSystem_Protobuf getSingle()
-		{
-			return single_Protobuf;
+			mReceiveStreamList = new List<byte> ();
+			socketSys.initSystem (this);
 		}
 
 		public void addListenFun(int command, Action<Package> fun)
@@ -192,10 +203,10 @@ namespace xk_System.Net
 				}
 			}
 		}
-		public abstract void Receive(byte[] msg);
 
-		public void HandleData()
+		public void HandleNetPackage()
 		{
+			HandleSocketStream ();
 			if (mNeedHandlePackageQueue != null)
 			{
 				lock (mNeedHandlePackageQueue)
@@ -211,6 +222,7 @@ namespace xk_System.Net
 						{
 							DebugSystem.LogError("没有找到相关命令的处理函数：" + mPackage.command);
 						}
+
 						lock(mCanUsePackageQueue)
 						{
 							mCanUsePackageQueue.Enqueue(mPackage);
@@ -218,6 +230,59 @@ namespace xk_System.Net
 					}
 				}
 			}
+		}
+
+		public void ReceiveSocketStream(byte[] data)
+		{
+			mReceiveStreamList.AddRange (data);
+		}
+
+		protected void HandleSocketStream ()
+		{
+			int PackageCout = 0;
+			while (true)
+			{
+				byte[] mPackageByteArray= GetPackage();
+				if (mPackageByteArray != null)
+				{
+					Package mPackage = null;
+					lock (mCanUsePackageQueue)
+					{
+						if (mCanUsePackageQueue.Count == 0)
+						{
+							mPackage = new xk_Protobuf();
+						}
+						else
+						{
+							mPackage = mCanUsePackageQueue.Dequeue();
+						}
+					}
+					mPackage.DeSerializeStream(mPackageByteArray);
+					lock (mNeedHandlePackageQueue)
+					{
+						mNeedHandlePackageQueue.Enqueue(mPackage);
+					}
+					PackageCout++;
+				}else
+				{
+					break;
+				}
+			}
+			DebugSystem.LogError("解析包的数量： " + PackageCout);
+		}
+
+		private byte[] GetPackage()
+		{
+			byte[] msg = mReceiveStreamList.ToArray ();
+			var data = NetEncryptionStream.DeEncryption(msg);
+			if(data == null)
+			{
+				return null;
+			}
+
+			int Length = data.Length + 8;
+			mReceiveStreamList.RemoveRange(0, Length);
+			return data;
 		}
 
 		public virtual void Destory()
@@ -246,7 +311,9 @@ namespace xk_System.Net
 	public abstract class Package
 	{
 		public int command;
-		protected byte[] data_byte=null;
+
+		public object data = null;
+		protected byte[] stream = null;
 
 		public abstract byte[] SerializePackage(int command,object data);
 

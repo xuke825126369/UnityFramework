@@ -70,7 +70,7 @@ namespace xk_System.Net.Client.TCP
 			if (this.m_WriteFD.Contains(this.mSocket))
 			{
 				//  DebugSystem.Log("Send");
-				//SendInfo();
+				//SendNetStream();
 			}
 			return true;
 		}
@@ -108,7 +108,7 @@ namespace xk_System.Net.Client.TCP
 				}
 				string Tag="收到消息:" + Length;
 				DebugSystem.LogBitStream(Tag,mStr);
-				mNetReceiveSystem.Receive(mStr);
+				mNetReceiveSystem.ReceiveSocketStream(mStr);
 			}
 			return true;
 		}
@@ -149,7 +149,7 @@ namespace xk_System.Net.Client.TCP
 			}
 		}
 
-		public override void SendInfo(byte[] msg)
+		public override void SendNetStream(byte[] msg)
 		{
 			try
 			{
@@ -241,7 +241,7 @@ namespace xk_System.Net.Client.TCP
 
 					string Tag="收到消息:" + Length + " | " + mStr.Length + " | " + receiveInfoPoolCapacity;
 					DebugSystem.LogBitStream(Tag,mStr);
-					mNetReceiveSystem.Receive(mStr);
+					mNetReceiveSystem.ReceiveSocketStream(mStr);
 				}
 			}
 			catch (SocketException e)
@@ -258,7 +258,7 @@ namespace xk_System.Net.Client.TCP
 
 		}
 
-		public override void SendInfo(byte[] msg)
+		public override void SendNetStream(byte[] msg)
 		{
 			try
 			{
@@ -395,7 +395,7 @@ namespace xk_System.Net.Client.TCP
 						}
 						string Tag = "收到消息: " + Length + " | " + mStr.Length + " | " + receiveInfoPoolCapacity;
 						DebugSystem.LogBitStream(Tag, mStr);
-						mNetReceiveSystem.Receive(mStr);
+						mNetReceiveSystem.ReceiveSocketStream(mStr);
 					}
 				}
 				catch (SocketException e)
@@ -446,7 +446,7 @@ namespace xk_System.Net.Client.TCP
 
 						string Tag="收到消息: " + Length+" | "+mStr.Length + " | " + receiveInfoPoolCapacity;
 						DebugSystem.LogBitStream(Tag,mStr);
-						mNetReceiveSystem.Receive(mStr);
+						mNetReceiveSystem.ReceiveSocketStream(mStr);
 					}
 				}
 				catch (SocketException e)
@@ -465,7 +465,7 @@ namespace xk_System.Net.Client.TCP
 
 		}
 
-		public override void SendInfo(byte[] msg)
+		public override void SendNetStream(byte[] msg)
 		{
 			try
 			{
@@ -538,7 +538,7 @@ namespace xk_System.Net.Client.TCP
 			}
 		}
 
-		public override void SendInfo(byte[] msg)
+		public override void SendNetStream(byte[] msg)
 		{
 			Send(msg);
 		}
@@ -584,7 +584,8 @@ namespace xk_System.Net.Client.TCP
 					Disconnect(0);
 					return;
 				}
-				NetReceiveSystem.getSingle().Receive(stream);
+
+				mNetReceiveSystem.ReceiveSocketStream(stream);
 				mSocket.BeginReceive(stream, 0, stream.Length, SocketFlags.None, new System.AsyncCallback(ReceiveInfo), stream);
 
 			}
@@ -681,7 +682,7 @@ namespace xk_System.Net.Client.TCP
 			mSocket.ReceiveAsync(ReceiveArgs);
 		}
 
-		public override void SendInfo(byte[] msg)
+		public override void SendNetStream(byte[] msg)
 		{
 			SocketError mError=SocketError.SocketError;
 			try
@@ -729,7 +730,7 @@ namespace xk_System.Net.Client.TCP
 							mbyteArray = new byte[e.BytesTransferred];
 							Array.Copy(e.Buffer,mbyteArray,mbyteArray.Length);                         
 						}
-						mNetReceiveSystem.Receive(mbyteArray);
+						mNetReceiveSystem.ReceiveSocketStream(mbyteArray);
 					}             
 				}
 			}else

@@ -19,6 +19,7 @@ namespace xk_System.AssetPackage
 				mBundleInfoDic.Add("sheet.xk_unity3d","Assets/ResourceABs/sheet");
 				mBundleInfoDic.Add("version.xk_unity3d","Assets/ResourceABs/version");
 				mBundleInfoDic.Add("view.xk_unity3d","Assets/ResourceABs/view");
+				mBundleInfoDic.Add("view_item.xk_unity3d","Assets/ResourceABs/view/Item");
 			}
 	}
 }
