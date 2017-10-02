@@ -50,9 +50,9 @@ namespace xk_System.Net
             return (T)serializer.Deserialize(mst,null, typeof(T)); //反序列化    
         }
 
-        public override void Destory()
+        public override void reset()
         {
-            base.Destory();
+			base.reset();
             mst.Close();
         }
     }
@@ -81,6 +81,11 @@ namespace xk_System.Net
            // m= m.Descriptor.Parser.ParseFrom(data_byte);
             return (T)m;
         }
+
+		public override void reset()
+		{
+			base.reset();
+		}
     }
 
 	public class NetSendSystem_Protobuf : NetSendSystem

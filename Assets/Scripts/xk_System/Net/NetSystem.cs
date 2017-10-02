@@ -132,6 +132,7 @@ namespace xk_System.Net
 			{
 				var mPackage = mNeedHandleNetPackageQueue.Dequeue ();
 				HandleNetStream (mPackage);
+				mCanUseNetPackageQueue.Enqueue (mPackage);
 				handlePackageCount++;
 			}
 
@@ -143,11 +144,28 @@ namespace xk_System.Net
 			byte[] stream= mPackage.SerializePackage(mPackage.command, mPackage.data);
 			NetEncryptionStream.Encryption (stream);
 			mSocketSystem.SendNetStream (stream);
+			mPackage.reset ();
 		}
 			
 		public virtual void Destory()
 		{
-			
+			lock(mNeedHandleNetPackageQueue)
+			{
+				while (mNeedHandleNetPackageQueue.Count > 0)
+				{
+					Package mPackage = mNeedHandleNetPackageQueue.Dequeue();
+					mPackage.reset();
+				}
+			}
+
+			lock (mCanUseNetPackageQueue)
+			{
+				while (mCanUseNetPackageQueue.Count > 0)
+				{
+					Package mPackage = mCanUseNetPackageQueue.Dequeue();
+					mPackage.reset();
+				}
+			}
 		}
 	}
 
@@ -292,7 +310,7 @@ namespace xk_System.Net
 				while (mNeedHandlePackageQueue.Count > 0)
 				{
 					Package mPackage = mNeedHandlePackageQueue.Dequeue();
-					mPackage.Destory();
+					mPackage.reset();
 				}
 			}
 
@@ -301,7 +319,7 @@ namespace xk_System.Net
 				while (mCanUsePackageQueue.Count > 0)
 				{
 					Package mPackage = mCanUsePackageQueue.Dequeue();
-					mPackage.Destory();
+					mPackage.reset();
 				}
 			}
 		}
@@ -310,7 +328,7 @@ namespace xk_System.Net
 	//begin~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~网络包体结构系统~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	public abstract class Package
 	{
-		public int command;
+		public int command = -1;
 
 		public object data = null;
 		protected byte[] stream = null;
@@ -321,9 +339,11 @@ namespace xk_System.Net
 
 		public abstract T getData<T>() where T : new();
 
-		public virtual void Destory()
+		public virtual void reset()
 		{
-
+			data = null;
+			stream = null;
+			command = -1;
 		}
 	}
 }
