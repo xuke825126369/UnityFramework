@@ -1,11 +1,11 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using xk_System.Net.Server;
 using xk_System.Net;
 using xk_System.Net.Client.TCP;
 using XkProtobufData;
 using System;
+using xk_System.Net.Client;
 
 public class TCPClientTestObject : Singleton<TCPClientTestObject>
 {
@@ -15,7 +15,7 @@ public class TCPClientTestObject : Singleton<TCPClientTestObject>
 
 	public TCPClientTestObject()
 	{
-		mNetSocketSystem = new SocketSevice ();
+		mNetSocketSystem = new  SocketSystem_Thread ();
 		mNetSendSystem = new NetSendSystem_Protobuf(mNetSocketSystem);
 		mNetReceiveSystem = new NetReceiveSystem_Protobuf(mNetSocketSystem);
 	}
@@ -63,6 +63,8 @@ public class TCPClientTest : MonoBehaviour
 	{
 		TCPClientTestObject.Instance.initNet(ip, port);
 		TCPClientTestObject.Instance.addNetListenFun((int)ProtoCommand.ProtoChat, Receive_ServerSenddata);
+
+		StartCoroutine (Run ());
 	}
 
 	IEnumerator Run()
@@ -95,7 +97,8 @@ public class TCPClientTest : MonoBehaviour
 
 	private void Receive_ServerSenddata(Package package)
 	{
-		scChatData mServerSendData =package.getData<scChatData>();
+		scChatData mServerSendData = package.getData<scChatData>();
+
 		Debug.Log("Client 接受 渠道ID "+mServerSendData.ChatInfo.ChannelId);
 	}
 

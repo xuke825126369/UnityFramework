@@ -3,9 +3,12 @@ using System.Collections.Generic;
 using UnityEngine;
 using xk_System.Net;
 
-public class UDPClient : MonoBehaviour {
+namespace xk_System.Net.Client
+{
 
-	public string ip = "127.0.0.1";
+public class NetManager : MonoBehaviour
+{
+	public string ip = "192.168.1.109";
 	public int port = 7878;
 	private void Start()
 	{
@@ -22,4 +25,5 @@ public class UDPClient : MonoBehaviour {
 	{
 		NetSystem.Instance.closeNet();
 	}
+}
 }

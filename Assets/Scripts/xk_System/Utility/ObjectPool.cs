@@ -4,13 +4,19 @@ using UnityEngine;
 
 public interface ObjectPoolInterface
 {
-	void reset();
+	void recycle();
 }
 
 //Object 池子
 public class ObjectPool<T> : Singleton<ObjectPool<T>> where T : ObjectPoolInterface,new()
 {
-	Queue<T> mObjectPool = new Queue<T>();
+	Queue<T> mObjectPool;
+
+	public ObjectPool()
+	{
+		mObjectPool = new Queue<T> ();
+	}
+
 	public T Pop()
 	{
 		if (mObjectPool.Count > 0) {
@@ -22,8 +28,20 @@ public class ObjectPool<T> : Singleton<ObjectPool<T>> where T : ObjectPoolInterf
 
 	public void Push(T t)
 	{
-		t.reset ();
+		t.recycle ();
 		mObjectPool.Enqueue (t);
+	}
+
+
+	public int Size()
+	{
+		return mObjectPool.Count;
+	}
+
+	public void release()
+	{
+		mObjectPool.Clear ();
+		mObjectPool = null;
 	}
 }
 
@@ -42,6 +60,16 @@ public class SystemObjectPool<T> : Singleton<SystemObjectPool<T>> where T:new()
 	public void Push(T t)
 	{
 		mObjectPool.Enqueue (t);
+	}
+
+	public int Size()
+	{
+		return mObjectPool.Count;
+	}
+
+	public void release()
+	{
+		mObjectPool.Clear ();
 	}
 }
 
@@ -92,12 +120,23 @@ public class GameObjectPool<T> : Singleton<GameObjectPool> where T : MonoBehavio
 
 	public void Push(T t)
 	{
-		t.reset ();
+		t.recycle ();
 		foreach (var keyvaue in mUseObjectPool) {
 			if (keyvaue.Value.Contains (t)) {
 				mFreeObjectPool [keyvaue.Key].Enqueue (t);
 			}
 		}
+	}
+
+	public int CanUseSize()
+	{
+		return mFreeObjectPool.Count;
+	}
+
+	public void release()
+	{
+		mFreeObjectPool.Clear ();
+		mUseObjectPool.Clear ();
 	}
 }
 

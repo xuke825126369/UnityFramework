@@ -6,15 +6,15 @@ using xk_System.Net;
 using XkProtobufData;
 using System;
 
-public class TCPServerTestObject : Singleton<TCPServerTestObject>
+public class UDPServerTestObject : Singleton<UDPServerTestObject>
 {
 	private NetSendSystem mNetSendSystem;
 	private NetReceiveSystem mNetReceiveSystem;
 	private SocketSystem mNetSocketSystem;
 
-	public TCPServerTestObject()
+	public UDPServerTestObject()
 	{
-		mNetSocketSystem = new SocketSystem_TCPServer ();
+		mNetSocketSystem = new SocketSystem_UdpServer ();
 		mNetSendSystem = new NetSendSystem_Protobuf(mNetSocketSystem);
 		mNetReceiveSystem = new NetReceiveSystem_Protobuf(mNetSocketSystem);
 	}
@@ -54,15 +54,15 @@ public class TCPServerTestObject : Singleton<TCPServerTestObject>
 	}
 }
 
-public class TCPServerTest : MonoBehaviour 
+public class UDPServerTest : MonoBehaviour 
 {
 	public string ip = "192.168.1.123";
 	public int port = 7878;
 	private void Start()
 	{
-		TCPServerTestObject.Instance.initNet(ip, port);
+		UDPServerTestObject.Instance.initNet(ip, port);
 
-		TCPServerTestObject.Instance.addNetListenFun((int)ProtoCommand.ProtoChat, Receive_ServerSenddata);
+		UDPServerTestObject.Instance.addNetListenFun((int)ProtoCommand.ProtoChat, Receive_ServerSenddata);
 
 		StartCoroutine (Run ());
 	}
@@ -71,18 +71,19 @@ public class TCPServerTest : MonoBehaviour
 	IEnumerator Run()
 	{           
 		yield return new WaitForSeconds(2f);
-		gameObject.AddComponent<TCPClientTest> ();
+		gameObject.AddComponent<UDPClientTest> ();
+		gameObject.AddComponent<UDPClientTest> ();
 	}
 
 	// Update is called once per frame
 	private void Update()
 	{
-		TCPServerTestObject.Instance.handleNetData();
+		UDPServerTestObject.Instance.handleNetData();
 	}
 
 	private void OnDestroy()
 	{
-		TCPServerTestObject.Instance.closeNet();
+		UDPServerTestObject.Instance.closeNet();
 	}
 
 	private void Receive_ServerSenddata(Package package)
@@ -94,7 +95,7 @@ public class TCPServerTest : MonoBehaviour
 		scChatData mSenddata = new scChatData ();
 		mSenddata.ChatInfo = new struct_ChatInfo ();
 		mSenddata.ChatInfo.ChannelId = mServerSendData.ChannelId;
-			
-		TCPServerTestObject.Instance.sendNetData (package.clientId,(int)ProtoCommand.ProtoChat, mSenddata);
+
+		UDPServerTestObject.Instance.sendNetData (package.clientId,(int)ProtoCommand.ProtoChat, mSenddata);
 	}
 }

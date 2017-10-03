@@ -653,7 +653,7 @@ namespace xk_System.Net.Client.TCP
 		}
 	}
 
-	public class SocketSevice:SocketSystem
+	public class SocketSystem_SocketAsyncEventArgs:SocketSystem
 	{
 		SocketAsyncEventArgs ReceiveArgs;
 
@@ -731,13 +731,15 @@ namespace xk_System.Net.Client.TCP
 							Array.Copy(e.Buffer,mbyteArray,mbyteArray.Length);                         
 						}
 						mNetReceiveSystem.ReceiveSocketStream(mbyteArray);
-					}             
+					}
+
+					mSocket.ReceiveAsync(e);
 				}
 			}else
 			{
 				DebugSystem.Log("接收数据失败： " + e.SocketError.ToString());
+				CloseNet ();
 			}
-			mSocket.ReceiveAsync(e);
 		}
 
 
@@ -745,7 +747,6 @@ namespace xk_System.Net.Client.TCP
 		{
 			base.CloseNet();
 		}
-
-
+			
 	}
 }

@@ -8,7 +8,7 @@ using xk_System.Net.Client.TCP;
 using xk_System.Net;
 using System;
 
-namespace xk_System.Net
+namespace xk_System.Net.Client
 {
 	public class NetSystem : Singleton<NetSystem>
 	{
@@ -80,10 +80,16 @@ namespace xk_System.Net
 		public abstract void init(string ServerAddr, int ServerPort);
 		public abstract void SendNetStream(byte[] msg);
 
+		public bool IsPrepare()
+		{
+			return mSocket != null;
+		}
+
 		public void initSystem(NetReceiveSystem mNetReceiveSystem)
 		{
 			this.mNetReceiveSystem = mNetReceiveSystem;
 		}
+
 		public virtual void CloseNet()
 		{
 			mSocket.Close();
@@ -109,6 +115,11 @@ namespace xk_System.Net
 
 		public virtual void SendNetData(int command,object data)
 		{
+			if (!mSocketSystem.IsPrepare ()) {
+				DebugSystem.Log ("发送消息 被 挡住");
+				return;
+			}
+
 			Package mPackage = null;
 			if (mCanUseNetPackageQueue.Count> 0 )
 			{
@@ -136,13 +147,15 @@ namespace xk_System.Net
 				handlePackageCount++;
 			}
 
-			DebugSystem.LogError("发送包的数量： " + handlePackageCount);
+			if (handlePackageCount > 3) {
+				DebugSystem.LogError ("发送包的数量： " + handlePackageCount);
+			}
 		}
 
 		public void HandleNetStream(Package mPackage)
 		{
 			byte[] stream= mPackage.SerializePackage(mPackage.command, mPackage.data);
-			NetEncryptionStream.Encryption (stream);
+			stream = NetEncryptionStream.Encryption (stream);
 			mSocketSystem.SendNetStream (stream);
 			mPackage.reset ();
 		}
@@ -225,68 +238,54 @@ namespace xk_System.Net
 		public void HandleNetPackage()
 		{
 			HandleSocketStream ();
-			if (mNeedHandlePackageQueue != null)
-			{
-				lock (mNeedHandlePackageQueue)
-				{
-					while (mNeedHandlePackageQueue.Count > 0)
-					{
-						Package mPackage = mNeedHandlePackageQueue.Dequeue();
-						if (mReceiveDic.ContainsKey(mPackage.command))
-						{
-							mReceiveDic[mPackage.command](mPackage);
-						}
-						else
-						{
-							DebugSystem.LogError("没有找到相关命令的处理函数：" + mPackage.command);
-						}
-
-						lock(mCanUsePackageQueue)
-						{
-							mCanUsePackageQueue.Enqueue(mPackage);
-						}
+			if (mNeedHandlePackageQueue != null) {
+				while (mNeedHandlePackageQueue.Count > 0) {
+					Package mPackage = mNeedHandlePackageQueue.Dequeue ();
+					if (mReceiveDic.ContainsKey (mPackage.command)) {
+						mReceiveDic [mPackage.command] (mPackage);
+					} else {
+						DebugSystem.LogError ("没有找到相关命令的处理函数：" + mPackage.command);
 					}
+						
+					mCanUsePackageQueue.Enqueue (mPackage);
 				}
 			}
 		}
 
 		public void ReceiveSocketStream(byte[] data)
 		{
-			mReceiveStreamList.AddRange (data);
+			lock (mReceiveStreamList) {
+				mReceiveStreamList.AddRange (data);
+			}
 		}
 
 		protected void HandleSocketStream ()
 		{
 			int PackageCout = 0;
-			while (true)
-			{
-				byte[] mPackageByteArray= GetPackage();
-				if (mPackageByteArray != null)
-				{
-					Package mPackage = null;
-					lock (mCanUsePackageQueue)
-					{
-						if (mCanUsePackageQueue.Count == 0)
-						{
-							mPackage = new xk_Protobuf();
+			lock (mReceiveStreamList) {
+				while (mReceiveStreamList.Count > 0) {
+					byte[] mPackageByteArray = GetPackage ();
+					if (mPackageByteArray != null) {
+						Package mPackage = null;
+						if (mCanUsePackageQueue.Count == 0) {
+							mPackage = new xk_Protobuf ();
+						} else {
+							mPackage = mCanUsePackageQueue.Dequeue ();
 						}
-						else
-						{
-							mPackage = mCanUsePackageQueue.Dequeue();
-						}
+
+						mPackage.DeSerializeStream (mPackageByteArray);
+						mNeedHandlePackageQueue.Enqueue (mPackage);
+	
+						PackageCout++;
+					} else {
+						break;
 					}
-					mPackage.DeSerializeStream(mPackageByteArray);
-					lock (mNeedHandlePackageQueue)
-					{
-						mNeedHandlePackageQueue.Enqueue(mPackage);
-					}
-					PackageCout++;
-				}else
-				{
-					break;
 				}
 			}
-			DebugSystem.LogError("解析包的数量： " + PackageCout);
+
+			if (PackageCout > 3) {
+				DebugSystem.LogError ("解析包的数量： " + PackageCout);
+			}
 		}
 
 		private byte[] GetPackage()

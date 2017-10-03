@@ -1,20 +1,21 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using xk_System.Net.Server;
 using xk_System.Net;
 using XkProtobufData;
 using System;
+using xk_System.Net.Client;
+using xk_System.Net.Client.Udp;
 
-public class TCPServerTestObject : Singleton<TCPServerTestObject>
+public class UDPClientTestObject : Singleton<UDPClientTestObject>
 {
 	private NetSendSystem mNetSendSystem;
 	private NetReceiveSystem mNetReceiveSystem;
 	private SocketSystem mNetSocketSystem;
 
-	public TCPServerTestObject()
+	public UDPClientTestObject()
 	{
-		mNetSocketSystem = new SocketSystem_TCPServer ();
+		mNetSocketSystem = new  SocketSystem_Udp ();
 		mNetSendSystem = new NetSendSystem_Protobuf(mNetSocketSystem);
 		mNetReceiveSystem = new NetReceiveSystem_Protobuf(mNetSocketSystem);
 	}
@@ -24,9 +25,9 @@ public class TCPServerTestObject : Singleton<TCPServerTestObject>
 		mNetSocketSystem.init (ServerAddr, ServerPort);
 	}
 
-	public void sendNetData(int clientId,int command, object package)
+	public void sendNetData(int command, object package)
 	{
-		mNetSendSystem.SendNetData(clientId,command, package);  
+		mNetSendSystem.SendNetData(command, package);  
 	}
 
 	//每帧处理一些事件
@@ -54,47 +55,51 @@ public class TCPServerTestObject : Singleton<TCPServerTestObject>
 	}
 }
 
-public class TCPServerTest : MonoBehaviour 
+public class UDPClientTest : MonoBehaviour 
 {
 	public string ip = "192.168.1.123";
 	public int port = 7878;
 	private void Start()
 	{
-		TCPServerTestObject.Instance.initNet(ip, port);
-
-		TCPServerTestObject.Instance.addNetListenFun((int)ProtoCommand.ProtoChat, Receive_ServerSenddata);
+		UDPClientTestObject.Instance.initNet(ip, port);
+		UDPClientTestObject.Instance.addNetListenFun((int)ProtoCommand.ProtoChat, Receive_ServerSenddata);
 
 		StartCoroutine (Run ());
 	}
 
-
 	IEnumerator Run()
 	{           
-		yield return new WaitForSeconds(2f);
-		gameObject.AddComponent<TCPClientTest> ();
+		while (true)
+		{
+			request_ClientSendData(1,"xuke","I love you");
+			yield return new WaitForSeconds(2f);
+		}
 	}
 
 	// Update is called once per frame
 	private void Update()
 	{
-		TCPServerTestObject.Instance.handleNetData();
+		UDPClientTestObject.Instance.handleNetData();
 	}
 
 	private void OnDestroy()
 	{
-		TCPServerTestObject.Instance.closeNet();
+		UDPClientTestObject.Instance.closeNet();
+	}
+
+	public void request_ClientSendData(uint channelId, string sendName, string content)
+	{
+		csChatData mClientSendData = new csChatData();
+		mClientSendData.ChannelId = channelId;
+		mClientSendData.TalkMsg = content;
+		UDPClientTestObject.Instance.sendNetData((int)ProtoCommand.ProtoChat, mClientSendData);
 	}
 
 	private void Receive_ServerSenddata(Package package)
 	{
-		csChatData mServerSendData =package.getData<csChatData>();
+		scChatData mServerSendData = package.getData<scChatData>();
 
-		Debug.Log ("收到客户端发来的消息: "+ mServerSendData.ChannelId);
-
-		scChatData mSenddata = new scChatData ();
-		mSenddata.ChatInfo = new struct_ChatInfo ();
-		mSenddata.ChatInfo.ChannelId = mServerSendData.ChannelId;
-			
-		TCPServerTestObject.Instance.sendNetData (package.clientId,(int)ProtoCommand.ProtoChat, mSenddata);
+		Debug.Log("Client 接受 渠道ID "+mServerSendData.ChatInfo.ChannelId);
 	}
+
 }

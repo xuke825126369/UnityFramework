@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Text;
 
-namespace xk_System.Net
+namespace xk_System.Net.Client
 {
 	public class NetBitStream
 	{
