@@ -53,6 +53,10 @@ namespace xk_System.Net.Server
 			mNetSocketSystem.CloseNet ();
 			mNetSendSystem.Destory ();
 			mNetReceiveSystem.Destory ();
+
+			mNetSocketSystem = null;
+			mNetSendSystem = null;
+			mNetReceiveSystem = null;
 		}
 	}
 
@@ -66,13 +70,12 @@ namespace xk_System.Net.Server
 		/// <summary>
 		/// 毫秒数，不设置，系统默认为0
 		/// </summary>
-		protected const int receiveTimeOut = 10000;
-		protected const int sendTimeOut = 5000;
+		protected const int receiveTimeOut = 3000;
+		protected const int sendTimeOut = 3000;
 
 		protected NetReceiveSystem mNetReceiveSystem;
 
 		protected Socket mSocket;
-		protected Queue<string> mNetErrorQueue;
 
 		public abstract void init(string ServerAddr, int ServerPort);
 		public abstract void SendNetStream(int clientId,byte[] msg);
@@ -89,9 +92,11 @@ namespace xk_System.Net.Server
 
 		public virtual void CloseNet()
 		{
-			mSocket.Close();
-			mSocket = null;
-			DebugSystem.Log("关闭客户端TCP连接");
+			if (mSocket != null) {
+				mSocket.Close ();
+				mSocket = null;
+			}
+			DebugSystem.Log("关闭 服务器 TCP连接");
 		}
 	}
 
@@ -137,7 +142,7 @@ namespace xk_System.Net.Server
 			}
 
 			if (handlePackageCount > 3) {
-				DebugSystem.Log("发送包的数量： " + handlePackageCount);
+				DebugSystem.Log("服务器 发送包的数量： " + handlePackageCount);
 			}
 		}
 

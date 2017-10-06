@@ -24,7 +24,10 @@ namespace xk_System.Net.Server
 		int m_totalBytesRead; 
 		private Int32 numConnections;
 		private Int32 bufferSize;
-		private static SystemObjectPool<SocketAsyncEventArgs> ioContextPool;
+
+		private SystemObjectPool<SocketAsyncEventArgs> ioContextPool;
+		private List<SocketAsyncEventArgs> mUsedContextPool;
+
 
 		internal SocketSystem_TCPServer(Int32 numConnections = 100 , Int32 bufferSize = 8192)
 		{
@@ -32,6 +35,7 @@ namespace xk_System.Net.Server
 			this.numConnectedSockets = 0;
 			this.numConnections = numConnections;
 			this.bufferSize = bufferSize;
+			mUsedContextPool = new List<SocketAsyncEventArgs> ();
 
 			ioContextPool = SystemObjectPool<SocketAsyncEventArgs>.Instance;
 
@@ -53,17 +57,9 @@ namespace xk_System.Net.Server
 			this.mSocket.ReceiveBufferSize = bufferSize;
 			this.mSocket.SendBufferSize = bufferSize;
 
-			if (localEndPoint.AddressFamily == AddressFamily.InterNetworkV6)
-			{
-				this.mSocket.SetSocketOption(SocketOptionLevel.IPv6, (SocketOptionName)27, false);
-				this.mSocket.Bind(new IPEndPoint(IPAddress.IPv6Any, localEndPoint.Port));
-			}
-			else
-			{
-				this.mSocket.Bind(localEndPoint);
-			}
-				
+			this.mSocket.Bind(localEndPoint);
 			this.mSocket.Listen(numConnections);
+
 			this.StartAccept(null);
 
 			mutex.WaitOne();
@@ -78,7 +74,6 @@ namespace xk_System.Net.Server
 			}
 			else
 			{
-				// 重用前进行对象清理
 				acceptEventArg.AcceptSocket = null;
 			}
 
@@ -95,11 +90,9 @@ namespace xk_System.Net.Server
 			{
 			case SocketAsyncOperation.Receive:
 				this.ProcessReceive (e);
-				//DebugSystem.Log ("接受数据");
 				break;
 			case SocketAsyncOperation.Send:
 				this.ProcessSend(e);
-				//DebugSystem.Log ("读取数据");
 				break;
 			default:
 				throw new ArgumentException("The last operation completed on the socket was not a receive or send");
@@ -119,6 +112,7 @@ namespace xk_System.Net.Server
 				try
 				{
 					SocketAsyncEventArgs ioContext = ioContextPool.Pop();
+					mUsedContextPool.Add(ioContext);
 					if (ioContext != null)
 					{
 						Client mClient = new Client(s);
@@ -160,23 +154,19 @@ namespace xk_System.Net.Server
 
 		private void ProcessReceive(SocketAsyncEventArgs e)
 		{
-			if (e.SocketError == SocketError.Success) {
-				if (e.BytesTransferred > 0) {
-					Interlocked.Add (ref m_totalBytesRead, e.BytesTransferred);
-					//DebugSystem.Log ("The server has read a total bytes： " + m_totalBytesRead + " | " + e.BytesTransferred);
+			if (e.SocketError == SocketError.Success && e.BytesTransferred > 0) {
+				Interlocked.Add (ref m_totalBytesRead, e.BytesTransferred);
+				//DebugSystem.Log ("The server has read a total bytes： " + m_totalBytesRead + " | " + e.BytesTransferred);
 
-					byte[] mReceive = new byte[e.BytesTransferred];
-					Array.Copy (e.Buffer, 0, mReceive, 0, mReceive.Length);
+				byte[] mReceive = new byte[e.BytesTransferred];
+				Array.Copy (e.Buffer, 0, mReceive, 0, mReceive.Length);
 
-					var client = e.UserToken as Client;
-					mNetReceiveSystem.ReceiveSocketStream (client.getId(),mReceive);
+				var client = e.UserToken as Client;
+				mNetReceiveSystem.ReceiveSocketStream (client.getId (), mReceive);
 
-					Socket socket = client.getSocket();
-					if (!socket.ReceiveAsync (e)) {
-						this.ProcessReceive (e);
-					}
-				} else {
-					this.CloseClientSocket (e);
+				Socket socket = client.getSocket ();
+				if (!socket.ReceiveAsync (e)) {
+					this.ProcessReceive (e);
 				}
 			} else {
 				this.CloseClientSocket (e);
@@ -191,7 +181,7 @@ namespace xk_System.Net.Server
 			try
 			{
 				var senddata = ioContextPool.Pop();
-				senddata.SetBuffer(msg,0,msg.Length);
+				senddata.SetBuffer(msg, 0, msg.Length);
 				mClient.getSocket().SendAsync(senddata);
 			}catch(Exception e)
 			{
@@ -214,7 +204,8 @@ namespace xk_System.Net.Server
 		//这里是关闭客户端链接
 		private void CloseClientSocket(SocketAsyncEventArgs e)
 		{
-			Socket s = e.UserToken as Socket;
+			Client client = e.UserToken as Client;
+			Socket s = client.getSocket ();
 			Interlocked.Decrement(ref this.numConnectedSockets);           
 			string outStr = String.Format("客户 {0} 断开, 共有 {1} 个连接。", s.RemoteEndPoint.ToString(), this.numConnectedSockets);
 			DebugSystem.Log (outStr);        
@@ -222,6 +213,7 @@ namespace xk_System.Net.Server
 			outStr = String.Format("套接字错误 {0}, IP {1}, 操作 {2}。", (Int32)e.SocketError, localEp, e.LastOperation);
 			DebugSystem.LogError (outStr);
 
+			mUsedContextPool.Remove (e);
 			ioContextPool.Push(e);
 			s.Close();
 			s = null;
@@ -230,20 +222,16 @@ namespace xk_System.Net.Server
 		//关闭服务器
 		public override void CloseNet ()
 		{
-			this.mSocket.Close();
+			while(mUsedContextPool.Count > 0)
+			{
+				var v = mUsedContextPool [0];
+				CloseClientSocket (v);
+			}
+
+			ioContextPool.release ();
+
+			base.CloseNet ();
 			mutex.ReleaseMutex();
 		}
-	}
-
-	class BufferManager
-	{
-		public BufferManager(int count,int receiveBufferSize)
-		{
-
-
-		}
-
-
-
 	}
 }

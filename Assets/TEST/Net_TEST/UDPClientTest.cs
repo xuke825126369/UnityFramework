@@ -7,7 +7,7 @@ using System;
 using xk_System.Net.Client;
 using xk_System.Net.Client.Udp;
 
-public class UDPClientTestObject : Singleton<UDPClientTestObject>
+public class UDPClientTestObject
 {
 	private NetSendSystem mNetSendSystem;
 	private NetReceiveSystem mNetReceiveSystem;
@@ -16,8 +16,8 @@ public class UDPClientTestObject : Singleton<UDPClientTestObject>
 	public UDPClientTestObject()
 	{
 		mNetSocketSystem = new  SocketSystem_Udp ();
-		mNetSendSystem = new NetSendSystem_Protobuf(mNetSocketSystem);
-		mNetReceiveSystem = new NetReceiveSystem_Protobuf(mNetSocketSystem);
+		mNetSendSystem = new NetSendSystem(mNetSocketSystem);
+		mNetReceiveSystem = new NetReceiveSystem(mNetSocketSystem);
 	}
 
 	public void initNet(string ServerAddr, int ServerPort)
@@ -59,10 +59,11 @@ public class UDPClientTest : MonoBehaviour
 {
 	public string ip = "192.168.1.123";
 	public int port = 7878;
+	UDPClientTestObject mClient = new UDPClientTestObject();
 	private void Start()
 	{
-		UDPClientTestObject.Instance.initNet(ip, port);
-		UDPClientTestObject.Instance.addNetListenFun((int)ProtoCommand.ProtoChat, Receive_ServerSenddata);
+		mClient.initNet(ip, port);
+		mClient.addNetListenFun((int)ProtoCommand.ProtoChat, Receive_ServerSenddata);
 
 		StartCoroutine (Run ());
 	}
@@ -79,12 +80,12 @@ public class UDPClientTest : MonoBehaviour
 	// Update is called once per frame
 	private void Update()
 	{
-		UDPClientTestObject.Instance.handleNetData();
+		mClient.handleNetData();
 	}
 
 	private void OnDestroy()
 	{
-		UDPClientTestObject.Instance.closeNet();
+		mClient.closeNet();
 	}
 
 	public void request_ClientSendData(uint channelId, string sendName, string content)
@@ -92,7 +93,7 @@ public class UDPClientTest : MonoBehaviour
 		csChatData mClientSendData = new csChatData();
 		mClientSendData.ChannelId = channelId;
 		mClientSendData.TalkMsg = content;
-		UDPClientTestObject.Instance.sendNetData((int)ProtoCommand.ProtoChat, mClientSendData);
+		mClient.sendNetData((int)ProtoCommand.ProtoChat, mClientSendData);
 	}
 
 	private void Receive_ServerSenddata(Package package)

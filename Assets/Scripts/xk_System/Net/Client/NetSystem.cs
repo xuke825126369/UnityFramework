@@ -20,8 +20,8 @@ namespace xk_System.Net.Client
 		{
 			mNetSocketSystem = new SocketSystem_Thread ();
 
-			mNetSendSystem = new NetSendSystem_Protobuf(mNetSocketSystem);
-			mNetReceiveSystem = new NetReceiveSystem_Protobuf(mNetSocketSystem);
+			mNetSendSystem = new NetSendSystem(mNetSocketSystem);
+			mNetReceiveSystem = new NetReceiveSystem(mNetSocketSystem);
 		}
 
 		public void initNet(string ServerAddr, int ServerPort)
@@ -75,7 +75,6 @@ namespace xk_System.Net.Client
 		protected NetReceiveSystem mNetReceiveSystem;
 
 		protected Socket mSocket;
-		protected Queue<string> mNetErrorQueue;
 
 		public abstract void init(string ServerAddr, int ServerPort);
 		public abstract void SendNetStream(byte[] msg);
@@ -92,9 +91,11 @@ namespace xk_System.Net.Client
 
 		public virtual void CloseNet()
 		{
-			mSocket.Close();
-			mSocket = null;
-			DebugSystem.Log("关闭客户端TCP连接");
+			if (mSocket != null) {
+				mSocket.Close ();
+				mSocket = null;
+			}
+			DebugSystem.Log ("关闭客户端TCP连接");
 		}
 
 	}
@@ -106,7 +107,7 @@ namespace xk_System.Net.Client
 		protected Queue<Package> mCanUseNetPackageQueue;
 		protected SocketSystem mSocketSystem;
 
-		protected NetSendSystem(SocketSystem socketSys)
+		public NetSendSystem(SocketSystem socketSys)
 		{
 			this.mSocketSystem = socketSys;
 			mNeedHandleNetPackageQueue = new Queue<Package> ();
@@ -148,7 +149,7 @@ namespace xk_System.Net.Client
 			}
 
 			if (handlePackageCount > 3) {
-				DebugSystem.LogError ("发送包的数量： " + handlePackageCount);
+				DebugSystem.LogError ("客户端 发送包的数量： " + handlePackageCount);
 			}
 		}
 
@@ -189,7 +190,8 @@ namespace xk_System.Net.Client
 		protected Queue<Package> mNeedHandlePackageQueue;
 		protected Queue<Package> mCanUsePackageQueue;
 		protected Dictionary<int, Action<Package>> mReceiveDic;
-		protected NetReceiveSystem(SocketSystem socketSys)
+
+		public NetReceiveSystem(SocketSystem socketSys)
 		{
 			mReceiveDic = new Dictionary<int, Action<Package>>();
 			mNeedHandlePackageQueue = new Queue<Package>();
@@ -284,7 +286,7 @@ namespace xk_System.Net.Client
 			}
 
 			if (PackageCout > 3) {
-				DebugSystem.LogError ("解析包的数量： " + PackageCout);
+				DebugSystem.LogError ("客户端 解析包的数量： " + PackageCout);
 			}
 		}
 

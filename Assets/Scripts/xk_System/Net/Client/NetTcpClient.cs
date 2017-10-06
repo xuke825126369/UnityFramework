@@ -294,7 +294,7 @@ namespace xk_System.Net.Client.TCP
 
 	public class SocketSystem_Thread : SocketSystem
 	{
-		private List<Thread> ThreadPool;
+		Thread mThread = null;
 		public override void init(string ServerAddr, int ServerPort)
 		{
 			try
@@ -323,15 +323,9 @@ namespace xk_System.Net.Client.TCP
 
 		private void NewStartThread_Receive()
 		{
-			// Thread mThread = new Thread(ReceiveInfo);
-			Thread mThread = new Thread(Receive);
+			mThread = new Thread(Receive);
 			mThread.IsBackground = false;
 			mThread.Start();
-			if (ThreadPool == null)
-			{
-				ThreadPool = new List<Thread>();
-			}
-			ThreadPool.Add(mThread);
 		}
 
 		List<byte> mStoreByteList = new List<byte>();
@@ -430,7 +424,7 @@ namespace xk_System.Net.Client.TCP
 					{
 						if (error == SocketError.TimedOut)
 						{
-							//DebugSystem.Log("连接超时");
+							DebugSystem.Log("连接超时");
 						}
 						else if (error == SocketError.Success)
 						{
@@ -443,26 +437,25 @@ namespace xk_System.Net.Client.TCP
 					{
 						byte[] mStr = new byte[Length];
 						Array.Copy(mbyteStr, mStr, Length);
+						mNetReceiveSystem.ReceiveSocketStream(mStr);
 
 						string Tag="收到消息: " + Length+" | "+mStr.Length + " | " + receiveInfoPoolCapacity;
 						DebugSystem.LogBitStream(Tag,mStr);
-						mNetReceiveSystem.ReceiveSocketStream(mStr);
 					}
 				}
 				catch (SocketException e)
 				{
-					DebugSystem.LogError("接受异常0000： " + e.Message + " | " + e.SocketErrorCode);
+					DebugSystem.LogError("Socket 错误： " + e.Message + " | " + e.SocketErrorCode);
 					break;
 				}
 				catch (Exception e)
 				{
-					DebugSystem.LogError("接受异常11111： " + e.Message + " | " + e.StackTrace);
+					DebugSystem.LogError("接受异常： " + e.Message + " | " + e.StackTrace);
 					break;
 				}
 			}
 
 			DebugSystem.LogError("网络线程结束");
-
 		}
 
 		public override void SendNetStream(byte[] msg)
@@ -492,17 +485,9 @@ namespace xk_System.Net.Client.TCP
 
 		public override void CloseNet()
 		{
-			if (ThreadPool != null)
-			{
-				foreach (Thread t in ThreadPool)
-				{
-					t.Abort();
-				}
-				ThreadPool.Clear();
-			}
+			mThread = null;
 			base.CloseNet();     
 		}
-
 	}
 
 	public class SocketSystem_Async:SocketSystem

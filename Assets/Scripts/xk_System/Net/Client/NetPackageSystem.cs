@@ -87,20 +87,4 @@ namespace xk_System.Net.Client
 			base.reset();
 		}
     }
-
-	public class NetSendSystem_Protobuf : NetSendSystem
-	{
-		public NetSendSystem_Protobuf(SocketSystem socketSys):base(socketSys)
-		{
-			
-		}
-	}
-
-	public class NetReceiveSystem_Protobuf:NetReceiveSystem
-	{
-		public NetReceiveSystem_Protobuf(SocketSystem socket):base(socket)
-		{
-
-		}
-	}
 }

@@ -15,8 +15,8 @@ public class TCPServerTestObject : Singleton<TCPServerTestObject>
 	public TCPServerTestObject()
 	{
 		mNetSocketSystem = new SocketSystem_TCPServer ();
-		mNetSendSystem = new NetSendSystem_Protobuf(mNetSocketSystem);
-		mNetReceiveSystem = new NetReceiveSystem_Protobuf(mNetSocketSystem);
+		mNetSendSystem = new NetSendSystem(mNetSocketSystem);
+		mNetReceiveSystem = new NetReceiveSystem(mNetSocketSystem);
 	}
 
 	public void initNet(string ServerAddr, int ServerPort)
@@ -85,14 +85,17 @@ public class TCPServerTest : MonoBehaviour
 
 	private void OnDestroy()
 	{
+		Debug.LogError ("关闭服务器");
 		TCPServerTestObject.Instance.closeNet();
 	}
+
+	int nReceiveCount = 0;
 
 	private void Receive_ServerSenddata(Package package)
 	{
 		csChatData mServerSendData =package.getData<csChatData>();
 
-		//Debug.Log ("收到客户端发来的消息: "+ mServerSendData.ChannelId);
+		Debug.Log ("Server接受数量: "+ ++nReceiveCount);
 
 		scChatData mSenddata = new scChatData ();
 		mSenddata.ChatInfo = new struct_ChatInfo ();

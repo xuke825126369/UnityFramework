@@ -15,8 +15,8 @@ public class UDPServerTestObject : Singleton<UDPServerTestObject>
 	public UDPServerTestObject()
 	{
 		mNetSocketSystem = new SocketSystem_UdpServer ();
-		mNetSendSystem = new NetSendSystem_Protobuf(mNetSocketSystem);
-		mNetReceiveSystem = new NetReceiveSystem_Protobuf(mNetSocketSystem);
+		mNetSendSystem = new NetSendSystem(mNetSocketSystem);
+		mNetReceiveSystem = new NetReceiveSystem(mNetSocketSystem);
 	}
 
 	public void initNet(string ServerAddr, int ServerPort)
