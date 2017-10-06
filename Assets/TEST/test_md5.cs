@@ -16,7 +16,7 @@ public class test_md5 : MonoBehaviour {
         string key = "1234567891234567";
         string iv = "1234567891234567";
         byte[] data_byte = Encoding.UTF8.GetBytes(data);
-        byte[] aaaa=EncryptionSystem.getSingle<Encryption_AES>().Encryption(data_byte,key,iv);
+		byte[] aaaa=Encryption_AES.Encryption(data_byte,key,iv);
         if(aaaa==null)
         {
             DebugSystem.LogError("aaaa错误");
@@ -28,7 +28,7 @@ public class test_md5 : MonoBehaviour {
             aaStr += b+" | ";
         }
         DebugSystem.Log(aaStr);
-        byte[] bbb= EncryptionSystem.getSingle<Encryption_AES>().Decryption(aaaa, key, iv);
+		byte[] bbb= Encryption_AES.Decryption(aaaa, key, iv);
         if (bbb == null)
         {
             DebugSystem.LogError("bbb错误");

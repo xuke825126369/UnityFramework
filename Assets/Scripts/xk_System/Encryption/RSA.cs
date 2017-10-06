@@ -6,9 +6,9 @@ using System.IO;
 using System;
 namespace xk_System.Crypto
 {
-    public class RSACryptoService : Singleton<RSACryptoService>
+	public static class RSACryptoService
     {
-        public RSACryptoServiceProvider CreateRsaProviderFromPrivateKey(string privateKey)
+		public static RSACryptoServiceProvider CreateRsaProviderFromPrivateKey(string privateKey)
         {
             var privateKeyBits = System.Convert.FromBase64String(privateKey);
 
@@ -49,7 +49,7 @@ namespace xk_System.Crypto
             return RSA;
         }
 
-        private int GetIntegerSize(BinaryReader binr)
+		private static int GetIntegerSize(BinaryReader binr)
         {
             byte bt = 0;
             byte lowbyte = 0x00;
@@ -83,7 +83,7 @@ namespace xk_System.Crypto
             return count;
         }
 
-        public RSACryptoServiceProvider CreateRsaProviderFromPublicKey(string publicKeyString)
+		public static RSACryptoServiceProvider CreateRsaProviderFromPublicKey(string publicKeyString)
         {
             // encoded OID sequence for  PKCS #1 rsaEncryption szOID_RSA_RSA = "1.2.840.113549.1.1.1"
             byte[] SeqOID = { 0x30, 0x0D, 0x06, 0x09, 0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x01, 0x01, 0x05, 0x00 };
@@ -177,7 +177,7 @@ namespace xk_System.Crypto
             }
         }
 
-        private bool CompareBytearrays(byte[] a, byte[] b)
+		private static bool CompareBytearrays(byte[] a, byte[] b)
         {
             if (a.Length != b.Length)
                 return false;

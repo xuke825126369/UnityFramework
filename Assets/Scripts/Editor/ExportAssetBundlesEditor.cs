@@ -123,8 +123,7 @@ public class ExportAssetBundlesEditor : MonoBehaviour
     static private string BundleCryption(FileInfo mfile)
     {
         FileStream mStream = mfile.OpenRead();
-        EncryptionSystem_md5 mdata = new EncryptionSystem_md5();
-        string mStr = mdata.Encryption(mStream);
+		string mStr = EncryptionSystem_md5.Encryption(mStream);
         mStream.Close();
         return mStr;
     }

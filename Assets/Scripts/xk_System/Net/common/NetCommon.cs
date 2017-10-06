@@ -77,7 +77,7 @@ namespace xk_System.Net
 
 		public static void GetInputStream(byte[] data,out int command,out byte[] buffer)
 		{
-			byte[] msg = EncryptionSystem.getSingle<Encryption_AES>().Decryption(data, Encrytption_Key, Encrytption_iv);
+			byte[] msg = Encryption_AES.Decryption(data, Encrytption_Key, Encrytption_iv);
 
 			int buffer_Length = msg.Length - msg_head_command_length;
 			if(buffer_Length<=0)
@@ -116,7 +116,7 @@ namespace xk_System.Net
 
 			Array.Copy(byte_head_command, 0, data, 0, msg_head_command_length);
 			Array.Copy(msg, 0, data, msg_head_command_length, buffer_Length);
-			data = EncryptionSystem.getSingle<Encryption_AES>().Encryption(data, Encrytption_Key, Encrytption_iv);
+			data = Encryption_AES.Encryption(data, Encrytption_Key, Encrytption_iv);
 
 			return data;
 		}

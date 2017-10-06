@@ -9,34 +9,17 @@ using System;
 
 namespace xk_System.Crypto
 {
-    public abstract class EncryptionSystem
-    {
-        private static EncryptionSystem single;
-        public EncryptionSystem()
-        {
-
-        }
-
-        public static T getSingle<T>() where T : EncryptionSystem, new()
-        {
-            if (single == null)
-            {
-                single = new T();
-            }
-            return (T)single;
-        }
-    }
     /// <summary>
     /// md5是一个不可逆的过程（单向性）
     /// 作用：验证数据的完整性，正确性。判断数据是否被修改过了
     /// </summary>
-    public class EncryptionSystem_md5 : EncryptionSystem
+	public static class EncryptionSystem_md5
     {
         /// <summary>
         /// 对字符串进行md5签名
         /// </summary>
         /// <param name="s"></param>
-        public string Encryption(string s)
+		public static string Encryption(string s)
         {
             MD5 md = new MD5CryptoServiceProvider();
             byte[] bytes = md.ComputeHash(System.Text.Encoding.UTF8.GetBytes(s));
@@ -54,7 +37,7 @@ namespace xk_System.Crypto
         /// </summary>
         /// <param name="stream"></param>
         /// <returns></returns>
-        public string Encryption(Stream stream)
+		public static string Encryption(Stream stream)
         {
 
             MD5 md5serv = MD5CryptoServiceProvider.Create();
@@ -73,7 +56,7 @@ namespace xk_System.Crypto
 
     }
 
-    internal class Encryption_DES : EncryptionSystem
+	internal static class Encryption_DES
     {
         /// <summary>
         /// DES加密
@@ -82,7 +65,7 @@ namespace xk_System.Crypto
         /// <param name="key">8位字符的密钥字符串</param>
         /// <param name="iv">8位字符的初始化向量字符串</param>
         /// <returns></returns>
-        public string Encryption(string data, string key, string iv)
+		public static string Encryption(string data, string key, string iv)
         {
             byte[] byKey = System.Text.ASCIIEncoding.ASCII.GetBytes(key);
             byte[] byIV = System.Text.ASCIIEncoding.ASCII.GetBytes(iv);
@@ -108,7 +91,7 @@ namespace xk_System.Crypto
         /// <param name="key">8位字符的密钥字符串(需要和加密时相同)</param>
         /// <param name="iv">8位字符的初始化向量字符串(需要和加密时相同)</param>
         /// <returns></returns>
-        public string Decryption(string data, string key, string iv)
+		public static string Decryption(string data, string key, string iv)
         {
             byte[] byKey = System.Text.ASCIIEncoding.ASCII.GetBytes(key);
             byte[] byIV = System.Text.ASCIIEncoding.ASCII.GetBytes(iv);
@@ -141,7 +124,7 @@ namespace xk_System.Crypto
     /// <summary>
     /// 本类无法解析Linux上的AES密文,现在可以解析了
     /// </summary>
-    internal class Encryption_AES : EncryptionSystem
+	internal static class Encryption_AES
     {
         /// <summary>  
         /// AES加密  
@@ -150,7 +133,7 @@ namespace xk_System.Crypto
         /// <param name="Key">密钥:it should be 16, 24 or 32 bytes long</param>  
         /// <param name="Vector">向量:it should be 16 bytes long</param>  
         /// <returns>密文</returns>  
-        public byte[] Encryption(Byte[] Data, string Key, string Vector)
+		public static byte[] Encryption(Byte[] Data, string Key, string Vector)
         {
             Byte[] bKey = Encoding.UTF8.GetBytes(Key);
             Byte[] bVector = Encoding.UTF8.GetBytes(Vector);
@@ -184,7 +167,7 @@ namespace xk_System.Crypto
         /// <param name="Key">密钥:it should be 16, 24 or 32 bytes long.</param>  
         /// <param name="Vector">向量:it should be 16 bytes long</param>  
         /// <returns>明文</returns>        
-        public byte[] Decryption(Byte[] Data, string Key, string Vector)
+		public static byte[] Decryption(Byte[] Data, string Key, string Vector)
         {
             DebugSystem.Log("Data Length:" + Data.Length);
             Byte[] bKey = Encoding.UTF8.GetBytes(Key);
@@ -215,7 +198,7 @@ namespace xk_System.Crypto
             return original;
         }
 
-        private void printAesInfo(Rijndael Aes)
+		private static void printAesInfo(Rijndael Aes)
         {
             DebugSystem.Log("Mode:" + Aes.Mode);
             DebugSystem.Log("KeySize:" + Aes.KeySize);
@@ -227,14 +210,14 @@ namespace xk_System.Crypto
     }
 
 
-    internal class Encryption_DSA : EncryptionSystem
+	internal static class Encryption_DSA
     {
-        public string Encryption()
+		public static string Encryption()
         {
             return "";
         }
 
-        public string Decryption()
+		public static string Decryption()
         {
             return "";
         }
@@ -242,7 +225,7 @@ namespace xk_System.Crypto
     /// <summary>
     /// 数字签名，单向性
     /// </summary>
-    internal class Encryption_ECDSA : EncryptionSystem
+	internal static class Encryption_ECDSA
     {
         /*private Key myPrivateKey;
         public byte[] myPublicKey;
@@ -280,7 +263,7 @@ namespace xk_System.Crypto
         }*/
     }
 
-    internal class Encryption_DiffieHellman : EncryptionSystem
+	internal static class Encryption_DiffieHellman
     {
         /*public CngKey myPrivateKey;
         public byte[] myPublicKey;
@@ -306,9 +289,9 @@ namespace xk_System.Crypto
 
     }
 
-    internal class Encryption_RSA : EncryptionSystem
+	internal static class Encryption_RSA
     {
-        public  void Initial(ref string PublicKey,ref string PrivateKey)
+		public  static void Initial(ref string PublicKey,ref string PrivateKey)
         {
             //声明一个RSA算法的实例，由RSACryptoServiceProvider类型的构造函数指定了密钥长度为1024位
             RSACryptoServiceProvider rsaProvider = new RSACryptoServiceProvider(1024);
@@ -318,7 +301,7 @@ namespace xk_System.Crypto
             PrivateKey = rsaProvider.ToXmlString(true);
         }
 
-        public string EncryptData(string PublicKey, string data)
+		public static string EncryptData(string PublicKey, string data)
         {
             byte[] data_byte = Convert.FromBase64String(data);
             RSACryptoServiceProvider rsa = new RSACryptoServiceProvider(1024);
@@ -330,7 +313,7 @@ namespace xk_System.Crypto
             return Convert.ToBase64String(result_byte);
         }
 
-        public byte[] DecryptData(string PrivateKey, string data)
+		public static byte[] DecryptData(string PrivateKey, string data)
         {
             byte[] data_byte = Encoding.UTF8.GetBytes(data);
             RSACryptoServiceProvider rsa = new RSACryptoServiceProvider(1024);
@@ -340,7 +323,7 @@ namespace xk_System.Crypto
             return rsa.Decrypt(data_byte, false);
         }
 
-        public string Sign(string PrivateKey, string data)
+		public static string Sign(string PrivateKey, string data)
         {
             byte[] data_byte = Encoding.UTF8.GetBytes(data);
             RSACryptoServiceProvider rsa = new RSACryptoServiceProvider(1024);
@@ -351,11 +334,11 @@ namespace xk_System.Crypto
             return Convert.ToBase64String(result_byte);
         }
 
-        public bool Verify(string PublicKey,string data, string Signature)
+		public static bool Verify(string PublicKey,string data, string Signature)
         {
             byte[] sign_byte = Convert.FromBase64String(Signature);
             byte[] data_byte = Encoding.UTF8.GetBytes(data);
-            RSACryptoServiceProvider rsa = RSACryptoService.Instance.CreateRsaProviderFromPublicKey(PublicKey);
+            RSACryptoServiceProvider rsa = RSACryptoService.CreateRsaProviderFromPublicKey(PublicKey);
             //返回数据验证结果
             return rsa.VerifyData(data_byte, "SHA1", sign_byte);
         }
@@ -367,7 +350,7 @@ namespace xk_System.Crypto
         /// <param name="strHashbyteSignature">待签名Hash描述</param>  
         /// <param name="strEncryptedSignatureData">签名后的结果</param>  
         /// <returns></returns>  
-        public bool SignatureFormatter(string KeyPrivate, string data, ref string sign)
+		public static bool SignatureFormatter(string KeyPrivate, string data, ref string sign)
         {
             try
             {
@@ -398,7 +381,7 @@ namespace xk_System.Crypto
         /// <param name="strHashbyteDeformatter">Hash描述</param>  
         /// <param name="strDeformatterData">签名后的结果</param>  
         /// <returns></returns>  
-        public bool SignatureDeformatter(string strKeyPublic, string data, string sign)
+		public static bool SignatureDeformatter(string strKeyPublic, string data, string sign)
         {
             try
             {
@@ -407,7 +390,7 @@ namespace xk_System.Crypto
                 SHA1 md = SHA1.Create();
                 HashbyteDeformatter = md.ComputeHash(Encoding.UTF8.GetBytes(data));
                 DeformatterData = Convert.FromBase64String(sign);
-                RSACryptoServiceProvider RSA = RSACryptoService.Instance.CreateRsaProviderFromPublicKey(strKeyPublic);
+                RSACryptoServiceProvider RSA = RSACryptoService.CreateRsaProviderFromPublicKey(strKeyPublic);
                 RSAPKCS1SignatureDeformatter RSADeformatter = new RSAPKCS1SignatureDeformatter(RSA);
                 //指定解密的时候HASH算法为MD5   
                 RSADeformatter.SetHashAlgorithm("SHA1");

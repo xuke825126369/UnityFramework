@@ -95,11 +95,11 @@ namespace xk_System.Net.Server
 			{
 			case SocketAsyncOperation.Receive:
 				this.ProcessReceive (e);
-				DebugSystem.Log ("接受数据");
+				//DebugSystem.Log ("接受数据");
 				break;
 			case SocketAsyncOperation.Send:
 				this.ProcessSend(e);
-				DebugSystem.Log ("读取数据");
+				//DebugSystem.Log ("读取数据");
 				break;
 			default:
 				throw new ArgumentException("The last operation completed on the socket was not a receive or send");
@@ -163,7 +163,7 @@ namespace xk_System.Net.Server
 			if (e.SocketError == SocketError.Success) {
 				if (e.BytesTransferred > 0) {
 					Interlocked.Add (ref m_totalBytesRead, e.BytesTransferred);
-					DebugSystem.Log ("The server has read a total bytes： " + m_totalBytesRead + " | " + e.BytesTransferred);
+					//DebugSystem.Log ("The server has read a total bytes： " + m_totalBytesRead + " | " + e.BytesTransferred);
 
 					byte[] mReceive = new byte[e.BytesTransferred];
 					Array.Copy (e.Buffer, 0, mReceive, 0, mReceive.Length);
@@ -195,7 +195,7 @@ namespace xk_System.Net.Server
 				mClient.getSocket().SendAsync(senddata);
 			}catch(Exception e)
 			{
-				DebugSystem.LogError("发送字节失败： "+e.Message+" | "+mError.ToString());
+				DebugSystem.LogError("Server 发送失败： "+e.Message+" | "+mError.ToString());
 			}
 		}
 			

@@ -69,9 +69,12 @@ public class TCPServerTest : MonoBehaviour
 
 
 	IEnumerator Run()
-	{           
+	{      
 		yield return new WaitForSeconds(2f);
-		gameObject.AddComponent<TCPClientTest> ();
+		for (int i = 0; i < 10; i++) {
+			gameObject.AddComponent<TCPClientTest> ();
+			yield return new WaitForSeconds(1f);
+		}
 	}
 
 	// Update is called once per frame
@@ -89,7 +92,7 @@ public class TCPServerTest : MonoBehaviour
 	{
 		csChatData mServerSendData =package.getData<csChatData>();
 
-		Debug.Log ("收到客户端发来的消息: "+ mServerSendData.ChannelId);
+		//Debug.Log ("收到客户端发来的消息: "+ mServerSendData.ChannelId);
 
 		scChatData mSenddata = new scChatData ();
 		mSenddata.ChatInfo = new struct_ChatInfo ();

@@ -137,7 +137,7 @@ namespace xk_System.Net.Server
 			}
 
 			if (handlePackageCount > 3) {
-				DebugSystem.LogError ("发送包的数量： " + handlePackageCount);
+				DebugSystem.Log("发送包的数量： " + handlePackageCount);
 			}
 		}
 
@@ -169,7 +169,8 @@ namespace xk_System.Net.Server
 	//begin~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~网络接受系统~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	public class NetReceiveSystem
 	{
-		protected Dictionary<int,List<byte>> mReceiveStreamDic;
+		protected Dictionary<int,List<byte>> mReceivedStreamDic;
+		protected Queue<Package> mReceiveStreamQueue;
 		protected Queue<Package> mNeedHandlePackageQueue;
 		protected Queue<Package> mCanUsePackageQueue;
 		protected Dictionary<int, Action<Package>> mReceiveDic;
@@ -179,7 +180,8 @@ namespace xk_System.Net.Server
 			mReceiveDic = new Dictionary<int, Action<Package>>();
 			mNeedHandlePackageQueue = new Queue<Package>();
 			mCanUsePackageQueue = new Queue<Package>();
-			mReceiveStreamDic = new Dictionary<int, List<byte>> ();
+			mReceiveStreamQueue = new Queue<Package> ();
+			mReceivedStreamDic = new Dictionary<int, List<byte>> ();
 			socketSys.initSystem (this);
 		}
 
@@ -231,6 +233,7 @@ namespace xk_System.Net.Server
 					} else {
 						DebugSystem.LogError ("没有找到相关命令的处理函数：" + mPackage.command);
 					}
+					mPackage.recycle ();
 					mCanUsePackageQueue.Enqueue (mPackage);
 				}
 			}
@@ -238,62 +241,82 @@ namespace xk_System.Net.Server
 
 		public void ReceiveSocketStream(int clientId,byte[] data)
 		{
-			lock (mReceiveStreamDic) {
-				if (!mReceiveStreamDic.ContainsKey (clientId)) {
-					mReceiveStreamDic [clientId] = new List<byte> ();
+			Package mPackage = null;
+			lock (mCanUsePackageQueue) {
+				if (mCanUsePackageQueue.Count > 0) {
+					mPackage = mCanUsePackageQueue.Dequeue ();
+				} else {
+					mPackage = new xk_Protobuf ();
 				}
-				mReceiveStreamDic [clientId].AddRange (data);
+			}
+
+			mPackage.clientId = clientId;
+			mPackage.stream = data;
+
+			lock (mReceiveStreamQueue) {
+				mReceiveStreamQueue.Enqueue (mPackage);
 			}
 		}
 
 		protected void HandleSocketStream ()
 		{
-			int PackageCout = 0;
-			lock (mReceiveStreamDic) {
-				if (mReceiveStreamDic.Count > 0) {
-					foreach (var keyvalue in mReceiveStreamDic) 
-					{
-						byte[] mPackageByteArray = GetPackage (keyvalue.Key);
-						if (mPackageByteArray != null) {
-							Package mPackage = null;
+			lock (mReceiveStreamQueue) {
+				while (mReceiveStreamQueue.Count > 0) {
+					var mPackage = mReceiveStreamQueue.Dequeue();
+					if (!mReceivedStreamDic.ContainsKey (mPackage.clientId)) {
+						mReceivedStreamDic [mPackage.clientId] = new List<byte> ();
+					}
+					mReceivedStreamDic [mPackage.clientId].AddRange(mPackage.stream);
+
+					int clientId = mPackage.clientId;
+					mPackage.recycle ();
+					mCanUsePackageQueue.Enqueue (mPackage);
+
+					while (true) {
+						byte[] msg = mReceivedStreamDic [clientId].ToArray ();
+						var data = NetEncryptionStream.DeEncryption (msg);
+						if (data != null) {
+							int Length = data.Length + 8;
+							mReceivedStreamDic[clientId].RemoveRange (0, Length);
+
+							Package mPackage1 = null;
 							if (mCanUsePackageQueue.Count == 0) {
-								mPackage = new xk_Protobuf ();
+								mPackage1 = mCanUsePackageQueue.Dequeue();
 							} else {
-								mPackage = mCanUsePackageQueue.Dequeue ();
+								mPackage1 = new xk_Protobuf ();
 							}
+							mPackage1.clientId = clientId;
+							mPackage1.DeSerializeStream (data);
+							mNeedHandlePackageQueue.Enqueue (mPackage1);
 
-							mPackage.clientId = keyvalue.Key;
-							mPackage.DeSerializeStream (mPackageByteArray);
-							mNeedHandlePackageQueue.Enqueue (mPackage);
-
-							PackageCout++;
 						} else {
 							break;
 						}
 					}
 				}
 			}
-
-			if (PackageCout > 3) {
-				DebugSystem.LogError ("解析包的数量： " + PackageCout);
-			}
 		}
 
-		private byte[] GetPackage(int clientId)
+		public void RemoveClient(int clientId)
 		{
-			byte[] msg = mReceiveStreamDic[clientId].ToArray ();
-			var data = NetEncryptionStream.DeEncryption(msg);
-			if(data == null)
-			{
-				return null;
-			}
-			int Length = data.Length + 8;
-			mReceiveStreamDic[clientId].RemoveRange(0, Length);
-			return data;
+
+
 		}
 
 		public virtual void Destory()
 		{
+			lock(mReceiveStreamQueue)
+			{
+				while (mReceiveStreamQueue.Count > 0)
+				{
+					Package mPackage = mReceiveStreamQueue.Dequeue();
+					mPackage.recycle();
+				}
+			}
+
+			mReceivedStreamDic.Clear ();
+			mReceiveDic.Clear ();
+
 			lock(mNeedHandlePackageQueue)
 			{
 				while (mNeedHandlePackageQueue.Count > 0)
@@ -320,7 +343,7 @@ namespace xk_System.Net.Server
 		public int clientId = -1;
 		public int command = -1;
 		public object data = null;
-		protected byte[] stream = null;
+		public byte[] stream = null;
 
 		public Package()
 		{
