@@ -3,6 +3,7 @@ using System.Collections;
 using xk_System.Debug;
 using System.Collections.Generic;
 using System.Xml;
+using System.IO;
 
 namespace xk_System.AssetPackage
 {
@@ -118,27 +119,28 @@ namespace xk_System.AssetPackage
             string path = AssetBundlePath.Instance.ExternalStorePath+"/"+BaseBundleInfo.bundleName;
             AssetBundleCreateRequest www= AssetBundle.LoadFromFileAsync(path);
             www.allowSceneActivation = true;
-            yield return www;
+			while (!www.isDone) {
+				yield return 0;
+			}
             AssetBundle asset = www.assetBundle;
             SaveBundleToDic(BaseBundleInfo.bundleName, asset);
             mBundleLockList.Remove(BaseBundleInfo.bundleName);
         }
 
         private string getRealAssetName(AssetBundle bundle, string assetName)
-        {
-            if (assetName.LastIndexOf(".") == -1)
-            {
-                string[] allasseetNames = bundle.GetAllAssetNames();
-                foreach (var v in allasseetNames)
-                {
-                    if (v.IndexOf(assetName)!=-1)
-                    {
-                        return v;
-                    }
-                }
-            }
-            return assetName;
-        }
+		{
+			assetName = assetName.ToLower ();
+			string[] allasseetNames = bundle.GetAllAssetNames ();
+			foreach (var v in allasseetNames) {
+				string temp = v.ToLower ();
+				if (temp.IndexOf (assetName) != -1) {
+					return v;
+				}
+			}
+            
+			DebugSystem.LogError ("Error,此 资源名 未找到 ！！！: " + assetName);
+			return assetName;
+		}
 
 
         /// <summary>
@@ -292,6 +294,8 @@ namespace xk_System.AssetPackage
         {
             if (JudgeOrExistAsset(bundleName, asstName))
             {
+				var mBundle = mBundleDic [bundleName];
+				asstName = getRealAssetName (mBundle,asstName);
                 UnityEngine.Object mAsset1 = mAssetDic[bundleName][asstName];
                 if (mAsset1 is GameObject)
                 {
@@ -314,7 +318,15 @@ namespace xk_System.AssetPackage
 
         private string[] GetAllAssetNamesFromEditorFolder(string assetPath)
         {
-            return System.IO.Directory.GetFiles(assetPath);
+            string[] aaa = System.IO.Directory.GetFiles(assetPath);
+			List<string> mm = new List<string> ();
+			foreach (var v in aaa) {
+				if (Path.GetExtension (v) != ".meta") {
+					mm.Add (v);
+				}
+			}
+
+			return mm.ToArray ();
         }
 
         private UnityEngine.Object GetAssetFromEditorDic(string assetPath)

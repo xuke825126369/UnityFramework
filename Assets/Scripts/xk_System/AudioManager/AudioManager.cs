@@ -15,8 +15,8 @@ public class AudioManager : SingleTonMonoBehaviour<AudioManager>
 
     private IEnumerator LoadAudio()
     {
-		AssetInfo mAssetInfo = ResourceABsFolder.Instance.getAsseetInfo("","") ;
-        yield return StartCoroutine(AssetBundleManager.Instance.AsyncLoadAsset(mAssetInfo));
+		AssetInfo mAssetInfo = ResourceABsFolder.Instance.getAsseetInfo("audio","bg") ;
+        yield return AssetBundleManager.Instance.AsyncLoadAsset(mAssetInfo);
         AudioClip obj = AssetBundleManager.Instance.LoadAsset(mAssetInfo) as AudioClip;
         Play(obj);
     }

@@ -11,61 +11,54 @@ namespace xk_System.AssetPackage
         private Dictionary<string, Dictionary<string, Sprite>> mAtlasDic = new Dictionary<string, Dictionary<string, Sprite>>();
 
         public IEnumerator InitAtlas(string atlasName)
-        {
-            Dictionary<string, Sprite> mDic = null;
-            if (!mAtlasDic.TryGetValue(atlasName, out mDic))
-            {
-                if (GameConfig.Instance.orUseAssetBundle)
-                {
-                    yield return AssetBundleManager.Instance.AsyncLoadBundle(atlasName);
-                }
+		{
+			Dictionary<string, Sprite> mDic = null;
+			atlasName = ResourceABsFolder.Instance.getBundleNameByAltasName (atlasName);
+			if (!mAtlasDic.TryGetValue (atlasName, out mDic)) {
+				if (GameConfig.Instance.orUseAssetBundle) {
+					yield return AssetBundleManager.Instance.AsyncLoadBundle (atlasName);
+				}
 
-                mDic = new Dictionary<string, Sprite>();
-                AssetInfo[] mAllAssetInfo = ResourceABsFolder.Instance.getAsseetInfoList(atlasName);
-                if (mAllAssetInfo!=null && mAllAssetInfo.Length > 0)
-                {
-                    foreach (var v in mAllAssetInfo)
-                    {
-                        Sprite mSprite = null;
-                        if (GameConfig.Instance.orUseAssetBundle)
-                        {
-                            UnityEngine.Object mObj = AssetBundleManager.Instance.LoadAsset(v);
-                            if(mObj!=null)
-                            {
-                                if(mObj is Texture2D)
-                                {
-                                    DebugSystem.LogError("这是一张Texture:"+v.assetPath);
-                                }else
-                                {
-                                    mSprite = mObj as Sprite;
-                                }
-                            }
-                        }
-                        else
-                        {
+				mDic = new Dictionary<string, Sprite> ();
+				AssetInfo[] mAllAssetInfo = ResourceABsFolder.Instance.getAsseetInfoList (atlasName);
+				if (mAllAssetInfo != null && mAllAssetInfo.Length > 0) {
+					foreach (var v in mAllAssetInfo) {
+						Sprite mSprite = null;
+						if (GameConfig.Instance.orUseAssetBundle) {
+							UnityEngine.Object mObj = AssetBundleManager.Instance.LoadAsset (v);
+							if (mObj != null) {
+								if (mObj is Texture2D) {
+									DebugSystem.LogError ("这是一张Texture:" + v.assetPath);
+								} else {
+									mSprite = mObj as Sprite;
+								}
+							}
+						} else {
 #if UNITY_EDITOR
-                            mSprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(v.assetPath);
+							mSprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite> (v.assetPath);
+							if (mSprite == null)
+							{
+								DebugSystem.LogError ("Editor Load Sprite类型不存在:" + v.assetPath);
+							}
 #endif
-                        }
+						}
 
-                        if (mSprite != null)
-                        {
-                            string spriteName = v.assetName.Substring(0, v.assetName.LastIndexOf("."));
-                            mDic.Add(spriteName, mSprite);
-                        }
-                        else
-                        {
-                            DebugSystem.LogError("Sprite类型不存在:" + v.assetName);
+						if (mSprite != null) {
+							string spriteName = mSprite.name;
+							mDic.Add (spriteName, mSprite);
+						} else {
+							DebugSystem.LogError ("Sprite类型不存在:" + v.assetName);
 
-                        }
-                    }
-                }
-                mAtlasDic.Add(atlasName, mDic);
-            }
-        }
+						}
+					}
+				}
+				mAtlasDic.Add (atlasName, mDic);
+			}
+		}
 
         public Dictionary<string, Sprite> GetAtlas(string atlasName)
         {
+			atlasName = ResourceABsFolder.Instance.getBundleNameByAltasName (atlasName);
             if (mAtlasDic.ContainsKey(atlasName))
             {
                 return mAtlasDic[atlasName];

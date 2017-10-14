@@ -6,7 +6,7 @@ namespace xk_System.AssetPackage
 	public class AssetBundlePath : Singleton<AssetBundlePath>
     {
         public const string ABExtention = ".xk_unity3d";
-        public const string versionConfigBundleName = "version."+ABExtention;
+        public const string versionConfigBundleName = "version"+ABExtention;
         public const string versionConfigAssetName = "version.xml";
         public const string AssetDependentFileBundleName = "StreamingAssets";
         public const string AssetDependentFileAssetName = "AssetBundleManifest";
@@ -20,7 +20,7 @@ namespace xk_System.AssetPackage
         {
 			if (Application.platform == RuntimePlatform.OSXEditor)
 			{
-				WebServerPathUrl = "file:///F:/WebServer";
+				WebServerPathUrl = "file://F:/WebServer";
 				StreamingAssetPathUrl = "file://" + Application.streamingAssetsPath;
 				ExternalStorePathUrl = StreamingAssetPathUrl;
 				ExternalStorePath = Application.streamingAssetsPath;
@@ -35,8 +35,8 @@ namespace xk_System.AssetPackage
 			}
 			else if (Application.platform == RuntimePlatform.OSXPlayer)
 			{
-				WebServerPathUrl = "file:///F:/WebServer";
-				StreamingAssetPathUrl = "file:///" + Application.streamingAssetsPath;
+				WebServerPathUrl = "file://F:/WebServer";
+				StreamingAssetPathUrl = "file://" + Application.streamingAssetsPath;
 				ExternalStorePathUrl = StreamingAssetPathUrl;
 				//ExternalStorePathUrl = "file:///" + Application.persistentDataPath;
 				ExternalStorePath = Application.streamingAssetsPath;

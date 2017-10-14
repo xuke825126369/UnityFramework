@@ -2,6 +2,7 @@
 using System.Collections;
 using xk_System.AssetPackage;
 using xk_System.HotUpdate;
+using xk_System.Debug;
 
 public class GameEngine : MonoBehaviour
 {

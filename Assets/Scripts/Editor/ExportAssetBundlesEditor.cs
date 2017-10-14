@@ -110,12 +110,14 @@ public class ExportAssetBundlesEditor : MonoBehaviour
         BuildTarget target = BuildTarget.StandaloneWindows64;
 #if UNITY_WEBGL
          target = BuildTarget.WebGL;
-#elif UNITY_STANDALONE
-        target = BuildTarget.StandaloneWindows;
 #elif UNITY_IPHONE
 		target = BuildTarget.iPhone;
 #elif UNITY_ANDROID
 		target = BuildTarget.Android;
+#elif UNITY_STANDALONE_OSX
+		target = BuildTarget.StandaloneOSXUniversal;
+#elif UNITY_STANDALONE
+		target = BuildTarget.StandaloneWindows;
 #endif
         return target;
     }

@@ -63,7 +63,7 @@ public class TextUtility : Singleton<TextUtility>
 
     public override void Init()
     {
-        Dictionary<string, Sprite> mDic = AtlasManager.Instance.GetAtlas("emoj");
+        Dictionary<string, Sprite> mDic = AtlasManager.Instance.GetAtlas("atlas_emoj");
         int i = 1;
         foreach (var v in mDic)
         {

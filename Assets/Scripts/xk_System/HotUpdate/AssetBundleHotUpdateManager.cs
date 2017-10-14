@@ -138,7 +138,7 @@ namespace xk_System.HotUpdate
             {
                 if (!string.IsNullOrEmpty(www.error))
                 {
-                    DebugSystem.LogError("www Load Error:" + www.error);
+					DebugSystem.LogError("www url: "+url+" | Load Error:" + www.error);
                     www.Dispose();
                     yield break;
                 }

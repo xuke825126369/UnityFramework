@@ -13,8 +13,6 @@ namespace xk_System.AssetPackage
         public AssetInfo[] getAsseetInfoList(string BundleName,string[] assetNameList=null)
         {
             List<AssetInfo> mAssetInfoList = new List<AssetInfo>();
-
-            BundleName = CheckBundleName(BundleName);
             if (assetNameList != null)
             {
                 foreach (var v in assetNameList)
@@ -23,7 +21,6 @@ namespace xk_System.AssetPackage
                 }
             }else
             {
-
                 assetNameList = AssetBundleManager.Instance.getAllBundleAssetInfo(getAsseetInfo(BundleName,""));         
                 foreach (var v in assetNameList)
                 {
@@ -34,18 +31,44 @@ namespace xk_System.AssetPackage
         }
 
         public AssetInfo getAsseetInfo(string BundleName, string AssetName)
-        {
-            string bundleName = "";
-            string assetName = AssetName;
-            string assetPath = "";
+		{
+			string bundleName = "";
+			string assetName = AssetName;
+			string assetPath = "";
 
-            BundleName = CheckBundleName(BundleName);
-            bundleName = BundleName;
-#if UNITY_EDITOR
-            assetPath = mBundleInfoDic[bundleName] + "/" + assetName;
-#endif
-            return new AssetInfo(assetPath, bundleName, AssetName);
+			BundleName = CheckBundleName (BundleName);
+			bundleName = BundleName;
+
+			if (!GameConfig.Instance.orUseAssetBundle) {
+				if (mBundleInfoDic.ContainsKey (bundleName)) {
+					if (!assetName.StartsWith (mBundleInfoDic [bundleName])) {
+						assetPath = mBundleInfoDic [bundleName] + "/" + assetName;
+					} else {
+						assetPath = assetName;
+					}
+				} else {
+					DebugSystem.LogError ("读取本地资源 有误：" + bundleName);
+				}
+			}
+			return new AssetInfo(assetPath, bundleName, assetName);
         }
+
+		//得到Atlas的Bundle名
+		public string getBundleNameByAltasName(string AtlasName)
+		{
+			string bundleName = AtlasName;
+			if (!bundleName.StartsWith ("atlas_")) {
+				bundleName = "atlas_" + bundleName;
+			}
+
+			return getRealBundleName (bundleName);
+		}
+
+		public string getRealBundleName(string bundleName)
+		{
+			bundleName = CheckBundleName (bundleName);
+			return bundleName;
+		}
 
         private string CheckBundleName(string BundleName)
         {
