@@ -16,12 +16,6 @@ public class GameEngine : MonoBehaviour
                 gameObject.AddComponent<LogManager>();
             }
         }
-
-        /*if (gameObject.GetComponent<KBEMain>() == null)
-        {
-            gameObject.AddComponent<KBEMain>();
-        }*/
-
     }
 
     private void Start()

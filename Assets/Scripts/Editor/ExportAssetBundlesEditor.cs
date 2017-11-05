@@ -21,10 +21,10 @@ public class ExportAssetBundlesEditor : MonoBehaviour
         Debug.Log("Start Build AssetBundles");
         Init();
         MakeAtlasTools.MakeAllAtlas();
-        //ExportAssemblyInfoEditor.GenerationAssemblyInfo();
         ExportAssetInfoEditor.GenericAssetCSInfo();
         ExportVersionInfoEditor.GenerationVersionInfo();
         CreateAssetBundleBuilds();
+		mBundleList.Clear ();
         Debug.Log("Finish Build AssetBundle");
     }
 
@@ -36,6 +36,9 @@ public class ExportAssetBundlesEditor : MonoBehaviour
 
     static void ClearFolder()
     {
+		if (!Directory.Exists (OutAssetPath)) {
+			Directory.CreateDirectory (OutAssetPath);
+		}
         string path = OutAssetPath;
         DirectoryInfo mdir = new DirectoryInfo(path);
         foreach(FileInfo f in mdir.GetFiles())
