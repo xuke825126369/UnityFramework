@@ -17,6 +17,10 @@ namespace xk_System.AssetPackage
         private Dictionary<string, Dictionary<string, UnityEngine.Object>> mAssetDic = new Dictionary<string, Dictionary<string, UnityEngine.Object>>();
         private List<string> mBundleLockList = new List<string>();
 
+		private void Update()
+		{
+
+		}
         /// <summary>
         /// 加载Assetbundle方案1：初始化时，全部加载
         /// </summary>
@@ -67,7 +71,7 @@ namespace xk_System.AssetPackage
         /// </summary>
         /// <param name="BaseBundleInfo"></param>
         /// <returns></returns>
-        private IEnumerator AsyncLoadFromLoaclSingleBundle1(AssetBundleInfo BaseBundleInfo)
+        private IEnumerator AsyncLoadFromLoaclSingleBundle(AssetBundleInfo BaseBundleInfo)
         {
             if(mBundleLockList.Contains(BaseBundleInfo.bundleName))
             {
@@ -97,34 +101,6 @@ namespace xk_System.AssetPackage
             SaveBundleToDic(BaseBundleInfo.bundleName, asset);
             mBundleLockList.Remove(BaseBundleInfo.bundleName);
             www.Dispose();
-        }
-
-        /// <summary>
-        /// 从本地外部存储位置加载单个Bundle资源,全部加载
-        /// </summary>
-        /// <param name="BaseBundleInfo"></param>
-        /// <returns></returns>
-        private IEnumerator AsyncLoadFromLoaclSingleBundle(AssetBundleInfo BaseBundleInfo)
-        {
-            if (mBundleLockList.Contains(BaseBundleInfo.bundleName))
-            {
-                while (mBundleLockList.Contains(BaseBundleInfo.bundleName))
-                {
-                    yield return null;
-                }
-                yield break;
-            }
-            mBundleLockList.Add(BaseBundleInfo.bundleName);
-            yield return CheckBundleDependentBundle(BaseBundleInfo);
-            string path = AssetBundlePath.Instance.ExternalStorePath+"/"+BaseBundleInfo.bundleName;
-            AssetBundleCreateRequest www= AssetBundle.LoadFromFileAsync(path);
-            www.allowSceneActivation = true;
-			while (!www.isDone) {
-				yield return 0;
-			}
-            AssetBundle asset = www.assetBundle;
-            SaveBundleToDic(BaseBundleInfo.bundleName, asset);
-            mBundleLockList.Remove(BaseBundleInfo.bundleName);
         }
 
         private string getRealAssetName(AssetBundle bundle, string assetName)
