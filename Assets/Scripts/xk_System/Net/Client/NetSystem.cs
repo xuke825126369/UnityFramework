@@ -28,8 +28,11 @@ namespace xk_System.Net.Client
 			mNetSocketSystem.init (ServerAddr, ServerPort);
 		}
 
-		public void sendNetData(int command, object package)
+		public void sendNetData(int command, byte[] package)
 		{
+			NetPackage mPackage = NetObjectPool.Instance.mNetPackagePool.Pop ();
+			mPackage.command = command;
+			mPackage.buffer = package;
 			mNetSendSystem.SendNetData(command, package);  
 		}
 
@@ -39,14 +42,14 @@ namespace xk_System.Net.Client
 			mNetReceiveSystem.HandleNetPackage ();
 		}
 
-		public void addNetListenFun(int command, Action<NetPackage> fun)
+		public void addNetListenFun(Action<NetPackage> fun)
 		{
-			mNetReceiveSystem.addListenFun(command,fun);
+			mNetReceiveSystem.addListenFun(fun);
 		}
 
-		public void removeNetListenFun(int command, Action<NetPackage> fun)
+		public void removeNetListenFun(Action<NetPackage> fun)
 		{
-			mNetReceiveSystem.removeListenFun(command, fun);
+			mNetReceiveSystem.removeListenFun(fun);
 		}
 
 		public void closeNet()
@@ -88,31 +91,23 @@ namespace xk_System.Net.Client
 			}
 			DebugSystem.Log ("关闭客户端TCP连接");
 		}
-
 	}
 
 	//begin~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~网络发送系统~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	public class  NetSendSystem
 	{
 		protected Queue<NetPackage> mNeedHandleNetPackageQueue;
-		protected ObjectPool<NetPackage> mCanUseNetPackageQueue;
 		protected SocketSystem mSocketSystem;
 
 		public NetSendSystem(SocketSystem socketSys)
 		{
 			this.mSocketSystem = socketSys;
 			mNeedHandleNetPackageQueue = new Queue<NetPackage> ();
-			mCanUseNetPackageQueue = new ObjectPool<NetPackage> ();
 		}
 
-		public virtual void SendNetData(int command,object data)
+		public virtual void SendNetData(NetPackage data)
 		{
-			NetPackage mPackage = mCanUseNetPackageQueue.Pop ();
-			mPackage.reset ();
-			mPackage.setCommand (command);
-			mPackage.setObjectData(data);
-
-			mNeedHandleNetPackageQueue.Enqueue (mPackage);
+			mNeedHandleNetPackageQueue.Enqueue (data);
 		}
 
 		public void HandleNetPackage ()
@@ -122,7 +117,6 @@ namespace xk_System.Net.Client
 			{
 				var mPackage = mNeedHandleNetPackageQueue.Dequeue ();
 				HandleNetStream (mPackage);
-				mCanUseNetPackageQueue.recycle (mPackage);
 				handlePackageCount++;
 			}
 
@@ -133,10 +127,9 @@ namespace xk_System.Net.Client
 
 		public void HandleNetStream(NetPackage mPackage)
 		{
-			byte[] stream= mPackage.SerializePackage();
+			byte[] stream = NetStream.GetOutStream (mPackage.command,mPackage.buffer);
 			stream = NetEncryptionStream.Encryption (stream);
 			mSocketSystem.SendNetStream (stream);
-			mPackage.reset ();
 		}
 			
 		public virtual void Destory()
@@ -158,52 +151,46 @@ namespace xk_System.Net.Client
 	{
 		protected List<byte> mReceiveStreamList;
 		protected Queue<NetPackage> mNeedHandlePackageQueue;
-		protected ObjectPool<NetPackage> mCanUsePackageQueue;
-		protected Dictionary<int, Action<NetPackage>> mReceiveDic;
+		protected Action<NetPackage> mReceiveFun;
 
 		public NetReceiveSystem(SocketSystem socketSys)
 		{
-			mReceiveDic = new Dictionary<int, Action<NetPackage>>();
 			mNeedHandlePackageQueue = new Queue<NetPackage>();
-			mCanUsePackageQueue = new ObjectPool<NetPackage> ();
 			mReceiveStreamList = new List<byte> ();
 			socketSys.initSystem (this);
 		}
 
-		public void addListenFun(int command, Action<NetPackage> fun)
+		public void addListenFun(int protocolType, Action<NetPackage> fun)
 		{
-			lock (mReceiveDic)
+			lock (mReceiveFun)
 			{
-				if (mReceiveDic.ContainsKey(command))
+				if (mReceiveFun != null)
 				{
-					if (CheckDataBindFunIsExist(command, fun))
+					if (CheckDataBindFunIsExist(protocolType, fun))
 					{
 						DebugSystem.LogError("添加监听方法重复");
 						return;
 					}
-					mReceiveDic[command] += fun;
+					mReceiveFun[protocolType] += fun;
 				}
 				else
 				{
-					mReceiveDic[command] = fun;
+					mReceiveFun[protocolType] = fun;
 				}              
 			}
 		}
 
-		private bool CheckDataBindFunIsExist(int command,Action<NetPackage> fun)
+		private bool CheckDataBindFunIsExist(int command,Action<byte[]> fun)
 		{
-			Action<NetPackage> mFunList = mReceiveDic[command];
-			return DelegateUtility.CheckFunIsExist<NetPackage>(mFunList, fun);
+			Action<NetPackage> mFunList = mReceiveFun[command];
+			return DelegateUtility.CheckFunIsExist<byte[]>(mFunList, fun);
 		}
 
-		public void removeListenFun(int command, Action<NetPackage> fun)
+		public void removeListenFun(Action<NetPackage> fun)
 		{
-			lock (mReceiveDic)
+			lock (mReceiveFun)
 			{
-				if (mReceiveDic.ContainsKey(command))
-				{
-					mReceiveDic[command]-=fun;
-				}
+				mReceiveFun-=fun;
 			}
 		}
 
@@ -213,13 +200,10 @@ namespace xk_System.Net.Client
 			if (mNeedHandlePackageQueue != null) {
 				while (mNeedHandlePackageQueue.Count > 0) {
 					NetPackage mPackage = mNeedHandlePackageQueue.Dequeue ();
-					if (mReceiveDic.ContainsKey (mPackage.getCommand())) {
-						mReceiveDic [mPackage.getCommand()] (mPackage);
-					} else {
-						DebugSystem.LogError ("没有找到相关命令的处理函数：" + mPackage.getCommand());
+					if (mReceiveFun != null) {
+						mReceiveFun (mPackage);
 					}
-						
-					mCanUsePackageQueue.recycle (mPackage);
+					NetObjectPool.Instance.mNetPackagePool.recycle (mPackage);
 				}
 			}
 		}
@@ -236,10 +220,8 @@ namespace xk_System.Net.Client
 			int PackageCout = 0;
 			lock (mReceiveStreamList) {
 				while (mReceiveStreamList.Count > 0) {
-					byte[] mPackageByteArray = GetPackage ();
-					if (mPackageByteArray != null) {
-						NetPackage mPackage = mCanUsePackageQueue.Pop();
-						mPackage.DeSerializeStream (mPackageByteArray);
+					NetPackage mPackage = GetPackage ();
+					if (mPackage != null) {
 						mNeedHandlePackageQueue.Enqueue (mPackage);
 						PackageCout++;
 					} else {
@@ -253,18 +235,20 @@ namespace xk_System.Net.Client
 			}
 		}
 
-		private byte[] GetPackage()
+		private NetPackage GetPackage()
 		{
 			byte[] msg = mReceiveStreamList.ToArray ();
-			var data = NetEncryptionStream.DeEncryption(msg);
-			if(data == null)
-			{
+			byte[] data = NetEncryptionStream.DeEncryption (msg);
+			if (data == null) {
 				return null;
 			}
 
 			int Length = data.Length + 8;
-			mReceiveStreamList.RemoveRange(0, Length);
-			return data;
+			mReceiveStreamList.RemoveRange (0, Length);
+
+			NetPackage mPackage = NetObjectPool.Instance.mNetPackagePool.Pop ();
+			NetStream.GetInputStream (data, out mPackage.command, out mPackage.buffer);
+			return mPackage;
 		}
 
 		public virtual void Destory()
@@ -272,11 +256,6 @@ namespace xk_System.Net.Client
 			lock(mNeedHandlePackageQueue)
 			{
 				mNeedHandlePackageQueue.Clear ();
-			}
-
-			lock (mCanUsePackageQueue)
-			{
-				mCanUsePackageQueue.release ();
 			}
 		}
 	}

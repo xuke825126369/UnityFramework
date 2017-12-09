@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class NetEventManager : MonoBehaviour {
+public class NetLuaProtocol : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {

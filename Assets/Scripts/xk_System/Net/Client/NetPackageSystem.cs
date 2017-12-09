@@ -14,50 +14,12 @@ using game.protobuf.data;
 
 namespace xk_System.Net.Client
 {
-	public class NetPackage:PackageInterface
+	public class NetPackage
 	{
-		Protobuf3 mPackage = new Protobuf3();
-		public byte[] SerializePackage()
-		{
-			return mPackage.SerializePackage ();
-		}
-
-		public void DeSerializeStream(byte[] msg)
-		{
-			mPackage.DeSerializeStream (msg);
-		}
-
-		public T getData<T>() where T : new()
-		{
-			return mPackage.getData<T> ();
-		}
-
-		public int getCommand()
-		{
-			return mPackage.getCommand ();
-		}
-
-		public void setCommand (int command)
-		{
-			mPackage.setCommand (command);
-		}
-
-		public void setObjectData (object data)
-		{
-			mPackage.setObjectData (data);
-		}
-
-		public object getObjectData ()
-		{
-			return mPackage.getObjectData ();
-		}
-
-		public void reset()
-		{
-			mPackage.reset();
-		}
+		public int command;
+		public byte[] buffer;
 	}
-
+		
 	public interface PackageInterface
 	{
 		byte[] SerializePackage();
