@@ -14,35 +14,123 @@ using game.protobuf.data;
 
 namespace xk_System.Net.Client
 {
+	public class NetPackage:PackageInterface
+	{
+		Protobuf3 mPackage = new Protobuf3();
+		public byte[] SerializePackage()
+		{
+			return mPackage.SerializePackage ();
+		}
+
+		public void DeSerializeStream(byte[] msg)
+		{
+			mPackage.DeSerializeStream (msg);
+		}
+
+		public T getData<T>() where T : new()
+		{
+			return mPackage.getData<T> ();
+		}
+
+		public int getCommand()
+		{
+			return mPackage.getCommand ();
+		}
+
+		public void setCommand (int command)
+		{
+			mPackage.setCommand (command);
+		}
+
+		public void setObjectData (object data)
+		{
+			mPackage.setObjectData (data);
+		}
+
+		public object getObjectData ()
+		{
+			return mPackage.getObjectData ();
+		}
+
+		public void reset()
+		{
+			mPackage.reset();
+		}
+	}
+
+	public interface PackageInterface
+	{
+		byte[] SerializePackage();
+		void DeSerializeStream(byte[] msg);
+		T getData<T>() where T : new();
+		void reset();
+
+		int getCommand ();
+		void setCommand (int command);
+		void setObjectData (object data);
+		object getObjectData ();
+	}
+
+	public abstract class Package:PackageInterface
+	{
+		protected int command = -1;
+		protected object data = null;
+		protected byte[] stream = null;
+
+		public abstract byte[] SerializePackage();
+
+		public abstract void DeSerializeStream(byte[] msg);
+
+		public abstract T getData<T>() where T : new();
+
+		public int getCommand ()
+		{
+			return command;
+		}
+
+		public void setCommand (int command)
+		{
+			this.command = command;
+		}
+
+		public void setObjectData (object data)
+		{
+			this.data = data;
+		}
+
+		public object getObjectData ()
+		{
+			return data;
+		}
+
+		public virtual void reset()
+		{
+			data = null;
+			stream = null;
+			command = -1;
+		}
+	}
+
 	public class Protobuf : Package
     {
         private GameProtocols serializer = new GameProtocols();
         private MemoryStream mst = new MemoryStream();
 
-        public override byte[] SerializePackage(int command,object data)
+        public override byte[] SerializePackage()
         {
-            //DebugSystem.Log("Send MemoryStream Length: "+mst.Length);
             mst.Position = 0;
-           // mst.SetLength(0);
             serializer.Serialize(mst, data);
 			stream = mst.ToArray();
-           /* if (data_byte.Length==0)
-            {
-                DebugSystem.LogError("序列化失败");
-            }*/
-			
 			return NetStream.GetOutStream(command,stream);
         }
 
         public override void DeSerializeStream(byte[] msg)
         {
 			NetStream.GetInputStream(msg,out command,out stream);
-           // DebugSystem.Log("接受命令："+command+" | "+data_byte.Length);
         }
 
         public override T  getData<T>()
         {
-           // DebugSystem.Log("Receive MemoryStream Length: " + mst.Length);
 			mst.SetLength(stream.Length);
             mst.Position = 0;
 			mst.Write(stream,0,stream.Length);
@@ -53,13 +141,13 @@ namespace xk_System.Net.Client
         public override void reset()
         {
 			base.reset();
-            mst.Close();
+			mst.Close();
         }
     }
 
-    public class xk_Protobuf : Package
+    public class Protobuf3 : Package
     {
-        public override byte[] SerializePackage(int command, object data)
+        public override byte[] SerializePackage()
         {
             Google.Protobuf.IMessage data1 = data as Google.Protobuf.IMessage;
 			stream = data1.ToByteArray();
@@ -69,7 +157,6 @@ namespace xk_System.Net.Client
         public override void DeSerializeStream(byte[] msg)
         {
 			NetStream.GetInputStream(msg,out command,out stream);
-            // DebugSystem.Log("接受命令："+command+" | "+data_byte.Length);
         }
 
         public override T getData<T>()
@@ -78,7 +165,6 @@ namespace xk_System.Net.Client
             IMessage m =(IMessage)t;
 			Google.Protobuf.CodedInputStream mStream = new CodedInputStream(stream);
             m.MergeFrom(mStream);
-           // m= m.Descriptor.Parser.ParseFrom(data_byte);
             return (T)m;
         }
 

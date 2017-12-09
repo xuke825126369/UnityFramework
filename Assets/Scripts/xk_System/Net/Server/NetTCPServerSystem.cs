@@ -343,7 +343,7 @@ namespace xk_System.Net.Server
 	}
 
 	//begin~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~网络包体结构系统~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	public abstract class Package : ObjectPoolInterface
+	public abstract class Package
 	{
 		public int clientId = -1;
 		public int command = -1;

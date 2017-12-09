@@ -10,9 +10,6 @@ using System.Net.Sockets;
 
 namespace xk_System.Net.Client.TCP
 {
-	/// <summary>
-	/// 非线程网络实现方法
-	/// </summary>
 	public class SocketSystem_1: SocketSystem
 	{
 		public override void init(string ServerAddr, int ServerPort)
@@ -179,7 +176,6 @@ namespace xk_System.Net.Client.TCP
 		{
 			base.CloseNet();
 		}
-
 	}
 
 	public class SocketSystem_2 : SocketSystem

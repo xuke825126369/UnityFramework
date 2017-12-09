@@ -25,7 +25,7 @@ namespace xk_System.Net.Server
 		private Int32 numConnections;
 		private Int32 bufferSize;
 
-		private SystemObjectPool<SocketAsyncEventArgs> ioContextPool;
+		private ObjectPool<SocketAsyncEventArgs> ioContextPool;
 		private List<SocketAsyncEventArgs> mUsedContextPool;
 
 
@@ -37,14 +37,14 @@ namespace xk_System.Net.Server
 			this.bufferSize = bufferSize;
 			mUsedContextPool = new List<SocketAsyncEventArgs> ();
 
-			ioContextPool = SystemObjectPool<SocketAsyncEventArgs>.Instance;
+			ioContextPool = new ObjectPool<SocketAsyncEventArgs>();
 
 			for (Int32 i = 0; i < this.numConnections; i++)
 			{
 				SocketAsyncEventArgs ioContext = new SocketAsyncEventArgs();
 				ioContext.Completed += new EventHandler<SocketAsyncEventArgs>(OnIOCompleted);
 				ioContext.SetBuffer(new Byte[this.bufferSize], 0, this.bufferSize);
-				ioContextPool.Push(ioContext);
+				ioContextPool.recycle(ioContext);
 			}
 		}
 
@@ -214,7 +214,7 @@ namespace xk_System.Net.Server
 			DebugSystem.LogError (outStr);
 
 			mUsedContextPool.Remove (e);
-			ioContextPool.Push(e);
+			ioContextPool.recycle(e);
 			s.Close();
 			s = null;
 		}

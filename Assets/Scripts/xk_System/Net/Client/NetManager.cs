@@ -5,25 +5,26 @@ using xk_System.Net;
 
 namespace xk_System.Net.Client
 {
-
-public class NetManager : MonoBehaviour
-{
-	public string ip = "192.168.1.109";
-	public int port = 7878;
-	private void Start()
+	public class NetManager : MonoBehaviour
 	{
-		NetSystem.Instance.initNet(ip, port);
-	}
+		public string ip = "192.168.1.109";
+		public int port = 7878;
 
-	// Update is called once per frame
-	private void Update()
-	{
-		NetSystem.Instance.handleNetData();
-	}
+		NetSystem mNetSystem = null;
+		private void Start()
+		{
+			mNetSystem = new NetSystem ();
+			mNetSystem.initNet(ip, port);
+		}
 
-	private void OnDestroy()
-	{
-		NetSystem.Instance.closeNet();
+		private void Update()
+		{
+			mNetSystem.handleNetData();
+		}
+
+		private void OnDestroy()
+		{
+			mNetSystem.closeNet();
+		}
 	}
-}
 }
