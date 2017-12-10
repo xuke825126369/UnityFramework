@@ -1,11 +1,12 @@
 ﻿using UnityEngine;
 using System.Collections;
 using xk_System.Model;
-//using game.protobuf.data;
 using XkProtobufData;
 using xk_System.Debug;
 using xk_System.Net.Client;
 using xk_System.Net;
+using Google.Protobuf;
+using xk_System.Net.Protocol.Protobuf3;
 
 public class LoginMessage : NetModel
 {
@@ -15,27 +16,27 @@ public class LoginMessage : NetModel
     public DataBind<scCreateRole> mCreateRoleResult = new DataBind<scCreateRole>();
     public DataBind<scSelectRole> mSelectRoleResult = new DataBind<scSelectRole>();
 
+	private scRegisterAccount mRegisterAccount = null;
+
     public override void initModel()
-    {
-        base.initModel();
-        addNetListenFun(ProtoCommand.ProtoRegisteraccount, Receive_RegisterAccountResult);
-        addNetListenFun(ProtoCommand.ProtoLogin, receive_LoginGame);
-        addNetListenFun(ProtoCommand.ProtoSelectserver, receive_SelectServer);
-        addNetListenFun(ProtoCommand.ProtoCreaterole, receive_CreateRole);
-        addNetListenFun(ProtoCommand.ProtoSelectrole, receive_SelectRole);
-
-
-    }
+	{
+		base.initModel ();
+		addNetListenFun (ProtoCommand.ProtoRegisteraccount, Receive_RegisterAccountResult);
+		addNetListenFun (ProtoCommand.ProtoLogin, receive_LoginGame);
+		addNetListenFun (ProtoCommand.ProtoSelectserver, receive_SelectServer);
+		addNetListenFun (ProtoCommand.ProtoCreaterole, receive_CreateRole);
+		addNetListenFun (ProtoCommand.ProtoSelectrole, receive_SelectRole);
+	}
 
     public override void destroyModel()
-    {
-        base.destroyModel();
-        removeNetListenFun(ProtoCommand.ProtoRegisteraccount, Receive_RegisterAccountResult);
-        removeNetListenFun(ProtoCommand.ProtoLogin, receive_LoginGame);
-        removeNetListenFun(ProtoCommand.ProtoSelectserver, receive_SelectServer);
-        removeNetListenFun(ProtoCommand.ProtoCreaterole, receive_CreateRole);
-        removeNetListenFun(ProtoCommand.ProtoSelectrole, receive_SelectRole);
-    }
+	{
+		base.destroyModel ();
+		removeNetListenFun (ProtoCommand.ProtoRegisteraccount, Receive_RegisterAccountResult);
+		removeNetListenFun (ProtoCommand.ProtoLogin, receive_LoginGame);
+		removeNetListenFun (ProtoCommand.ProtoSelectserver, receive_SelectServer);
+		removeNetListenFun (ProtoCommand.ProtoCreaterole, receive_CreateRole);
+		removeNetListenFun (ProtoCommand.ProtoSelectrole, receive_SelectRole);
+	}
     /// <summary>
     /// 发送账户注册信息
     /// </summary>
@@ -51,9 +52,9 @@ public class LoginMessage : NetModel
         sendNetData(ProtoCommand.ProtoRegisteraccount, mdata);
     }
 
-    private void Receive_RegisterAccountResult(Package mProtobuf)
+	private void Receive_RegisterAccountResult(NetPackage package)
     {
-        scRegisterAccount mscRegisterAccountdata=mProtobuf.getData<scRegisterAccount>();
+		scRegisterAccount mscRegisterAccountdata = ProtobufUtility.getData<scRegisterAccount>(package);
         mRegisterResult.HandleData(mscRegisterAccountdata);
     }
     /// <summary>
@@ -69,9 +70,9 @@ public class LoginMessage : NetModel
         sendNetData(ProtoCommand.ProtoLogin, mdata);
     }
 
-    private void receive_LoginGame(Package mPackage)
+	private void receive_LoginGame(NetPackage mPackage)
     {
-        scLoginGame mscLoginGame=mPackage.getData<scLoginGame>();
+		scLoginGame mscLoginGame = ProtobufUtility.getData<scLoginGame>(mPackage);
         mLoginResult.HandleData(mscLoginGame);
     }
 
@@ -86,9 +87,9 @@ public class LoginMessage : NetModel
         sendNetData(ProtoCommand.ProtoSelectserver, mdata);
     }
 
-    private void receive_SelectServer(Package mProtobuf)
+	private void receive_SelectServer(NetPackage mPackage)
     {
-        scSelectServer mdata=mProtobuf.getData<scSelectServer>();
+		scSelectServer mdata = ProtobufUtility.getData<scSelectServer>(mPackage);
         mSeletServerResult.HandleData(mdata);
     }
 
@@ -101,9 +102,9 @@ public class LoginMessage : NetModel
         sendNetData(ProtoCommand.ProtoCreaterole, mdata);
     }
 
-    private void receive_CreateRole(Package mPackage)
+	private void receive_CreateRole(NetPackage mPackage)
     {
-        scCreateRole mdata = mPackage.getData<scCreateRole>();
+		scCreateRole mdata = ProtobufUtility.getData<scCreateRole>(mPackage);
         mCreateRoleResult.HandleData(mdata);
     }
 
@@ -114,10 +115,9 @@ public class LoginMessage : NetModel
         sendNetData(ProtoCommand.ProtoSelectrole, mdata);
     }
 
-    private void receive_SelectRole(Package mPackage)
+	private void receive_SelectRole(NetPackage mPackage)
     {
-        scSelectRole mdata = mPackage.getData<scSelectRole>();
+		scSelectRole mdata = ProtobufUtility.getData<scSelectRole>(mPackage);
         mSelectRoleResult.HandleData(mdata);
     }
-
 }

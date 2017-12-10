@@ -1,194 +1,115 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System;
+using xk_System.Debug;
 
-public interface ObjectPoolInterface
+namespace xk_System
 {
-	void recycle();
-}
-
-//Object 池子
-public class ObjectPool<T> : Singleton<ObjectPool<T>> where T : ObjectPoolInterface,new()
-{
-	Queue<T> mObjectPool;
-
-	public ObjectPool()
+	public interface ObjectPoolInterface
 	{
-		mObjectPool = new Queue<T> ();
+		void reset ();
 	}
 
-	public T Pop()
+	//Object 池子
+	public class ObjectPool<T> where T:new()
 	{
-		if (mObjectPool.Count > 0) {
-			return mObjectPool.Dequeue ();
-		} else {
-			return new T ();
-		}
-	}
+		private int nMaxObjectCount = 0;
+		Queue<T> mObjectPool = null;
 
-	public void Push(T t)
-	{
-		t.recycle ();
-		mObjectPool.Enqueue (t);
-	}
-
-
-	public int Size()
-	{
-		return mObjectPool.Count;
-	}
-
-	public void release()
-	{
-		mObjectPool.Clear ();
-		mObjectPool = null;
-	}
-}
-
-public class SystemObjectPool<T> : Singleton<SystemObjectPool<T>> where T:new()
-{
-	Queue<T> mObjectPool = new Queue<T>();
-	public T Pop()
-	{
-		if (mObjectPool.Count > 0) {
-			return mObjectPool.Dequeue ();
-		} else {
-			return new T ();
-		}
-	}
-
-	public void Push(T t)
-	{
-		mObjectPool.Enqueue (t);
-	}
-
-	public int Size()
-	{
-		return mObjectPool.Count;
-	}
-
-	public void release()
-	{
-		mObjectPool.Clear ();
-	}
-}
-
-//Unity GameObject 池子
-public class GameObjectPool<T> : Singleton<GameObjectPool> where T : MonoBehaviour,ObjectPoolInterface
-{
-	Dictionary<GameObject,Queue<T>> mFreeObjectPool = new Dictionary<GameObject, Queue<T>> ();
-	Dictionary<GameObject,Queue<T>> mUseObjectPool = new Dictionary<GameObject, Queue<T>> ();
-
-	public void Init(GameObject prefab,int count = 1)
-	{
-		Debug.Assert (prefab.GetComponent<T> () != null);
-
-		if (!mFreeObjectPool.ContainsKey (prefab)) {
-			Queue<T> mPool = new Queue<T> ();
-			mFreeObjectPool [prefab] = mPool;
-		}
-
-		for (int i = 0; i < count; i++) {
-			GameObject obj = MonoBehaviour.Instantiate(prefab) as GameObject;
-			mFreeObjectPool[prefab].Enqueue (obj.GetComponent<T>());
-		}
-	}
-
-	public T Pop(GameObject prefab)
-	{
-		T obj = null;
-		if (mFreeObjectPool.Count > 0) {
-			obj = mFreeObjectPool[prefab].Dequeue ();
-		} else {
-			if (!mFreeObjectPool.ContainsKey (prefab)) {
-				Queue<T> mPool = new Queue<T> ();
-				mFreeObjectPool [prefab] = mPool;
-			}
-
-			GameObject temp = MonoBehaviour.Instantiate(prefab) as GameObject;
-			obj = temp.GetComponent<T> ();
-		}
-
-		if (!mUseObjectPool.ContainsKey(prefab))
+		public ObjectPool()
 		{
-			mUseObjectPool [prefab] = new Queue<T> ();
+			this.nMaxObjectCount = int.MaxValue;
+			mObjectPool = new Queue<T> ();
 		}
 
-		mUseObjectPool[prefab].Enqueue (obj);
-		return obj;
-	}
-
-	public void Push(T t)
-	{
-		t.recycle ();
-		foreach (var keyvaue in mUseObjectPool) {
-			if (keyvaue.Value.Contains (t)) {
-				mFreeObjectPool [keyvaue.Key].Enqueue (t);
-			}
-		}
-	}
-
-	public int CanUseSize()
-	{
-		return mFreeObjectPool.Count;
-	}
-
-	public void release()
-	{
-		mFreeObjectPool.Clear ();
-		mUseObjectPool.Clear ();
-	}
-}
-
-
-//Unity GameObject 池子
-public class GameObjectPool : Singleton<GameObjectPool>
-{
-	Dictionary<GameObject,Queue<GameObject>> mFreeObjectPool = new Dictionary<GameObject, Queue<GameObject>> ();
-	Dictionary<GameObject,Queue<GameObject>> mUseObjectPool = new Dictionary<GameObject, Queue<GameObject>> ();
-
-	public void Init(GameObject prefab,int count = 1)
-	{
-		if (!mFreeObjectPool.ContainsKey (prefab)) {
-			Queue<GameObject> mPool = new Queue<GameObject> ();
-			mFreeObjectPool [prefab] = mPool;
-		}
-
-		for (int i = 0; i < count; i++) {
-			GameObject obj = MonoBehaviour.Instantiate(prefab) as GameObject;
-			mFreeObjectPool[prefab].Enqueue (obj);
-		}
-	}
-
-	public GameObject Pop(GameObject prefab)
-	{
-		GameObject obj = null;
-		if (mFreeObjectPool.Count > 0) {
-			obj = mFreeObjectPool[prefab].Dequeue ();
-		} else {
-			if (!mFreeObjectPool.ContainsKey (prefab)) {
-				Queue<GameObject> mPool = new Queue<GameObject> ();
-				mFreeObjectPool [prefab] = mPool;
-			}
-				
-			obj = MonoBehaviour.Instantiate(prefab) as GameObject;
-		}
-
-		if (!mUseObjectPool.ContainsKey(prefab))
+		public T Pop()
 		{
-			mUseObjectPool [prefab] = new Queue<GameObject> ();
+			if (mObjectPool.Count > 0) {
+				return mObjectPool.Dequeue ();
+			} else {
+				return new T ();
+			}
 		}
 
-		mUseObjectPool[prefab].Enqueue (obj);
-		return obj;
+		public void recycle(T t)
+		{
+			if (t is ObjectPoolInterface) {
+				ObjectPoolInterface mInterface = t as ObjectPoolInterface;
+				mInterface.reset ();
+			}
+			mObjectPool.Enqueue (t);
+		}
+
+		public void release()
+		{
+			mObjectPool.Clear ();
+			mObjectPool = null;
+		}
+	}
+		
+	public class ArrayGCPool<T>
+	{
+		Dictionary<int, List<T[]>> mPoolQueue = new Dictionary<int, List<T[]>> ();
+
+		public void recycle(T[] array)
+		{
+			Array.Clear (array, 0, array.Length);
+			if (!mPoolQueue.ContainsKey (array.Length)) {
+				mPoolQueue [array.Length] = new List<T[]> ();
+			}
+
+			if (!mPoolQueue [array.Length].Contains (array)) {
+				mPoolQueue [array.Length].Add (array);
+			}
+		}
+
+		public T[] Pop(int Length)
+		{
+			if (!mPoolQueue.ContainsKey (Length)) {
+				mPoolQueue [Length] = new List<T[]> ();
+			}
+
+			if (mPoolQueue [Length].Count == 0) {
+				mPoolQueue [Length].Add (new T[Length]);
+			}
+			var v = mPoolQueue [Length] [0];
+			mPoolQueue [Length].Remove (v);
+			return v;
+		}
+
+		public void  release()
+		{
+			mPoolQueue.Clear ();
+		}
 	}
 
-	public void Push(GameObject t)
+	public class ListGCPool<T>
 	{
-		foreach (var keyvaue in mUseObjectPool) {
-			if (keyvaue.Value.Contains (t)) {
-				mFreeObjectPool [keyvaue.Key].Enqueue (t);
+		Queue<List<T>> mPoolQueue = new Queue<List<T>> ();
+		public void recycle(List<T> list)
+		{
+			list.Clear ();
+			if (!mPoolQueue.Contains (list)) {
+				mPoolQueue.Enqueue (list);
 			}
+		}
+
+		public List<T> Pop()
+		{
+			List<T> list = null;
+			if (mPoolQueue.Count == 0) {
+				list = new List<T> ();
+			} else {
+				list = mPoolQueue.Dequeue();
+			}
+
+			return list;
+		}
+
+		public void  release()
+		{
+			mPoolQueue.Clear ();
 		}
 	}
 }

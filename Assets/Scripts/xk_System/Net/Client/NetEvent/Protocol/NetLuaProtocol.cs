@@ -2,15 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class NetLuaProtocol : MonoBehaviour {
-
-	// Use this for initialization
-	void Start () {
-		
-	}
+public class NetLuaProtocol 
+{
 	
-	// Update is called once per frame
-	void Update () {
-		
-	}
 }

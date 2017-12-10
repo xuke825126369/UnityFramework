@@ -29,21 +29,19 @@ public abstract class SingleTonMonoBehaviour<T> : MonoBehaviour where T : Single
     {
         get
         {
-            if (null == instance)
-            {
-                instance = GameObject.FindObjectOfType<T>();
-                if (instance == null)
-                {
-                    GameEngine parent = GameObject.FindObjectOfType<GameEngine>();
-                    GameObject obj = new GameObject();
-                    obj.name = typeof(T).Name;
-                    if (obj.GetComponent<T>() == null)
-                    {
-                        instance = obj.AddComponent<T>();
-                    }
-                    obj.transform.SetParent(parent.transform);
-                }
-            }
+			if (null == instance) {
+				instance = GameObject.FindObjectOfType<T> ();
+				if (instance == null) {
+					GameEngine parent = GameObject.FindObjectOfType<GameEngine> ();
+					GameObject obj = new GameObject ();
+					obj.name = typeof(T).Name;
+					if (obj.GetComponent<T> () == null) {
+						instance = obj.AddComponent<T> ();
+					}
+					obj.transform.SetParent (parent.transform);
+				}
+
+			}
             return instance;
         }
     }

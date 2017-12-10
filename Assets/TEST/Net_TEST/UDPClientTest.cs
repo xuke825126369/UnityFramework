@@ -6,6 +6,8 @@ using XkProtobufData;
 using System;
 using xk_System.Net.Client;
 using xk_System.Net.Client.Udp;
+using Google.Protobuf;
+using xk_System.Net.Protocol.Protobuf3;
 
 public class UDPClientTestObject
 {
@@ -15,7 +17,7 @@ public class UDPClientTestObject
 
 	public UDPClientTestObject()
 	{
-		mNetSocketSystem = new  SocketSystem_Udp ();
+		mNetSocketSystem = new SocketSystem_Udp ();
 		mNetSendSystem = new NetSendSystem(mNetSocketSystem);
 		mNetReceiveSystem = new NetReceiveSystem(mNetSocketSystem);
 	}
@@ -25,26 +27,28 @@ public class UDPClientTestObject
 		mNetSocketSystem.init (ServerAddr, ServerPort);
 	}
 
-	public void sendNetData(int command, object package)
+	public void sendNetData(int command, byte[] buffer)
 	{
-		mNetSendSystem.SendNetData(command, package);  
+		NetPackage mPackage = NetObjectPool.Instance.mNetPackagePool.Pop();
+		mPackage.command = command;
+		mPackage.buffer = buffer;
+		mNetSendSystem.SendNetData(mPackage);  
 	}
 
-	//每帧处理一些事件
 	public void handleNetData()
 	{
 		mNetSendSystem.HandleNetPackage ();
 		mNetReceiveSystem.HandleNetPackage ();
 	}
 
-	public void addNetListenFun(int command, Action<Package> fun)
+	public void addNetListenFun(Action<NetPackage> fun)
 	{
-		mNetReceiveSystem.addListenFun(command,fun);
+		mNetReceiveSystem.addListenFun(fun);
 	}
 
-	public void removeNetListenFun(int command, Action<Package> fun)
+	public void removeNetListenFun(Action<NetPackage> fun)
 	{
-		mNetReceiveSystem.removeListenFun(command, fun);
+		mNetReceiveSystem.removeListenFun(fun);
 	}
 
 	public void closeNet()
@@ -63,7 +67,7 @@ public class UDPClientTest : MonoBehaviour
 	private void Start()
 	{
 		mClient.initNet(ip, port);
-		mClient.addNetListenFun((int)ProtoCommand.ProtoChat, Receive_ServerSenddata);
+		//NetEventManager..addNetListenFun((int)ProtoCommand.ProtoChat, Receive_ServerSenddata);
 
 		StartCoroutine (Run ());
 	}
@@ -93,13 +97,12 @@ public class UDPClientTest : MonoBehaviour
 		csChatData mClientSendData = new csChatData();
 		mClientSendData.ChannelId = channelId;
 		mClientSendData.TalkMsg = content;
-		mClient.sendNetData((int)ProtoCommand.ProtoChat, mClientSendData);
+		//NetEventManager.Instance.sendNetData((int)ProtoCommand.ProtoChat, mClientSendData);
 	}
 
-	private void Receive_ServerSenddata(Package package)
+	private void Receive_ServerSenddata(NetPackage package)
 	{
-		scChatData mServerSendData = package.getData<scChatData>();
-
+		scChatData mServerSendData = ProtobufUtility.getData<scChatData> (package);
 		Debug.Log("Client 接受 渠道ID "+mServerSendData.ChatInfo.ChannelId);
 	}
 

@@ -6,8 +6,10 @@ using xk_System.Net.Client.TCP;
 using XkProtobufData;
 using System;
 using xk_System.Net.Client;
+using Google.Protobuf;
+using xk_System.Net.Protocol.Protobuf3;
 
-public class TCPClientTestObject
+public class TCPClientTestObject:NetEventInterface
 {
 	private NetSendSystem mNetSendSystem;
 	private NetReceiveSystem mNetReceiveSystem;
@@ -15,7 +17,7 @@ public class TCPClientTestObject
 
 	public TCPClientTestObject()
 	{
-		mNetSocketSystem = new  SocketSystem_Thread ();
+		mNetSocketSystem = new SocketSystem_Thread ();
 		mNetSendSystem = new NetSendSystem(mNetSocketSystem);
 		mNetReceiveSystem = new NetReceiveSystem(mNetSocketSystem);
 	}
@@ -25,26 +27,28 @@ public class TCPClientTestObject
 		mNetSocketSystem.init (ServerAddr, ServerPort);
 	}
 
-	public void sendNetData(int command, object package)
+	public void sendNetData(int command, byte[] buffer)
 	{
-		mNetSendSystem.SendNetData(command, package);  
+		NetPackage mPackage = NetObjectPool.Instance.mNetPackagePool.Pop();
+		mPackage.command = command;
+		mPackage.buffer = buffer;
+		mNetSendSystem.SendNetData(mPackage);  
 	}
 
-	//每帧处理一些事件
 	public void handleNetData()
 	{
 		mNetSendSystem.HandleNetPackage ();
 		mNetReceiveSystem.HandleNetPackage ();
 	}
 
-	public void addNetListenFun(int command, Action<Package> fun)
+	public void addNetListenFun(Action<NetPackage> fun)
 	{
-		mNetReceiveSystem.addListenFun(command,fun);
+		mNetReceiveSystem.addListenFun(fun);
 	}
 
-	public void removeNetListenFun(int command, Action<Package> fun)
+	public void removeNetListenFun(Action<NetPackage> fun)
 	{
-		mNetReceiveSystem.removeListenFun(command, fun);
+		mNetReceiveSystem.removeListenFun(fun);
 	}
 
 	public void closeNet()
@@ -57,15 +61,48 @@ public class TCPClientTestObject
 
 public class TCPClientTest : MonoBehaviour 
 {
-	public string ip = "192.168.1.123";
+	public string ip = "192.168.122.24";
 	public int port = 7878;
 
-	TCPClientTestObject mClient =new TCPClientTestObject();
+	TCPClientTestObject mNetSystem = null;
+	Protobuf3Event mNetEventManager = null;
 	private void Start()
 	{
-		mClient.initNet(ip, port);
-		mClient.addNetListenFun((int)ProtoCommand.ProtoChat, Receive_ServerSenddata);
+		mNetSystem = new TCPClientTestObject ();
+		mNetEventManager = new Protobuf3Event (mNetSystem);
+		mNetSystem.initNet(ip, port);
 
+		StartTest ();
+	}
+
+	private void Update()
+	{
+		mNetSystem.handleNetData();
+	}
+
+	private void OnDestroy()
+	{
+		mNetSystem.closeNet();
+	}
+
+	public void sendNetData (int command, object data)
+	{
+		mNetEventManager.sendNetData (command, data);
+	}
+
+	public void addNetListenFun (int command, Action<NetPackage> func)
+	{
+		mNetEventManager.addNetListenFun (command, func);
+	}
+
+	public void removeNetListenFun (int command, Action<NetPackage> func)
+	{
+		mNetEventManager.removeNetListenFun (command, func);
+	}
+
+	private void StartTest()
+	{
+		mNetEventManager.addNetListenFun ((int)ProtoCommand.ProtoChat,Receive_ServerSenddata);
 		StartCoroutine (Run ());
 	}
 
@@ -80,29 +117,18 @@ public class TCPClientTest : MonoBehaviour
 		}
 	}
 
-	// Update is called once per frame
-	private void Update()
-	{
-		mClient.handleNetData();
-	}
-
-	private void OnDestroy()
-	{
-		mClient.closeNet();
-	}
-
 	public void request_ClientSendData(uint channelId, string sendName, string content)
 	{
 		Debug.Log ("Client 发送数量: "+ ++nReceiveCount);
 		csChatData mClientSendData = new csChatData();
 		mClientSendData.ChannelId = channelId;
 		mClientSendData.TalkMsg = content;
-		mClient.sendNetData((int)ProtoCommand.ProtoChat, mClientSendData);
+		sendNetData((int)ProtoCommand.ProtoChat, mClientSendData);
 	}
 
-	private void Receive_ServerSenddata(Package package)
+	private void Receive_ServerSenddata(NetPackage package)
 	{
-		scChatData mServerSendData = package.getData<scChatData>();
-		Debug.Log("Client 接受 渠道ID "+mServerSendData.ChatInfo.ChannelId);
+		scChatData mServerSendData = ProtobufUtility.getData<scChatData> (package);
+		Debug.Log ("Client 接受 渠道ID " + mServerSendData.ChatInfo.ChannelId);
 	}
 }

@@ -1,6 +1,5 @@
 ﻿using UnityEngine;
 using System.Collections;
-//using game.protobuf.data;
 using XkProtobufData;
 using xk_System.Net;
 using System.Collections.Generic;

@@ -6,6 +6,7 @@ using XkProtobufData;
 using xk_System.Debug;
 using System.Reflection;
 using xk_System.Net;
+using Google.Protobuf;
 
 namespace xk_System.Model
 {
@@ -152,21 +153,21 @@ namespace xk_System.Model
 
     public class NetModel : xk_Model
     {
-        protected void addNetListenFun(ProtoCommand command, Action<Package> mFun)
+		protected void addNetListenFun(ProtoCommand command, Action<NetPackage> mFun)
         {
-			NetSystem.Instance.addNetListenFun((int)command, mFun);
+			NetManager.Instance.addNetListenFun((int)command, mFun);
         }
 
-        protected void removeNetListenFun(ProtoCommand command, Action<Package> mFun)
+		protected void removeNetListenFun(ProtoCommand command, Action<NetPackage> mFun)
         {
-			NetSystem.Instance.removeNetListenFun((int)command, mFun);
+			NetManager.Instance.removeNetListenFun((int)command, mFun);
         }
 
         protected void sendNetData(ProtoCommand command, object data)
         {
-			NetSystem.Instance.sendNetData((int)command, data);
+			NetManager.Instance.sendNetData((int)command, data);
         }    
-    }
+	}
 
     public class DataBind<T>
     {

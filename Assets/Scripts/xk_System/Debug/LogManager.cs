@@ -35,6 +35,15 @@ namespace xk_System.Debug
 #endif
         }
 
+		public static void Assert(bool bSure, object s = null)
+		{
+#if UNITY_EDITOR || UNITY_STANDALONE_WIN
+			UnityEngine.Debug.Assert(bSure, s);
+#else
+			//Console.WriteLine(s);
+			#endif
+		}
+
         public static void LogBitStream(string tag, byte[] stream)
         {
             StringBuilder aaStr =new StringBuilder();

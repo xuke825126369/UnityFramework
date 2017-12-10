@@ -10,49 +10,49 @@ using System;
 
 namespace xk_System.Net.Client
 {
-	public class NetSystem
+	public class NetSystem:NetEventInterface
 	{
 		private NetSendSystem mNetSendSystem;
 		private NetReceiveSystem mNetReceiveSystem;
 		private SocketSystem mNetSocketSystem;
 
-		public NetSystem()
+		public NetSystem ()
 		{
 			mNetSocketSystem = new SocketSystem_Thread ();
-			mNetSendSystem = new NetSendSystem(mNetSocketSystem);
-			mNetReceiveSystem = new NetReceiveSystem(mNetSocketSystem);
+			mNetSendSystem = new NetSendSystem (mNetSocketSystem);
+			mNetReceiveSystem = new NetReceiveSystem (mNetSocketSystem);
 		}
 
-		public void initNet(string ServerAddr, int ServerPort)
+		public void initNet (string ServerAddr, int ServerPort)
 		{
 			mNetSocketSystem.init (ServerAddr, ServerPort);
 		}
 
-		public void sendNetData(int command, byte[] package)
+		public void sendNetData (int command, byte[] buffer)
 		{
 			NetPackage mPackage = NetObjectPool.Instance.mNetPackagePool.Pop ();
 			mPackage.command = command;
-			mPackage.buffer = package;
-			mNetSendSystem.SendNetData(command, package);  
+			mPackage.buffer = buffer;
+			mNetSendSystem.SendNetData (mPackage);  
 		}
 
-		public void handleNetData()
+		public void handleNetData ()
 		{
 			mNetSendSystem.HandleNetPackage ();
 			mNetReceiveSystem.HandleNetPackage ();
 		}
 
-		public void addNetListenFun(Action<NetPackage> fun)
+		public void addNetListenFun (Action<NetPackage> fun)
 		{
-			mNetReceiveSystem.addListenFun(fun);
+			mNetReceiveSystem.addListenFun (fun);
 		}
 
-		public void removeNetListenFun(Action<NetPackage> fun)
+		public void removeNetListenFun (Action<NetPackage> fun)
 		{
-			mNetReceiveSystem.removeListenFun(fun);
+			mNetReceiveSystem.removeListenFun (fun);
 		}
 
-		public void closeNet()
+		public void closeNet ()
 		{
 			mNetSocketSystem.CloseNet ();
 			mNetSendSystem.Destory ();
@@ -70,20 +70,21 @@ namespace xk_System.Net.Client
 
 		protected Socket mSocket;
 
-		public abstract void init(string ServerAddr, int ServerPort);
-		public abstract void SendNetStream(byte[] msg);
+		public abstract void init (string ServerAddr, int ServerPort);
 
-		public bool IsPrepare()
+		public abstract void SendNetStream (byte[] msg);
+
+		public bool IsPrepare ()
 		{
 			return mSocket != null;
 		}
 
-		public void initSystem(NetReceiveSystem mNetReceiveSystem)
+		public void initSystem (NetReceiveSystem mNetReceiveSystem)
 		{
 			this.mNetReceiveSystem = mNetReceiveSystem;
 		}
 
-		public virtual void CloseNet()
+		public virtual void CloseNet ()
 		{
 			if (mSocket != null) {
 				mSocket.Close ();
@@ -99,13 +100,13 @@ namespace xk_System.Net.Client
 		protected Queue<NetPackage> mNeedHandleNetPackageQueue;
 		protected SocketSystem mSocketSystem;
 
-		public NetSendSystem(SocketSystem socketSys)
+		public NetSendSystem (SocketSystem socketSys)
 		{
 			this.mSocketSystem = socketSys;
 			mNeedHandleNetPackageQueue = new Queue<NetPackage> ();
 		}
 
-		public virtual void SendNetData(NetPackage data)
+		public virtual void SendNetData (NetPackage data)
 		{
 			mNeedHandleNetPackageQueue.Enqueue (data);
 		}
@@ -113,10 +114,10 @@ namespace xk_System.Net.Client
 		public void HandleNetPackage ()
 		{
 			int handlePackageCount = 0;
-			while (mNeedHandleNetPackageQueue.Count > 0) 
-			{
+			while (mNeedHandleNetPackageQueue.Count > 0) {
 				var mPackage = mNeedHandleNetPackageQueue.Dequeue ();
 				HandleNetStream (mPackage);
+				NetObjectPool.Instance.mNetPackagePool.recycle (mPackage);
 				handlePackageCount++;
 			}
 
@@ -125,23 +126,17 @@ namespace xk_System.Net.Client
 			}
 		}
 
-		public void HandleNetStream(NetPackage mPackage)
+		public void HandleNetStream (NetPackage mPackage)
 		{
-			byte[] stream = NetStream.GetOutStream (mPackage.command,mPackage.buffer);
+			byte[] stream = NetStream.GetOutStream (mPackage.command, mPackage.buffer);
 			stream = NetEncryptionStream.Encryption (stream);
 			mSocketSystem.SendNetStream (stream);
 		}
-			
-		public virtual void Destory()
-		{
-			lock(mNeedHandleNetPackageQueue)
-			{
-				mNeedHandleNetPackageQueue.Clear ();
-			}
 
-			lock (mCanUseNetPackageQueue)
-			{
-				mCanUseNetPackageQueue.release ();
+		public virtual void Destory ()
+		{
+			lock (mNeedHandleNetPackageQueue) {
+				mNeedHandleNetPackageQueue.Clear ();
 			}
 		}
 	}
@@ -153,48 +148,37 @@ namespace xk_System.Net.Client
 		protected Queue<NetPackage> mNeedHandlePackageQueue;
 		protected Action<NetPackage> mReceiveFun;
 
-		public NetReceiveSystem(SocketSystem socketSys)
+		public NetReceiveSystem (SocketSystem socketSys)
 		{
-			mNeedHandlePackageQueue = new Queue<NetPackage>();
+			mNeedHandlePackageQueue = new Queue<NetPackage> ();
 			mReceiveStreamList = new List<byte> ();
 			socketSys.initSystem (this);
 		}
 
-		public void addListenFun(int protocolType, Action<NetPackage> fun)
+		public void addListenFun (Action<NetPackage> fun)
 		{
-			lock (mReceiveFun)
-			{
-				if (mReceiveFun != null)
-				{
-					if (CheckDataBindFunIsExist(protocolType, fun))
-					{
-						DebugSystem.LogError("添加监听方法重复");
-						return;
-					}
-					mReceiveFun[protocolType] += fun;
+			if (mReceiveFun != null) {
+				if (CheckDataBindFunIsExist (fun)) {
+					DebugSystem.LogError ("添加监听方法重复");
+					return;
 				}
-				else
-				{
-					mReceiveFun[protocolType] = fun;
-				}              
-			}
+				mReceiveFun += fun;
+			} else {
+				mReceiveFun = fun;
+			}              
 		}
 
-		private bool CheckDataBindFunIsExist(int command,Action<byte[]> fun)
+		private bool CheckDataBindFunIsExist (Action<NetPackage> fun)
 		{
-			Action<NetPackage> mFunList = mReceiveFun[command];
-			return DelegateUtility.CheckFunIsExist<byte[]>(mFunList, fun);
+			return DelegateUtility.CheckFunIsExist<NetPackage> (mReceiveFun, fun);
 		}
 
-		public void removeListenFun(Action<NetPackage> fun)
+		public void removeListenFun (Action<NetPackage> fun)
 		{
-			lock (mReceiveFun)
-			{
-				mReceiveFun-=fun;
-			}
+			mReceiveFun -= fun;
 		}
 
-		public void HandleNetPackage()
+		public void HandleNetPackage ()
 		{
 			HandleSocketStream ();
 			if (mNeedHandlePackageQueue != null) {
@@ -208,7 +192,7 @@ namespace xk_System.Net.Client
 			}
 		}
 
-		public void ReceiveSocketStream(byte[] data)
+		public void ReceiveSocketStream (byte[] data)
 		{
 			lock (mReceiveStreamList) {
 				mReceiveStreamList.AddRange (data);
@@ -235,7 +219,7 @@ namespace xk_System.Net.Client
 			}
 		}
 
-		private NetPackage GetPackage()
+		private NetPackage GetPackage ()
 		{
 			byte[] msg = mReceiveStreamList.ToArray ();
 			byte[] data = NetEncryptionStream.DeEncryption (msg);
@@ -251,10 +235,9 @@ namespace xk_System.Net.Client
 			return mPackage;
 		}
 
-		public virtual void Destory()
+		public virtual void Destory ()
 		{
-			lock(mNeedHandlePackageQueue)
-			{
+			lock (mNeedHandlePackageQueue) {
 				mNeedHandlePackageQueue.Clear ();
 			}
 		}
