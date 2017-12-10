@@ -78,7 +78,7 @@ namespace xk_System.Crypto
             cst.FlushFinalBlock();
             sw.Flush();
             string str = Convert.ToBase64String(ms.GetBuffer(), 0, (int)ms.Length);
-            DebugSystem.Log("DES:" + str);
+            //DebugSystem.Log("DES:" + str);
             return str;
         }
 
@@ -114,7 +114,7 @@ namespace xk_System.Crypto
 
             string str = sr.ReadToEnd();
 
-            DebugSystem.Log("DES_Decryption:" + str);
+            //DebugSystem.Log("DES_Decryption:" + str);
             return str;
 
         }
@@ -169,7 +169,7 @@ namespace xk_System.Crypto
         /// <returns>明文</returns>        
 		public static byte[] Decryption(Byte[] Data, string Key, string Vector)
         {
-            DebugSystem.Log("Data Length:" + Data.Length);
+           // DebugSystem.Log("Data Length:" + Data.Length);
             Byte[] bKey = Encoding.UTF8.GetBytes(Key);
             Byte[] bVector = Encoding.UTF8.GetBytes(Vector);
             Byte[] original = null; // 解密后的明文  

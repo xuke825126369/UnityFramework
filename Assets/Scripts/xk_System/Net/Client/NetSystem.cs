@@ -38,6 +38,7 @@ namespace xk_System.Net.Client
 
 		public void handleNetData ()
 		{
+			mNetSocketSystem.Update ();
 			mNetSendSystem.HandleNetPackage ();
 			mNetReceiveSystem.HandleNetPackage ();
 		}
@@ -73,6 +74,8 @@ namespace xk_System.Net.Client
 		public abstract void init (string ServerAddr, int ServerPort);
 
 		public abstract void SendNetStream (byte[] msg);
+
+		public abstract void Update ();
 
 		public bool IsPrepare ()
 		{
@@ -119,10 +122,10 @@ namespace xk_System.Net.Client
 				HandleNetStream (mPackage);
 				NetObjectPool.Instance.mNetPackagePool.recycle (mPackage);
 				handlePackageCount++;
-			}
 
-			if (handlePackageCount > 3) {
-				DebugSystem.LogError ("客户端 发送包的数量： " + handlePackageCount);
+				if (handlePackageCount > 3) {
+					//DebugSystem.LogError ("客户端 发送包的数量： " + handlePackageCount);
+				}
 			}
 		}
 
@@ -208,14 +211,14 @@ namespace xk_System.Net.Client
 					if (mPackage != null) {
 						mNeedHandlePackageQueue.Enqueue (mPackage);
 						PackageCout++;
+
+						if (PackageCout > 3) {
+							DebugSystem.LogError ("客户端 解析包的数量： " + PackageCout);
+						}
 					} else {
 						break;
 					}
 				}
-			}
-
-			if (PackageCout > 3) {
-				DebugSystem.LogError ("客户端 解析包的数量： " + PackageCout);
 			}
 		}
 

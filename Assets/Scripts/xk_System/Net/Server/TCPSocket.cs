@@ -202,18 +202,22 @@ namespace xk_System.Net.Server
 		//这里是关闭客户端链接
 		private void CloseClientSocket(SocketAsyncEventArgs e)
 		{
+			Interlocked.Decrement (ref this.numConnectedSockets);
 			Client client = e.UserToken as Client;
 			Socket s = client.getSocket ();
-			Interlocked.Decrement(ref this.numConnectedSockets);           
-			string outStr = String.Format("客户 {0} 断开, 共有 {1} 个连接。", s.RemoteEndPoint.ToString(), this.numConnectedSockets);
+
+			string outStr = String.Format ("客户 {0} 断开, 共有 {1} 个连接。", s.RemoteEndPoint.ToString (), this.numConnectedSockets);
 			DebugSystem.Log (outStr);        
 			IPEndPoint localEp = s.LocalEndPoint as IPEndPoint;
-			outStr = String.Format("套接字错误 {0}, IP {1}, 操作 {2}。", (Int32)e.SocketError, localEp, e.LastOperation);
-			DebugSystem.LogError (outStr);
+			if (e.SocketError != SocketError.Success) {
+				outStr = String.Format ("套接字错误 {0}, IP {1}, 操作 {2}。", e.SocketError, localEp, e.LastOperation);
+				DebugSystem.LogError (outStr);
+			}
 
 			mUsedContextPool.Remove (e);
-			ioContextPool.recycle(e);
-			s.Close();
+			ioContextPool.recycle (e);
+
+			s.Close ();
 			s = null;
 		}
 			

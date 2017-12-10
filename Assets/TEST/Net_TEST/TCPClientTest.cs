@@ -18,9 +18,9 @@ public class TCPClientTestObject:NetEventInterface
 
 	public TCPClientTestObject()
 	{
-		mNetSocketSystem = new SocketSystem_Thread ();
-		mNetSendSystem = new NetSendSystem(mNetSocketSystem);
-		mNetReceiveSystem = new NetReceiveSystem(mNetSocketSystem);
+		mNetSocketSystem = new SocketSystem_1 ();
+		mNetSendSystem = new NetSendSystem (mNetSocketSystem);
+		mNetReceiveSystem = new NetReceiveSystem (mNetSocketSystem);
 	}
 
 	public void initNet(string ServerAddr, int ServerPort)
@@ -36,8 +36,9 @@ public class TCPClientTestObject:NetEventInterface
 		mNetSendSystem.SendNetData(mPackage);  
 	}
 
-	public void handleNetData()
+	public void Update()
 	{
+		mNetSocketSystem.Update ();
 		mNetSendSystem.HandleNetPackage ();
 		mNetReceiveSystem.HandleNetPackage ();
 	}
@@ -78,7 +79,7 @@ public class TCPClientTest : MonoBehaviour
 
 	private void Update()
 	{
-		mNetSystem.handleNetData();
+		mNetSystem.Update();
 	}
 
 	private void OnDestroy()
@@ -103,7 +104,7 @@ public class TCPClientTest : MonoBehaviour
 
 	private void StartTest()
 	{
-		mNetEventManager.addNetListenFun ((int)ProtoCommand.ProtoChat,Receive_ServerSenddata);
+		mNetEventManager.addNetListenFun ((int)ProtoCommand.ProtoChat, Receive_ServerSenddata);
 		StartCoroutine (Run ());
 	}
 
@@ -111,16 +112,17 @@ public class TCPClientTest : MonoBehaviour
 
 	IEnumerator Run()
 	{           
-		while (nReceiveCount<1000)
-		{
-			request_ClientSendData(1,"xuke","I love you");
-			yield return new WaitForSeconds(1f);
+		while (nReceiveCount < 100) {
+			for (int i = 0; i < 10; i++) {
+				request_ClientSendData (1, "xuke", "I love you");
+			}
+			yield return new WaitForSeconds (1f);
 		}
 	}
 
 	public void request_ClientSendData(uint channelId, string sendName, string content)
 	{
-		Debug.Log ("Client 发送数量: "+ ++nReceiveCount);
+		//Debug.Log ("Client 发送数量: "+ ++nReceiveCount);
 		csChatData mClientSendData = new csChatData();
 		mClientSendData.ChannelId = channelId;
 		mClientSendData.TalkMsg = content;

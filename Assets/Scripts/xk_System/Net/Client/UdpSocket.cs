@@ -46,6 +46,11 @@ namespace xk_System.Net.Client.Udp
 			}
 		}
 
+		public override void Update ()
+		{
+			
+		}
+
 		public override void SendNetStream (byte[] msg)
 		{
 			mSocket.SendTo (msg, ep);

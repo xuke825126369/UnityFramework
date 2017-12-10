@@ -124,7 +124,7 @@ namespace xk_System.Net.Server
 			}
 
 			if (handlePackageCount > 3) {
-				DebugSystem.LogError ("客户端 发送包的数量： " + handlePackageCount);
+				//DebugSystem.LogError ("服务器 发送包的数量： " + handlePackageCount);
 			}
 		}
 

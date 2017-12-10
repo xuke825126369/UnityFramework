@@ -117,7 +117,7 @@ public class TCPServerTest : MonoBehaviour
 	{
 		csChatData mServerSendData = Protocol3Utility.getData<csChatData>(package.buffer);
 
-		Debug.Log ("Server接受数量: " + ++nReceiveCount);
+		//Debug.Log ("Server接受数量: " + ++nReceiveCount);
 
 		scChatData mSenddata = new scChatData ();
 		mSenddata.ChatInfo = new struct_ChatInfo ();
