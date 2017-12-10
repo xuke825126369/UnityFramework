@@ -4,7 +4,7 @@ using xk_System.Net.Client;
 using xk_System.Debug;
 using xk_System.Net;
 using Google.Protobuf;
-using xk_System.Net.Protocol.Protobuf3;
+using xk_System.Net.Protocol;
 
 public class ChatMessage : NetModel
 {
@@ -33,11 +33,11 @@ public class ChatMessage : NetModel
 
 	private void Receive_ServerSenddata(NetPackage mPackage)
     {
-		scChatData mServerSendData = ProtobufUtility.getData<scChatData> (mPackage);
+		scChatData mServerSendData = Protocol3Utility.getData<scChatData> (mPackage.buffer);
     }
 
 	private void Receive_Push_ChatInfo(NetPackage mPackage)
 	{
-		pushChatInfo mPushChatInfo = ProtobufUtility.getData<pushChatInfo> (mPackage);
+		pushChatInfo mPushChatInfo = Protocol3Utility.getData<pushChatInfo> (mPackage.buffer);
 	}
 }

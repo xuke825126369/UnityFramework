@@ -302,7 +302,7 @@ namespace xk_System.Net.Client.TCP
 				mSocket.SendTimeout = sendTimeOut;
 				mSocket.ReceiveBufferSize = receiveInfoPoolCapacity;
 				mSocket.SendBufferSize = sendInfoPoolCapacity;
-				mSocket.Blocking = true;
+				mSocket.Blocking = false;
 
 				NewStartThread_Receive();
 				DebugSystem.Log("Client Net Init Success： IP: " + ServerAddr + " | Port: " + ServerPort);

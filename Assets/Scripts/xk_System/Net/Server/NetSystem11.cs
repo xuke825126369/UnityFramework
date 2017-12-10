@@ -1,4 +1,4 @@
-﻿using System.Collections;
+﻿/*using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using xk_System.Net;
@@ -8,13 +8,13 @@ using xk_System.Debug;
 
 namespace xk_System.Net.Server
 {
-	public class NetSystem : Singleton<NetSystem>
+	public class NetSystem11
 	{
 		private NetSendSystem mNetSendSystem;
 		private NetReceiveSystem mNetReceiveSystem;
 		private SocketSystem mNetSocketSystem;
 
-		public NetSystem()
+		public NetSystem11()
 		{
 			mNetSocketSystem = new SocketSystem_TCPServer ();
 			mNetSendSystem = new NetSendSystem(mNetSocketSystem);
@@ -31,19 +31,18 @@ namespace xk_System.Net.Server
 			mNetSendSystem.SendNetData(clientId,command, package);  
 		}
 
-		//每帧处理一些事件
 		public void handleNetData()
 		{
 			mNetSendSystem.HandleNetPackage ();
 			mNetReceiveSystem.HandleNetPackage ();
 		}
 
-		public void addNetListenFun(int command, Action<Package> fun)
+		public void addNetListenFun(Action<NetPackage> func)
 		{
-			mNetReceiveSystem.addListenFun(command,fun);
+			mNetReceiveSystem.addListenFun (func);
 		}
 
-		public void removeNetListenFun(int command, Action<Package> fun)
+		public void removeNetListenFun(int Action<Package> fun)
 		{
 			mNetReceiveSystem.removeListenFun(command, fun);
 		}
@@ -104,7 +103,6 @@ namespace xk_System.Net.Server
 	public class  NetSendSystem
 	{
 		protected Queue<Package> mNeedHandleNetPackageQueue;//消费者
-		protected Queue<Package> mPackagePool; //生产者
 		protected SocketSystem mSocketSystem;
 
 		public NetSendSystem(SocketSystem mSocketSystem)
@@ -174,12 +172,7 @@ namespace xk_System.Net.Server
 	//begin~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~网络接受系统~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	public class NetReceiveSystem
 	{
-		protected Dictionary<int,List<byte>> mReceivedStreamDic;
-		protected Queue<Package> mReceiveStreamQueue;
-		protected Queue<Package> mNeedHandlePackageQueue;
-		protected Queue<Package> mCanUsePackageQueue;
-		protected Dictionary<int, Action<Package>> mReceiveDic;
-
+		
 		public NetReceiveSystem(SocketSystem socketSys)
 		{
 			mReceiveDic = new Dictionary<int, Action<Package>>();
@@ -304,8 +297,7 @@ namespace xk_System.Net.Server
 
 		public void RemoveClient(int clientId)
 		{
-
-
+			
 		}
 
 		public virtual void Destory()
@@ -369,4 +361,6 @@ namespace xk_System.Net.Server
 			clientId = -1;
 		}
 	}
+
 }
+*/

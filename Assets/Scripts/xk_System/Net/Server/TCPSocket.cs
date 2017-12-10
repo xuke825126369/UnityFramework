@@ -28,7 +28,6 @@ namespace xk_System.Net.Server
 		private ObjectPool<SocketAsyncEventArgs> ioContextPool;
 		private List<SocketAsyncEventArgs> mUsedContextPool;
 
-
 		internal SocketSystem_TCPServer(Int32 numConnections = 100 , Int32 bufferSize = 8192)
 		{
 			this.m_totalBytesRead = 0;
@@ -173,10 +172,9 @@ namespace xk_System.Net.Server
 			}
 		}
 
-
-		public override void SendNetStream(int clientId,byte[] msg)
+		public override void SendNetStream(int socketId,byte[] msg)
 		{
-			Client mClient = ClientFactory.Instance.GetClient (clientId);
+			Client mClient = ClientFactory.Instance.GetClient (socketId);
 			SocketError mError=SocketError.SocketError;
 			try
 			{

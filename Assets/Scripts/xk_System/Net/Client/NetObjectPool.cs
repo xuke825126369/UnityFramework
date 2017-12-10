@@ -1,19 +1,15 @@
-﻿using System;
+﻿using System.Collections;
 using System.Collections.Generic;
-using System.Text;
-using System.Net;
-using System.Net.Sockets;
-using System.Threading;
-using System.IO;
-using xk_System.Debug;
 using UnityEngine;
-using xk_System.Crypto;
-using System.Collections;
-using Google.Protobuf;
-using game.protobuf.data;
 
 namespace xk_System.Net.Client
 {
+	public class NetObjectPool:Singleton<NetObjectPool>
+	{
+		public ArrayGCPool<byte> mStreamPool = new ArrayGCPool<byte>();
+		public ObjectPool<NetPackage> mNetPackagePool = new ObjectPool<NetPackage> ();
+	}
+
 	public class NetPackage:ObjectPoolInterface
 	{
 		public int command;

@@ -7,7 +7,8 @@ using XkProtobufData;
 using System;
 using xk_System.Net.Client;
 using Google.Protobuf;
-using xk_System.Net.Protocol.Protobuf3;
+using xk_System.Net.Protocol;
+using xk_System.Net.Client.Event;
 
 public class TCPClientTestObject:NetEventInterface
 {
@@ -128,7 +129,7 @@ public class TCPClientTest : MonoBehaviour
 
 	private void Receive_ServerSenddata(NetPackage package)
 	{
-		scChatData mServerSendData = ProtobufUtility.getData<scChatData> (package);
+		scChatData mServerSendData = Protocol3Utility.getData<scChatData> (package.buffer);
 		Debug.Log ("Client 接受 渠道ID " + mServerSendData.ChatInfo.ChannelId);
 	}
 }

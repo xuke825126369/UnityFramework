@@ -4,36 +4,10 @@ using UnityEngine;
 using Google.Protobuf;
 using xk_System.Net.Client;
 using System;
+using xk_System.Net.Protocol;
 
-namespace xk_System.Net.Protocol.Protobuf3
+namespace xk_System.Net.Client.Event
 {
-	public class ProtobufUtility
-	{
-		public static byte[] SerializePackage (IMessage data)
-		{
-			Google.Protobuf.IMessage data1 = data as Google.Protobuf.IMessage;
-			byte[] stream = data1.ToByteArray ();
-			return stream;
-		}
-
-		public static T getData<T>(NetPackage mPackage) where T:IMessage,new()
-		{
-			T t = new T ();
-			byte[] stream = mPackage.buffer;
-			Google.Protobuf.CodedInputStream mStream = new CodedInputStream (stream);
-			t.MergeFrom (mStream);
-			return t;
-		}
-
-		public static IMessage getData(IMessage t, NetPackage mPackage)
-		{
-			byte[] stream = mPackage.buffer;
-			Google.Protobuf.CodedInputStream mStream = new CodedInputStream (stream);
-			t.MergeFrom (mStream);
-			return t;
-		}
-	}
-
 	public class Protobuf3Event
 	{
 		private Dictionary<int, Action<NetPackage>> mLogicFuncDic = new Dictionary<int, Action<NetPackage>>();
@@ -47,7 +21,7 @@ namespace xk_System.Net.Protocol.Protobuf3
 
 		public void sendNetData (int command, object data)
 		{
-			mNetEventInterface.sendNetData (command, ProtobufUtility.SerializePackage ((IMessage)data));
+			mNetEventInterface.sendNetData (command, Protocol3Utility.SerializePackage ((IMessage)data));
 		}
 
 		public void DeSerialize (NetPackage mPackage)

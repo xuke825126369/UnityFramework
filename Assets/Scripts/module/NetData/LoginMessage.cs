@@ -6,7 +6,7 @@ using xk_System.Debug;
 using xk_System.Net.Client;
 using xk_System.Net;
 using Google.Protobuf;
-using xk_System.Net.Protocol.Protobuf3;
+using xk_System.Net.Protocol;
 
 public class LoginMessage : NetModel
 {
@@ -54,7 +54,7 @@ public class LoginMessage : NetModel
 
 	private void Receive_RegisterAccountResult(NetPackage package)
     {
-		scRegisterAccount mscRegisterAccountdata = ProtobufUtility.getData<scRegisterAccount>(package);
+		scRegisterAccount mscRegisterAccountdata = Protocol3Utility.getData<scRegisterAccount>(package.buffer);
         mRegisterResult.HandleData(mscRegisterAccountdata);
     }
     /// <summary>
@@ -72,7 +72,7 @@ public class LoginMessage : NetModel
 
 	private void receive_LoginGame(NetPackage mPackage)
     {
-		scLoginGame mscLoginGame = ProtobufUtility.getData<scLoginGame>(mPackage);
+		scLoginGame mscLoginGame = Protocol3Utility.getData<scLoginGame>(mPackage.buffer);
         mLoginResult.HandleData(mscLoginGame);
     }
 
@@ -89,7 +89,7 @@ public class LoginMessage : NetModel
 
 	private void receive_SelectServer(NetPackage mPackage)
     {
-		scSelectServer mdata = ProtobufUtility.getData<scSelectServer>(mPackage);
+		scSelectServer mdata = Protocol3Utility.getData<scSelectServer>(mPackage.buffer);
         mSeletServerResult.HandleData(mdata);
     }
 
@@ -104,7 +104,7 @@ public class LoginMessage : NetModel
 
 	private void receive_CreateRole(NetPackage mPackage)
     {
-		scCreateRole mdata = ProtobufUtility.getData<scCreateRole>(mPackage);
+		scCreateRole mdata = Protocol3Utility.getData<scCreateRole>(mPackage.buffer);
         mCreateRoleResult.HandleData(mdata);
     }
 
@@ -117,7 +117,7 @@ public class LoginMessage : NetModel
 
 	private void receive_SelectRole(NetPackage mPackage)
     {
-		scSelectRole mdata = ProtobufUtility.getData<scSelectRole>(mPackage);
+		scSelectRole mdata = Protocol3Utility.getData<scSelectRole>(mPackage.buffer);
         mSelectRoleResult.HandleData(mdata);
     }
 }

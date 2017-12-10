@@ -5,11 +5,11 @@ using System.Net.Sockets;
 
 namespace xk_System.Net.Server
 {
-	class IdManager:Singleton<IdManager>
+	public class IdManager:Singleton<IdManager>
 	{
 		Queue<int> mIdQueue = new Queue<int> ();
-
 		private int maxId = 0;
+
 		public int allot()
 		{
 			int tempId = -1;
@@ -26,7 +26,6 @@ namespace xk_System.Net.Server
 			mIdQueue.Enqueue (id);
 		}
 	}
-
 
 	public class ClientFactory:Singleton<ClientFactory>
 	{

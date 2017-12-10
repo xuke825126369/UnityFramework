@@ -7,7 +7,7 @@ using System;
 using xk_System.Net.Client;
 using xk_System.Net.Client.Udp;
 using Google.Protobuf;
-using xk_System.Net.Protocol.Protobuf3;
+using xk_System.Net.Protocol;
 
 public class UDPClientTestObject
 {
@@ -102,7 +102,7 @@ public class UDPClientTest : MonoBehaviour
 
 	private void Receive_ServerSenddata(NetPackage package)
 	{
-		scChatData mServerSendData = ProtobufUtility.getData<scChatData> (package);
+		scChatData mServerSendData = Protocol3Utility.getData<scChatData> (package.buffer);
 		Debug.Log("Client 接受 渠道ID "+mServerSendData.ChatInfo.ChannelId);
 	}
 

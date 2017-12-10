@@ -5,48 +5,49 @@ using xk_System.Net.Server;
 using xk_System.Net;
 using XkProtobufData;
 using System;
+using xk_System.Net.Protocol;
+using xk_System.Net.Server.Event;
 
-public class TCPServerTestObject : Singleton<TCPServerTestObject>
+public class TCPServerTestObject : NetEventInterface
 {
 	private NetSendSystem mNetSendSystem;
 	private NetReceiveSystem mNetReceiveSystem;
 	private SocketSystem mNetSocketSystem;
 
-	public TCPServerTestObject()
+	public TCPServerTestObject ()
 	{
 		mNetSocketSystem = new SocketSystem_TCPServer ();
-		mNetSendSystem = new NetSendSystem(mNetSocketSystem);
-		mNetReceiveSystem = new NetReceiveSystem(mNetSocketSystem);
+		mNetSendSystem = new NetSendSystem (mNetSocketSystem);
+		mNetReceiveSystem = new NetReceiveSystem (mNetSocketSystem);
 	}
 
-	public void initNet(string ServerAddr, int ServerPort)
+	public void initNet (string ServerAddr, int ServerPort)
 	{
 		mNetSocketSystem.init (ServerAddr, ServerPort);
 	}
 
-	public void sendNetData(int clientId,int command, object package)
+	public void sendNetData (int socketId, int command, byte[] buffer)
 	{
-		mNetSendSystem.SendNetData(clientId,command, package);  
+		mNetSendSystem.SendNetData (socketId,command,buffer);  
 	}
 
-	//每帧处理一些事件
-	public void handleNetData()
+	public void handleNetData ()
 	{
 		mNetSendSystem.HandleNetPackage ();
 		mNetReceiveSystem.HandleNetPackage ();
 	}
 
-	public void addNetListenFun(int command, Action<Package> fun)
+	public void addNetListenFun (Action<NetPackage> fun)
 	{
-		mNetReceiveSystem.addListenFun(command,fun);
+		mNetReceiveSystem.addListenFun (fun);
 	}
 
-	public void removeNetListenFun(int command, Action<Package> fun)
+	public void removeNetListenFun (Action<NetPackage> fun)
 	{
-		mNetReceiveSystem.removeListenFun(command, fun);
+		mNetReceiveSystem.removeListenFun (fun);
 	}
 
-	public void closeNet()
+	public void closeNet ()
 	{
 		mNetSocketSystem.CloseNet ();
 		mNetSendSystem.Destory ();
@@ -56,51 +57,72 @@ public class TCPServerTestObject : Singleton<TCPServerTestObject>
 
 public class TCPServerTest : MonoBehaviour 
 {
-	public string ip = "192.168.1.123";
+	public string ip = "192.168.122.24";
 	public int port = 7878;
+
+	TCPServerTestObject mNetSystem = null;
+	Protobuf3Event mNetEventManager = null;
 	private void Start()
 	{
-		TCPServerTestObject.Instance.initNet(ip, port);
+		mNetSystem = new TCPServerTestObject ();
+		mNetEventManager = new Protobuf3Event (mNetSystem);
+		mNetSystem.initNet(ip, port);
 
-		TCPServerTestObject.Instance.addNetListenFun((int)ProtoCommand.ProtoChat, Receive_ServerSenddata);
-
-		StartCoroutine (Run ());
+		StartTest ();
 	}
 
+	private void Update()
+	{
+		mNetSystem.handleNetData();
+	}
 
+	private void OnDestroy()
+	{
+		mNetSystem.closeNet();
+	}
+
+	public void sendNetData (int clientId,int command, object data)
+	{
+		mNetEventManager.sendNetData (clientId,command, data);
+	}
+
+	public void addNetListenFun (int command, Action<NetPackage> func)
+	{
+		mNetEventManager.addNetListenFun (command, func);
+	}
+
+	public void removeNetListenFun (int command, Action<NetPackage> func)
+	{
+		mNetEventManager.removeNetListenFun (command, func);
+	}
+
+	private void StartTest()
+	{
+		addNetListenFun((int)ProtoCommand.ProtoChat, Receive_ServerSenddata);
+		StartCoroutine (Run ());
+	}
+		
 	IEnumerator Run()
 	{      
 		yield return new WaitForSeconds(2f);
 		for (int i = 0; i < 10; i++) {
 			gameObject.AddComponent<TCPClientTest> ();
-			yield return new WaitForSeconds(1f);
+			yield return new WaitForSeconds (1f);
 		}
-	}
-
-	// Update is called once per frame
-	private void Update()
-	{
-		TCPServerTestObject.Instance.handleNetData();
-	}
-
-	private void OnDestroy()
-	{
-		Debug.LogError ("关闭服务器");
-		TCPServerTestObject.Instance.closeNet();
 	}
 
 	int nReceiveCount = 0;
 
-	private void Receive_ServerSenddata(Package package)
+	private void Receive_ServerSenddata(NetPackage package)
 	{
-		csChatData mServerSendData =package.getData<csChatData>();
+		csChatData mServerSendData = Protocol3Utility.getData<csChatData>(package.buffer);
 
-		Debug.Log ("Server接受数量: "+ ++nReceiveCount);
+		Debug.Log ("Server接受数量: " + ++nReceiveCount);
 
 		scChatData mSenddata = new scChatData ();
 		mSenddata.ChatInfo = new struct_ChatInfo ();
 		mSenddata.ChatInfo.ChannelId = mServerSendData.ChannelId;
 			
-		TCPServerTestObject.Instance.sendNetData (package.clientId,(int)ProtoCommand.ProtoChat, mSenddata);
+		sendNetData (package.socketId, (int)ProtoCommand.ProtoChat, mSenddata);
 	}
 }
