@@ -246,17 +246,13 @@ namespace xk_System.Net.Server
 
 		private NetPackage GetPackage (int socketId)
 		{
-			byte[] msg = mReceivedStreamDic [socketId].ToArray ();
-			byte[] data = NetEncryptionStream.DeEncryption (msg);
-			if (data == null) {
-				return null;
-			}
-
-			int Length = data.Length + 8;
-			mReceivedStreamDic [socketId].RemoveRange (0, Length);
-
+			List<byte> msg = mReceivedStreamDic [socketId];
 			NetPackage mPackage = mCanUsePackageQueue.Pop ();
-			NetStream.GetInputStream (data, out mPackage.command, out mPackage.buffer);
+			//var bSuccess = NetEncryptionStream.DeEncryption (msg, mPackage);
+			//if (bSuccess == false) {
+			//	return null;
+			//}
+
 			mPackage.socketId = socketId;
 			return mPackage;
 		}

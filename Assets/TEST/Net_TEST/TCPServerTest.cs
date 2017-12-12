@@ -7,6 +7,7 @@ using XkProtobufData;
 using System;
 using xk_System.Net.Protocol;
 using xk_System.Net.Server.Event;
+using xk_System.Debug;
 
 public class TCPServerTestObject : NetEventInterface
 {
@@ -68,6 +69,7 @@ public class TCPServerTest : MonoBehaviour
 		mNetEventManager = new Protobuf3Event (mNetSystem);
 		mNetSystem.initNet(ip, port);
 
+		gameObject.AddComponent<LogManager> ();
 		StartTest ();
 	}
 
@@ -105,7 +107,7 @@ public class TCPServerTest : MonoBehaviour
 	IEnumerator Run()
 	{      
 		yield return new WaitForSeconds(2f);
-		for (int i = 0; i < 10; i++) {
+		for (int i = 0; i < 20; i++) {
 			gameObject.AddComponent<TCPClientTest> ();
 			yield return new WaitForSeconds (1f);
 		}

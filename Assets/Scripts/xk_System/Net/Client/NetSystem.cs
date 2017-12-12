@@ -7,6 +7,7 @@ using System.Net.Sockets;
 using xk_System.Net.Client.TCP;
 using xk_System.Net;
 using System;
+using xk_System.DataStructure;
 
 namespace xk_System.Net.Client
 {
@@ -147,14 +148,16 @@ namespace xk_System.Net.Client
 	//begin~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~网络接受系统~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	public class NetReceiveSystem
 	{
-		protected List<byte> mReceiveStreamList;
+		protected CircularBuffer<byte> mReceiveStreamList;
+		protected CircularBuffer<byte> mParseStreamList;
 		protected Queue<NetPackage> mNeedHandlePackageQueue;
 		protected Action<NetPackage> mReceiveFun;
 
 		public NetReceiveSystem (SocketSystem socketSys)
 		{
+			mReceiveStreamList = new CircularBuffer<byte> (1024);
+			mParseStreamList = new CircularBuffer<byte> (1024);
 			mNeedHandlePackageQueue = new Queue<NetPackage> ();
-			mReceiveStreamList = new List<byte> ();
 			socketSys.initSystem (this);
 		}
 
@@ -198,44 +201,41 @@ namespace xk_System.Net.Client
 		public void ReceiveSocketStream (byte[] data)
 		{
 			lock (mReceiveStreamList) {
-				mReceiveStreamList.AddRange (data);
+				mReceiveStreamList.WriteBuffer (data);
 			}
 		}
 
 		protected void HandleSocketStream ()
 		{
-			int PackageCout = 0;
 			lock (mReceiveStreamList) {
-				while (mReceiveStreamList.Count > 0) {
-					NetPackage mPackage = GetPackage ();
-					if (mPackage != null) {
-						mNeedHandlePackageQueue.Enqueue (mPackage);
-						PackageCout++;
+				mParseStreamList.WriteBuffer (mReceiveStreamList, 256);
+			}
 
-						if (PackageCout > 3) {
-							DebugSystem.LogError ("客户端 解析包的数量： " + PackageCout);
-						}
-					} else {
-						break;
+			int PackageCout = 0;
+			while (mParseStreamList.Length > 0) {
+				NetPackage mPackage = GetPackage ();
+				if (mPackage != null) {
+					mNeedHandlePackageQueue.Enqueue (mPackage);
+					PackageCout++;
+
+					if (PackageCout > 3) {
+						DebugSystem.LogError ("客户端 解析包的数量： " + PackageCout);
 					}
+				} else {
+					break;
 				}
 			}
 		}
 
 		private NetPackage GetPackage ()
 		{
-			byte[] msg = mReceiveStreamList.ToArray ();
-			byte[] data = NetEncryptionStream.DeEncryption (msg);
-			if (data == null) {
-				return null;
+			NetPackage mPackage = NetObjectPool.Instance.mNetPackagePool.Pop ();
+			bool bSucccess = NetEncryptionStream.DeEncryption (mParseStreamList, mPackage);
+			if (bSucccess) {
+				return mPackage;
 			}
 
-			int Length = data.Length + 8;
-			mReceiveStreamList.RemoveRange (0, Length);
-
-			NetPackage mPackage = NetObjectPool.Instance.mNetPackagePool.Pop ();
-			NetStream.GetInputStream (data, out mPackage.command, out mPackage.buffer);
-			return mPackage;
+			return null;
 		}
 
 		public virtual void Destory ()

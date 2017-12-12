@@ -109,7 +109,7 @@ namespace xk_System.Debug
         {
             if (Application.platform == RuntimePlatform.WindowsEditor || Application.platform == RuntimePlatform.WindowsPlayer)
             {
-                outpath = "G:\\outLog.txt";
+                outpath = "D:\\outLog.txt";
             }
             else if (Application.platform == RuntimePlatform.Android)
             {
