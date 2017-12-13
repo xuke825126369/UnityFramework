@@ -5,7 +5,6 @@ using xk_System.Debug;
 using System.Collections;
 using xk_System.Model;
 using xk_System.AssetPackage;
-using xk_System.View.Modules;
 
 namespace xk_System.View
 {
@@ -18,7 +17,7 @@ namespace xk_System.View
 
         public IEnumerator InitWindowManager()
         {
-            yield return InitAsyncLoadGlobalView<WindowLoadingView>();
+			yield return 0;
         }
         /// <summary>
         /// 唯一对外接口
@@ -90,7 +89,6 @@ namespace xk_System.View
 
         private IEnumerator AsyncLoadView<T>(object data = null) where T : xk_View
         {
-            ShowView<WindowLoadingView>();
             AssetInfo mAssetInfo=ViewCollection.Instance.GetViewAssetInfo<T>();           
             yield return AssetBundleManager.Instance.AsyncLoadAsset(mAssetInfo);
             GameObject viewPrefab = AssetBundleManager.Instance.LoadAsset(mAssetInfo) as GameObject;
@@ -100,8 +98,7 @@ namespace xk_System.View
                 yield break;
             }
             yield return AddView<T>(viewPrefab);
-            ShowView<T>(data);
-            HideView<WindowLoadingView>();            
+            ShowView<T>(data);           
         }
 
         private IEnumerator AddView<T>(GameObject obj) where T : xk_View

@@ -22,30 +22,39 @@ namespace xk_System.Net
 		private static byte[] mStreamHeadArray = new byte[stream_head_Length] { 7, 7 };
 		private static byte[] mStreamTailArray = new byte[stream_head_Length] { 7, 7 };
 
+		static byte[] msg_Head_Array = new byte[2];
+		static byte[] msg_BodyLength_Array = new byte[4];
+		static byte[] BodyData = new byte[1024];
+		static int BodyLength = 0;
+
 		public static bool DeEncryption (CircularBuffer<byte> data, NetPackage mPackage)
 		{
-			if (data.Length - msg_head_BodyLength - stream_head_Length - stream_tail_Length <= 0) {
+			if (data.Length - 8 <= 0) {
 				return false;
 			}
 
-			byte[] msg_BodyLength_Array = new byte[msg_head_BodyLength];
-			data.CopyTo (stream_head_Length, msg_BodyLength_Array, 0, msg_head_BodyLength);
-
-			int Length = msg_BodyLength_Array [0] | msg_BodyLength_Array [1] << 8 | msg_BodyLength_Array [2] << 16 | msg_BodyLength_Array [3] << 24;
-			if (Length <= 0 || data.Count - 8 <= 0) {
+			int readLength = data.CopyTo (2, msg_BodyLength_Array, 0, 4);
+			if (readLength < 4) {
 				return false;
 			}
 
-			var BodyData = new byte[Length];
-			data.CopyTo (stream_head_Length + msg_head_BodyLength,BodyData, 0, Length);
+			BodyLength = msg_BodyLength_Array [0] | msg_BodyLength_Array [1] << 8 | msg_BodyLength_Array [2] << 16 | msg_BodyLength_Array [3] << 24;
+			if (BodyLength <= 0 || BodyLength + 8 > data.Length) {
+				return false;
+			}
+
+			if (BodyLength > BodyData.Length) {
+				BodyData = new byte[BodyLength];
+			}
+
+			data.WriteTo (BodyData, 0, BodyLength);
+			data.ClearBuffer (BodyLength + 8);
 
 			NetStream.GetInputStream (BodyData, out mPackage.command, out mPackage.buffer);
-
-			data.RemoveRange (0, BodyData.Length + 8);
 			return true;
 		}
 
-		public static byte[] Encryption (byte[] data)
+		public static byte[] Encryption (byte[] data, NetPackage mPackage)
 		{
 			byte[] Encryption_data = null;
 			int buffer_Length = data.Length;
@@ -92,7 +101,6 @@ namespace xk_System.Net
 			buffer = new byte[buffer_Length];
 			Array.Copy (msg, msg_head_command_length, buffer, 0, buffer_Length);
 		}
-
 
 		public static byte[] GetOutStream (int command, byte[] msg)
 		{

@@ -16,17 +16,17 @@ namespace xk_System.Net.Protocol
 			return stream;
 		}
 
-		public static T getData<T> (byte[] stream) where T:IMessage, new()
+		public static T getData<T> (byte[] stream,int index,int Length) where T:IMessage, new()
 		{
 			T t = new T ();
-			Google.Protobuf.CodedInputStream mStream = new CodedInputStream (stream);
+			Google.Protobuf.CodedInputStream mStream = new CodedInputStream (stream, index, Length);
 			t.MergeFrom (mStream);
 			return t;
 		}
 
-		public static IMessage getData (IMessage t, byte[] stream)
+		public static IMessage getData (IMessage t, byte[] stream,int index,int Length)
 		{
-			Google.Protobuf.CodedInputStream mStream = new CodedInputStream (stream);
+			Google.Protobuf.CodedInputStream mStream = new CodedInputStream (stream, index, Length);
 			t.MergeFrom (mStream);
 			return t;
 		}

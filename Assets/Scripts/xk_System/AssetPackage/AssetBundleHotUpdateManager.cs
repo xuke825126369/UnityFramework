@@ -20,29 +20,16 @@ namespace xk_System.HotUpdate
 
         private DownLoadAssetInfo mDownLoadAssetInfo = new DownLoadAssetInfo();
 
-        public LoadProgressInfo mTask = new LoadProgressInfo();
+      
 
         public IEnumerator CheckUpdate()
-        {
-            mTask.progress = 0;
-            mTask.Des = "正在检查资源";
-            yield return CheckVersionConfig();
-            if (mDownLoadAssetInfo.mAssetNameList.Count > 0)
-            {
-                mTask.progress += 10;
-                mTask.Des = "正在下载资源";
-                yield return DownLoadAllNeedUpdateBundle();
-            }
-            else
-            {
-                mTask.progress = 100;
-            }
-        }
+		{
+			yield return CheckVersionConfig ();
+			if (mDownLoadAssetInfo.mAssetNameList.Count > 0) {
+				yield return DownLoadAllNeedUpdateBundle ();
+			}
+		}
 
-        /// <summary>
-        /// 检查版本配置文件
-        /// </summary>
-        /// <returns></returns>
         private IEnumerator CheckVersionConfig()
         {
             yield return InitLoadExternalStoreVersionConfig();
@@ -327,12 +314,10 @@ namespace xk_System.HotUpdate
             List<string> bundleList = mDownLoadAssetInfo.mAssetNameList;
             List<string>.Enumerator mIter = bundleList.GetEnumerator();
 
-            uint addPro = (uint)Mathf.CeilToInt((LoadProgressInfo.MaxProgress - mTask.progress)/(float)bundleList.Count);
             while (mIter.MoveNext())
             {
                 DebugSystem.LogError("下载的文件：" + mDownLoadAssetInfo.url + " | " + mIter.Current);
                 yield return DownLoadSingleBundle(mDownLoadAssetInfo.url, mIter.Current);
-                mTask.progress+=addPro;
             }
         }
 
@@ -373,7 +358,5 @@ namespace xk_System.HotUpdate
             public string url;
             public List<string> mAssetNameList = new List<string>();
         }
-
-
     }
 }

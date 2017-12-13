@@ -13,7 +13,6 @@ namespace xk_System.Db
     public class DbManager:Singleton<DbManager>
     {
         private Dictionary<Type, List<DbBase>> mDbDic=new Dictionary<Type, List<DbBase>>();
-        public LoadProgressInfo mTask=new LoadProgressInfo();
 
         public List<T> GetDb<T>() where T : DbBase
         {
@@ -31,11 +30,9 @@ namespace xk_System.Db
 
         public IEnumerator initDbSystem()
         {
-            mTask.progress = 0;
 			AssetInfo mSheetIfo = ResourceABsFolder.Instance.getAsseetInfo("sheet", "DB");
             yield return AssetBundleManager.Instance.AsyncLoadAsset(mSheetIfo);
             TextAsset mXml = AssetBundleManager.Instance.LoadAsset(mSheetIfo) as TextAsset;
-            mTask.progress += 10;
             XmlDocument mXmlDocument = new XmlDocument();
             mXmlDocument.LoadXml(mXml.text);
             foreach (XmlNode xn1 in mXmlDocument.ChildNodes)
@@ -46,9 +43,6 @@ namespace xk_System.Db
                     if (xn1.ChildNodes.Count > 0)
                     {
                         addPro = (uint)Mathf.CeilToInt(90f / xn1.ChildNodes.Count);
-                    }else
-                    {
-                        mTask.progress = 100;
                     }
                     foreach (XmlNode xn2 in xn1.ChildNodes)
                     {
@@ -67,7 +61,6 @@ namespace xk_System.Db
                             addDb(mType, mSheet);
                         }
                         yield return 0;
-                        mTask.progress += addPro;
                     }
                     break;
                 }
@@ -92,9 +85,6 @@ namespace xk_System.Db
 
     public class DbBase
     {
-        /// <summary>
-        /// 序号
-        /// </summary>
         public readonly int id;
         public void SetDbValue(Dictionary<string, string> list)
         {

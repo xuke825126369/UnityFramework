@@ -150,14 +150,14 @@ namespace xk_System.Net.Client
 	{
 		protected CircularBuffer<byte> mReceiveStreamList;
 		protected CircularBuffer<byte> mParseStreamList;
-		protected Queue<NetPackage> mNeedHandlePackageQueue;
-		protected Action<NetPackage> mReceiveFun;
+		protected NetPackage mReceiveNetPackage = null;
+		protected Action<NetPackage> mReceiveFun = null;
 
 		public NetReceiveSystem (SocketSystem socketSys)
 		{
 			mReceiveStreamList = new CircularBuffer<byte> (1024);
 			mParseStreamList = new CircularBuffer<byte> (1024);
-			mNeedHandlePackageQueue = new Queue<NetPackage> ();
+			mReceiveNetPackage = new NetPackage ();
 			socketSys.initSystem (this);
 		}
 
@@ -184,65 +184,48 @@ namespace xk_System.Net.Client
 			mReceiveFun -= fun;
 		}
 
-		public void HandleNetPackage ()
-		{
-			HandleSocketStream ();
-			if (mNeedHandlePackageQueue != null) {
-				while (mNeedHandlePackageQueue.Count > 0) {
-					NetPackage mPackage = mNeedHandlePackageQueue.Dequeue ();
-					if (mReceiveFun != null) {
-						mReceiveFun (mPackage);
-					}
-					NetObjectPool.Instance.mNetPackagePool.recycle (mPackage);
-				}
-			}
-		}
-
 		public void ReceiveSocketStream (byte[] data)
 		{
 			lock (mReceiveStreamList) {
-				mReceiveStreamList.WriteBuffer (data);
+				mReceiveStreamList.WriteFrom (data, 0, data.Length);
 			}
 		}
 
-		protected void HandleSocketStream ()
+		protected void HandleNetPackage ()
 		{
 			lock (mReceiveStreamList) {
-				mParseStreamList.WriteBuffer (mReceiveStreamList, 256);
+				mParseStreamList.WriteFrom (mReceiveStreamList, mReceiveStreamList.Length);
 			}
 
 			int PackageCout = 0;
-			while (mParseStreamList.Length > 0) {
-				NetPackage mPackage = GetPackage ();
-				if (mPackage != null) {
-					mNeedHandlePackageQueue.Enqueue (mPackage);
-					PackageCout++;
+			while (GetPackage()) 
+			{
+				PackageCout++;
+			}
 
-					if (PackageCout > 3) {
-						DebugSystem.LogError ("客户端 解析包的数量： " + PackageCout);
-					}
-				} else {
-					break;
-				}
+			if (PackageCout > 3) {
+				DebugSystem.LogError ("客户端 解析包的数量： " + PackageCout);
 			}
 		}
 
 		private NetPackage GetPackage ()
 		{
-			NetPackage mPackage = NetObjectPool.Instance.mNetPackagePool.Pop ();
-			bool bSucccess = NetEncryptionStream.DeEncryption (mParseStreamList, mPackage);
-			if (bSucccess) {
-				return mPackage;
+			if (mParseStreamList.Length <= 0) {
+				return false;
 			}
-
-			return null;
+			bool bSucccess = NetEncryptionStream.DeEncryption (mParseStreamList, mReceiveNetPackage);
+			if (bSucccess) {
+				if (mReceiveFun != null) {
+					mReceiveFun (mReceiveNetPackage);
+				}
+			}
+		
+			return bSucccess;
 		}
 
 		public virtual void Destory ()
 		{
-			lock (mNeedHandlePackageQueue) {
-				mNeedHandlePackageQueue.Clear ();
-			}
+			mReceiveNetPackage.reset ();
 		}
 	}
 }

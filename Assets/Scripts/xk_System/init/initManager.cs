@@ -6,11 +6,8 @@ using xk_System.AssetPackage;
 
 public class initManager : Singleton<initManager>
 {
-    public LoadProgressInfo mTask=new LoadProgressInfo();
-
     public IEnumerator StartInitSystem()
     {
-        mTask.Des = "正在加载资源";
         InitGlobalManager();
         yield return InitBundleManager();
         InitDBSystem();
@@ -18,6 +15,7 @@ public class initManager : Singleton<initManager>
         UpdateManager.Instance.xStartCoroutine(InitWindowManager());
         InitAudioSystem();
     }
+
     private void InitGlobalManager()
     {
         UpdateManager.Instance.Init();
@@ -26,21 +24,15 @@ public class initManager : Singleton<initManager>
     private IEnumerator InitBundleManager()
     {
         yield return AssetBundleManager.Instance.InitAssetBundleManager();
-        mTask.progress += 60;
     }
 
     private void InitAudioSystem()
     {
         AudioManager.Instance.Init();
-        mTask.progress+=5;
     }
 
     private void InitDBSystem()
     {
-        SubTaskProgress mSubTask = new SubTaskProgress();
-        mSubTask.SubMaxProgress = 25;
-        mSubTask.mSubTask = DbManager.Instance.mTask;
-        mTask.mSubTaskList.Enqueue(mSubTask);
         UpdateManager.Instance.xStartCoroutine(DbManager.Instance.initDbSystem());
     }
 
@@ -53,12 +45,10 @@ public class initManager : Singleton<initManager>
         mObjectRoot.Init();
         obj.SetActive(true);
         MonoBehaviour.DontDestroyOnLoad(obj);
-        mTask.progress += 5;
     }
 
     private IEnumerator InitWindowManager()
     {
         yield return WindowManager.Instance.InitWindowManager();
-        mTask.progress+=5;
     }
 }
