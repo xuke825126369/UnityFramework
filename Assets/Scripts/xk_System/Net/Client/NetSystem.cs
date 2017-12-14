@@ -19,7 +19,7 @@ namespace xk_System.Net.Client
 
 		public NetSystem ()
 		{
-			mNetSocketSystem = new SocketSystem_Thread ();
+			mNetSocketSystem = new SocketSystem_1 ();
 			mNetSendSystem = new NetSendSystem (mNetSocketSystem);
 			mNetReceiveSystem = new NetReceiveSystem (mNetSocketSystem);
 		}
@@ -31,10 +31,7 @@ namespace xk_System.Net.Client
 
 		public void sendNetData (int command, byte[] buffer)
 		{
-			NetPackage mPackage = NetObjectPool.Instance.mNetPackagePool.Pop ();
-			mPackage.command = command;
-			mPackage.buffer = buffer;
-			mNetSendSystem.SendNetData (mPackage);  
+			mNetSendSystem.SendNetData (command, buffer);  
 		}
 
 		public void handleNetData ()
@@ -110,9 +107,12 @@ namespace xk_System.Net.Client
 			mNeedHandleNetPackageQueue = new Queue<NetPackage> ();
 		}
 
-		public virtual void SendNetData (NetPackage data)
+		public virtual void SendNetData (int id, byte[] buffer)
 		{
-			mNeedHandleNetPackageQueue.Enqueue (data);
+			NetPackage mNetPackage = new NetPackage ();
+			mNetPackage.command = id;
+			mNetPackage.buffer = buffer;
+			HandleNetStream (mNetPackage);
 		}
 
 		public void HandleNetPackage ()
@@ -121,7 +121,6 @@ namespace xk_System.Net.Client
 			while (mNeedHandleNetPackageQueue.Count > 0) {
 				var mPackage = mNeedHandleNetPackageQueue.Dequeue ();
 				HandleNetStream (mPackage);
-				NetObjectPool.Instance.mNetPackagePool.recycle (mPackage);
 				handlePackageCount++;
 
 				if (handlePackageCount > 3) {
@@ -132,8 +131,7 @@ namespace xk_System.Net.Client
 
 		public void HandleNetStream (NetPackage mPackage)
 		{
-			byte[] stream = NetStream.GetOutStream (mPackage.command, mPackage.buffer);
-			stream = NetEncryptionStream.Encryption (stream);
+			byte[] stream = NetEncryptionStream.Encryption (mPackage);
 			mSocketSystem.SendNetStream (stream);
 		}
 
@@ -191,16 +189,19 @@ namespace xk_System.Net.Client
 			}
 		}
 
-		protected void HandleNetPackage ()
+		public void HandleNetPackage ()
 		{
 			lock (mReceiveStreamList) {
 				mParseStreamList.WriteFrom (mReceiveStreamList, mReceiveStreamList.Length);
 			}
 
 			int PackageCout = 0;
-			while (GetPackage()) 
-			{
+			while (GetPackage ()) {
 				PackageCout++;
+
+				if (PackageCout > 1000) {
+					break;
+				}
 			}
 
 			if (PackageCout > 3) {
@@ -208,11 +209,12 @@ namespace xk_System.Net.Client
 			}
 		}
 
-		private NetPackage GetPackage ()
+		private bool GetPackage ()
 		{
 			if (mParseStreamList.Length <= 0) {
 				return false;
 			}
+
 			bool bSucccess = NetEncryptionStream.DeEncryption (mParseStreamList, mReceiveNetPackage);
 			if (bSucccess) {
 				if (mReceiveFun != null) {

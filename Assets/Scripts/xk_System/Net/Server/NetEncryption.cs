@@ -7,10 +7,8 @@ using xk_System.Debug;
 using xk_System.Net.Client;
 using xk_System.DataStructure;
 
-namespace xk_System.Net
+namespace xk_System.Net.Server
 {
-	//begin~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~网络编码输入输出流系统~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 	/// <summary>
 	/// 把数据拿出来
 	/// </summary>
@@ -21,6 +19,10 @@ namespace xk_System.Net
 		public const int msg_head_BodyLength = 4;
 		private static byte[] mStreamHeadArray = new byte[stream_head_Length] { 7, 7 };
 		private static byte[] mStreamTailArray = new byte[stream_head_Length] { 7, 7 };
+
+		public  const  int msg_head_command_length = 4;
+		public  const string Encrytption_Key = "1234567891234567";
+		public  const string Encrytption_iv = "1234567891234567";
 
 		static byte[] msg_Head_Array = new byte[2];
 		static byte[] msg_BodyLength_Array = new byte[4];
@@ -50,14 +52,31 @@ namespace xk_System.Net
 			data.WriteTo (BodyData, 0, BodyLength);
 			data.ClearBuffer (BodyLength + 8);
 
-			NetStream.GetInputStream (BodyData, out mPackage.command, out mPackage.buffer);
+			GetInputStream (BodyData, out mPackage.command, out mPackage.buffer);
 			return true;
 		}
 
-		public static byte[] Encryption (byte[] data, NetPackage mPackage)
+		public static byte[] Encryption (NetPackage mPackage)
 		{
+			int command = mPackage.command;
+			byte[] msg = mPackage.buffer;
+
+			int buffer_Length = mPackage.Length;
+			int sum_Length = msg_head_command_length + buffer_Length;
+			byte[] data = new byte[sum_Length];
+
+			byte[] byte_head_command = new byte[msg_head_command_length];
+			byte_head_command [0] = (byte)command;
+			byte_head_command [1] = (byte)(command >> 8);
+			byte_head_command [2] = (byte)(command >> 16);
+			byte_head_command [3] = (byte)(command >> 24);
+
+			Array.Copy (byte_head_command, 0, data, 0, msg_head_command_length);
+			Array.Copy (msg, 0, data, msg_head_command_length, buffer_Length);
+			data = Encryption_AES.Encryption (data, Encrytption_Key, Encrytption_iv);
+
 			byte[] Encryption_data = null;
-			int buffer_Length = data.Length;
+			buffer_Length = data.Length;
 			byte[] byte_head_BufferLength = new byte[msg_head_BodyLength];
 			byte_head_BufferLength [0] = (byte)buffer_Length;
 			byte_head_BufferLength [1] = (byte)(buffer_Length >> 8);
@@ -72,19 +91,9 @@ namespace xk_System.Net
 
 			return Encryption_data;
 		}
-	}
-
-	//begin~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~网络字节输入输出流系统~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	public static class NetStream
-	{
-		public  const  int msg_head_command_length = 4;
-		public  const string Encrytption_Key = "1234567891234567";
-		public  const string Encrytption_iv = "1234567891234567";
 
 		public static void GetInputStream (byte[] data, out int command, out byte[] buffer)
 		{
-			
 			byte[] msg = Encryption_AES.Decryption (data, Encrytption_Key, Encrytption_iv);
 
 			int buffer_Length = msg.Length - msg_head_command_length;
@@ -100,30 +109,6 @@ namespace xk_System.Net
 
 			buffer = new byte[buffer_Length];
 			Array.Copy (msg, msg_head_command_length, buffer, 0, buffer_Length);
-		}
-
-		public static byte[] GetOutStream (int command, byte[] msg)
-		{
-			if (msg == null || msg.Length == 0) {
-				DebugSystem.LogError ("发送数据失败：msg is Null Or Length is zero");
-				return null;
-			}
-
-			int buffer_Length = msg.Length;
-			int sum_Length = msg_head_command_length + buffer_Length;
-			byte[] data = new byte[sum_Length];
-
-			byte[] byte_head_command = new byte[msg_head_command_length];
-			byte_head_command [0] = (byte)command;
-			byte_head_command [1] = (byte)(command >> 8);
-			byte_head_command [2] = (byte)(command >> 16);
-			byte_head_command [3] = (byte)(command >> 24);
-
-			Array.Copy (byte_head_command, 0, data, 0, msg_head_command_length);
-			Array.Copy (msg, 0, data, msg_head_command_length, buffer_Length);
-			data = Encryption_AES.Encryption (data, Encrytption_Key, Encrytption_iv);
-
-			return data;
 		}
 	}
 }

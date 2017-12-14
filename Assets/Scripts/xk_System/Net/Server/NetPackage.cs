@@ -2,22 +2,11 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace xk_System.Net.Client
+namespace xk_System.Net.Server
 {
-	public class NetObjectPool:Singleton<NetObjectPool>
-	{
-		/// <summary>
-		/// The m stream pool.
-		/// </summary>
-		public ArrayGCPool<byte> mStreamPool = new ArrayGCPool<byte>();
-		/// <summary>
-		/// The m net package pool.
-		/// </summary>
-		public ObjectPool<NetPackage> mNetPackagePool = new ObjectPool<NetPackage> ();
-	}
-
 	public class NetPackage:ObjectPoolInterface
 	{
+		public int clientId;
 		public int command;
 		private int realLength = 0;
 		public byte[] buffer = new byte [1024];

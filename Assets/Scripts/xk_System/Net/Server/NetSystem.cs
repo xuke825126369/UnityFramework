@@ -6,6 +6,7 @@ using System.Net.Sockets;
 using xk_System.Net;
 using System;
 using xk_System.Net.Server.Event;
+using xk_System.DataStructure;
 
 namespace xk_System.Net.Server
 {
@@ -27,9 +28,9 @@ namespace xk_System.Net.Server
 			mNetSocketSystem.init (ServerAddr, ServerPort);
 		}
 
-		public void sendNetData (int socketId, int command, byte[] buffer)
+		public void sendNetData (int clientId, int command, byte[] buffer)
 		{
-			mNetSendSystem.SendNetData (socketId, command, buffer);  
+			mNetSendSystem.SendNetData (clientId, command, buffer);  
 		}
 
 		public void handleNetData ()
@@ -68,7 +69,7 @@ namespace xk_System.Net.Server
 
 		public abstract void init (string ServerAddr, int ServerPort);
 
-		public abstract void SendNetStream (int socketId,byte[] msg);
+		public abstract void SendNetStream (int clientId,byte[] msg);
 
 		public bool IsPrepare ()
 		{
@@ -104,10 +105,10 @@ namespace xk_System.Net.Server
 			mCanUsePackagePool = new ObjectPool<NetPackage> ();
 		}
 
-		public virtual void SendNetData (int socketId,int command,byte[] buffer)
+		public virtual void SendNetData (int clientId, int command, byte[] buffer)
 		{
 			NetPackage mPackage = mCanUsePackagePool.Pop ();
-			mPackage.socketId = socketId;
+			mPackage.clientId = clientId;
 			mPackage.command = command;
 			mPackage.buffer = buffer;
 			mNeedHandleNetPackageQueue.Enqueue (mPackage);
@@ -124,15 +125,14 @@ namespace xk_System.Net.Server
 			}
 
 			if (handlePackageCount > 3) {
-				//DebugSystem.LogError ("服务器 发送包的数量： " + handlePackageCount);
+				DebugSystem.LogError ("服务器 发送包的数量： " + handlePackageCount);
 			}
 		}
 
 		public void HandleNetStream (NetPackage mPackage)
 		{
-			byte[] stream = NetStream.GetOutStream (mPackage.command, mPackage.buffer);
-			stream = NetEncryptionStream.Encryption (stream);
-			mSocketSystem.SendNetStream (mPackage.socketId, stream);
+			byte[] stream = NetEncryptionStream.Encryption (mPackage);
+			mSocketSystem.SendNetStream (mPackage.clientId, stream);
 		}
 
 		public virtual void Destory ()
@@ -145,8 +145,7 @@ namespace xk_System.Net.Server
 	//begin~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~网络接受系统~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	public class NetReceiveSystem
 	{
-		protected Dictionary<int,List<byte>> mReceivedStreamDic;
-
+		protected Dictionary<int,CircularBuffer<byte>> mReceivedStreamDic;
 		protected Queue<NetPackage> mReceiveStreamQueue;
 		protected ObjectPool<NetPackage> mReceivePackagePool;
 
@@ -157,7 +156,7 @@ namespace xk_System.Net.Server
 
 		public NetReceiveSystem (SocketSystem socketSys)
 		{
-			mReceivedStreamDic = new Dictionary<int, List<byte>> ();
+			mReceivedStreamDic = new Dictionary<int, CircularBuffer<byte>> ();
 			mReceiveStreamQueue = new Queue<NetPackage> ();
 			mReceivePackagePool = new ObjectPool<NetPackage> ();
 			mNeedHandlePackageQueue = new Queue<NetPackage> ();
@@ -202,13 +201,14 @@ namespace xk_System.Net.Server
 			}
 		}
 
-		public void ReceiveSocketStream (int socketId, byte[] buffer)
+		public void ReceiveSocketStream (int clientId, byte[] buffer)
 		{
 			NetPackage mPackage = null;
 			lock (mReceivePackagePool) {
 				mPackage = mReceivePackagePool.Pop ();
-				mPackage.socketId = socketId;
+				mPackage.clientId = clientId;
 				mPackage.buffer = buffer;
+				mPackage.Length = buffer.Length;
 			}
 
 			lock (mReceiveStreamQueue) {
@@ -223,18 +223,18 @@ namespace xk_System.Net.Server
 				lock (mReceivePackagePool) {
 					mPackage = mReceiveStreamQueue.Dequeue ();
 				}
-				if (!mReceivedStreamDic.ContainsKey (mPackage.socketId)) {
-					mReceivedStreamDic [mPackage.socketId] = new List<byte> ();
+				if (!mReceivedStreamDic.ContainsKey (mPackage.clientId)) {
+					mReceivedStreamDic [mPackage.clientId] = new CircularBuffer<byte> (1024);
 				}
-				mReceivedStreamDic [mPackage.socketId].AddRange (mPackage.buffer);
-				int socketId = mPackage.socketId;
+				mReceivedStreamDic [mPackage.clientId].WriteFrom (mPackage.buffer,0,mPackage.buffer.Length);
+				int clientId = mPackage.clientId;
 				lock (mReceivePackagePool) {
 					mReceivePackagePool.recycle (mPackage);
 				}
 				mPackage = null;
 
 				while (true) {
-					mPackage = GetPackage (socketId);
+					mPackage = GetPackage (clientId);
 					if (mPackage != null) {
 						mNeedHandlePackageQueue.Enqueue (mPackage);
 					} else {
@@ -244,16 +244,16 @@ namespace xk_System.Net.Server
 			}
 		}
 
-		private NetPackage GetPackage (int socketId)
+		private NetPackage GetPackage (int clientId)
 		{
-			List<byte> msg = mReceivedStreamDic [socketId];
+			CircularBuffer<byte> msg = mReceivedStreamDic [clientId];
 			NetPackage mPackage = mCanUsePackageQueue.Pop ();
-			//var bSuccess = NetEncryptionStream.DeEncryption (msg, mPackage);
-			//if (bSuccess == false) {
-			//	return null;
-			//}
+			var bSuccess = NetEncryptionStream.DeEncryption (msg, mPackage);
+			if (bSuccess == false) {
+				return null;
+			}
 
-			mPackage.socketId = socketId;
+			mPackage.clientId = clientId;
 			return mPackage;
 		}
 

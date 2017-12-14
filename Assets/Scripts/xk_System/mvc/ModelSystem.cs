@@ -155,17 +155,17 @@ namespace xk_System.Model
     {
 		protected void addNetListenFun(ProtoCommand command, Action<NetPackage> mFun)
         {
-			NetManager.Instance.addNetListenFun((int)command, mFun);
+			//NetManager.Instance.addNetListenFun((int)command, mFun);
         }
 
 		protected void removeNetListenFun(ProtoCommand command, Action<NetPackage> mFun)
         {
-			NetManager.Instance.removeNetListenFun((int)command, mFun);
+			//NetManager.Instance.removeNetListenFun((int)command, mFun);
         }
 
         protected void sendNetData(ProtoCommand command, object data)
         {
-			NetManager.Instance.sendNetData((int)command, data);
+			//NetManager.Instance.sendNetData((int)command, data);
         }    
 	}
 

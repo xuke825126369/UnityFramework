@@ -7,18 +7,21 @@ using xk_System.Net.Client.Event;
 
 namespace xk_System.Net.Client
 {
-	public class NetManager : SingleTonMonoBehaviour<NetManager>
+	public class NetClient: MonoBehaviour
 	{
-		public string ip = "192.168.1.109";
+		public string ip = "192.168.122.24";
 		public int port = 7878;
 
 		NetSystem mNetSystem = null;
 		Protobuf3Event mNetEventManager = null;
+
+		public bool bInitFinish = false;
 		private void Start()
 		{
 			mNetSystem = new NetSystem ();
 			mNetEventManager = new Protobuf3Event (mNetSystem);
-			mNetSystem.initNet(ip, port);
+			mNetSystem.initNet (ip, port);
+			bInitFinish = true;
 		}
 
 		private void Update()
