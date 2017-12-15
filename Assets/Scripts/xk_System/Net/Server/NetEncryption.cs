@@ -9,9 +9,6 @@ using xk_System.DataStructure;
 
 namespace xk_System.Net.Server
 {
-	/// <summary>
-	/// 把数据拿出来
-	/// </summary>
 	public static class NetEncryptionStream
 	{
 		public const int stream_head_Length = 2;
@@ -32,16 +29,19 @@ namespace xk_System.Net.Server
 		public static bool DeEncryption (CircularBuffer<byte> data, NetPackage mPackage)
 		{
 			if (data.Length - 8 <= 0) {
+				DebugSystem.LogError ("Server 系统池解析错误： 0000000000000000");
 				return false;
 			}
 
 			int readLength = data.CopyTo (2, msg_BodyLength_Array, 0, 4);
 			if (readLength < 4) {
+				DebugSystem.LogError ("Server 系统池解析错误： 1111111111111111");
 				return false;
 			}
 
 			BodyLength = msg_BodyLength_Array [0] | msg_BodyLength_Array [1] << 8 | msg_BodyLength_Array [2] << 16 | msg_BodyLength_Array [3] << 24;
 			if (BodyLength <= 0 || BodyLength + 8 > data.Length) {
+				DebugSystem.LogError ("Server 系统池解析错误： 2222222222222222222：" + BodyLength);
 				return false;
 			}
 
@@ -49,10 +49,26 @@ namespace xk_System.Net.Server
 				BodyData = new byte[BodyLength];
 			}
 
-			data.WriteTo (BodyData, 0, BodyLength);
+			data.WriteTo (0, BodyData, 0, BodyLength);
 			data.ClearBuffer (BodyLength + 8);
 
-			GetInputStream (BodyData, out mPackage.command, out mPackage.buffer);
+			DebugSystem.LogError ("Server 系统池解析成功: " + BodyLength);
+
+			byte[] aesStream = new byte[BodyLength];
+			Array.Copy (BodyData, 0, aesStream, 0, BodyLength);
+			byte[] msg = Encryption_AES.Decryption (aesStream, Encrytption_Key, Encrytption_iv);
+
+			int buffer_Length = msg.Length - msg_head_command_length;
+			if (buffer_Length <= 0) {
+				return false;
+			}
+
+			byte[] byte_head_command = new byte[msg_head_command_length];
+			Array.Copy (msg, 0, byte_head_command, 0, msg_head_command_length);
+			mPackage.command = byte_head_command [0] | byte_head_command [1] << 8 | byte_head_command [2] << 16 | byte_head_command [3] << 24;
+
+			mPackage.Length = buffer_Length;
+			Array.Copy (msg, msg_head_command_length, mPackage.buffer, 0, buffer_Length);
 			return true;
 		}
 
@@ -90,25 +106,6 @@ namespace xk_System.Net.Server
 			Array.Copy (mStreamTailArray, 0, Encryption_data, msg_head_BodyLength + stream_head_Length + buffer_Length, stream_tail_Length);
 
 			return Encryption_data;
-		}
-
-		public static void GetInputStream (byte[] data, out int command, out byte[] buffer)
-		{
-			byte[] msg = Encryption_AES.Decryption (data, Encrytption_Key, Encrytption_iv);
-
-			int buffer_Length = msg.Length - msg_head_command_length;
-			if (buffer_Length <= 0) {
-				command = -1;
-				buffer = new byte[msg.Length];
-				DebugSystem.LogError ("接受数据异常：" + msg.Length);
-			}
-
-			byte[] byte_head_command = new byte[msg_head_command_length];
-			Array.Copy (msg, 0, byte_head_command, 0, msg_head_command_length);
-			command = byte_head_command [0] | byte_head_command [1] << 8 | byte_head_command [2] << 16 | byte_head_command [3] << 24;
-
-			buffer = new byte[buffer_Length];
-			Array.Copy (msg, msg_head_command_length, buffer, 0, buffer_Length);
 		}
 	}
 }

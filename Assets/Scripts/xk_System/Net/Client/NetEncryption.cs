@@ -49,7 +49,8 @@ namespace xk_System.Net.Client
 				BodyData = new byte[BodyLength];
 			}
 
-			data.WriteTo (BodyData, 0, BodyLength);
+
+			data.WriteTo (0, BodyData, 0, BodyLength);
 			data.ClearBuffer (BodyLength + 8);
 
 			GetInputStream (BodyData, out mPackage.command, out mPackage.buffer);

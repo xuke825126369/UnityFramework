@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 using xk_System.Debug;
+using System.Text;
 
 namespace xk_System.DataStructure
 {
@@ -13,13 +14,13 @@ namespace xk_System.DataStructure
 	{
 		private T[] Buffer = null;
 		private int dataLength;
-		private int nBeginIndex;
-		private int nEndIndex;
+		private int nBeginReadIndex;
+		private int nBeginWriteIndex;
 
 		public CircularBuffer (int bufferSize)
 		{
-			nBeginIndex = -1;
-			nEndIndex = -1;
+			nBeginReadIndex = 0;
+			nBeginWriteIndex = 0;
 			dataLength = 0;
 			Buffer = new T[bufferSize];
 		}
@@ -27,8 +28,8 @@ namespace xk_System.DataStructure
 		public void reset()
 		{
 			dataLength = 0;
-			nBeginIndex = -1;
-			nEndIndex = -1;
+			nBeginReadIndex = 0;
+			nBeginWriteIndex = 0;
 		}
 
 		public void release()
@@ -56,10 +57,10 @@ namespace xk_System.DataStructure
 				if (index >= this.Length) {
 					throw new Exception ("环形缓冲区异常，索引溢出");
 				}
-				if (nBeginIndex + index < this.Capacity) {
-					return this.Buffer [nBeginIndex + index];
+				if (nBeginReadIndex + index < this.Capacity) {
+					return this.Buffer [nBeginReadIndex + index];
 				} else {
-					return this.Buffer [nBeginIndex + index - this.Capacity];
+					return this.Buffer [nBeginReadIndex + index - this.Capacity];
 				}
 			}
 		}
@@ -74,21 +75,23 @@ namespace xk_System.DataStructure
 				return;
 			}
 
-			if (this.Buffer.Length - dataLength >= count) {                          
-				if (nEndIndex + count < this.Capacity) {        
-					Array.Copy (writeBuffer, offset, this.Buffer, nEndIndex + 1, count);
-					nEndIndex += count;
-				} else {    
-					int Length1 = this.Buffer.Length - nEndIndex - 1;
+			if (this.Capacity - this.Length >= count) {                          
+				if (nBeginWriteIndex + count <= this.Capacity) {        
+					Array.Copy (writeBuffer, offset, this.Buffer, nBeginWriteIndex, count);
+				} else {
+					int Length1 = this.Buffer.Length - nBeginWriteIndex;
 					int Length2 = count - Length1;
-					Array.Copy (writeBuffer, offset, this.Buffer, nEndIndex + 1, Length1);
+					Array.Copy (writeBuffer, offset, this.Buffer, nBeginWriteIndex, Length1);
 					Array.Copy (writeBuffer, offset + Length1, this.Buffer, 0, Length2);
-					nEndIndex = Length2 - 1;
 				}
 
 				dataLength += count;
+				nBeginWriteIndex += count;
+				if (nBeginWriteIndex >= this.Capacity) {
+					nBeginWriteIndex -= this.Capacity;
+				}
 			} else {
-				throw new Exception ("环形缓冲区 溢出");
+				throw new Exception ("环形缓冲区 写 溢出");
 			}
 		}
 
@@ -102,70 +105,41 @@ namespace xk_System.DataStructure
 				return;
 			}
 
-			int initIndex1 = -1;
-			int initIndex2 = -1;
-			if (this.Buffer.Length - dataLength >= count) {                          
-				if (nEndIndex + count < this.Capacity) {
-					initIndex1 = nEndIndex + 1;
+			if (this.Capacity - this.Length >= count) {                          
+				if (nBeginWriteIndex + count <= this.Capacity) {
 					for (int i = 0; i < count; i++) {
-						this.Buffer [initIndex1 + i] = writeBuffer [i];
+						this.Buffer [nBeginWriteIndex + i] = writeBuffer [i];
 					}
-					nEndIndex += count;
-					writeBuffer.nBeginIndex += count;
 				} else {    
-					int Length1 = this.Capacity - nEndIndex - 1;
+					int Length1 = this.Capacity - nBeginWriteIndex;
 					int Length2 = count - Length1;
 
-					initIndex1 = nEndIndex + 1;
 					for (int i = 0; i < Length1; i++) {
-						this.Buffer [nEndIndex + 1 + i] = writeBuffer [i];
+						this.Buffer [nBeginWriteIndex + i] = writeBuffer [i];
 					}
-
-					initIndex2 = Length1;
+						
 					for (int i = 0; i < Length2; i++) {
-						this.Buffer [i] = writeBuffer [initIndex2 + i];
-					}
-
-					nEndIndex = Length2 - 1;
-					writeBuffer.nBeginIndex += count;
-					if (writeBuffer.nBeginIndex >= writeBuffer.Capacity) {
-						writeBuffer.nBeginIndex -= writeBuffer.Capacity;
+						this.Buffer [i] = writeBuffer [Length1 + i];
 					}
 				}
 
 				dataLength += count;
-				writeBuffer.dataLength -= count;
+				nBeginWriteIndex += count;
+				if (nBeginWriteIndex >= this.Capacity) {
+					nBeginWriteIndex -= this.Capacity;
+				}
+
+				writeBuffer.ClearBuffer (count);
 			} else {
-				throw new Exception ("环形缓冲区 溢出");
+				throw new Exception ("环形缓冲区 写 溢出");
 			}
 		}
 
-		public int WriteTo (T[] readBuffer, int offset, int count)
+		public int WriteTo (int index, T[] readBuffer, int offset, int count)
 		{
-			if (count > this.Length) {
-				count = this.Length;
-			}
-
-			if (count <= 0) {
-				return 0;
-			}
-
-			if (nBeginIndex + count < this.Capacity) {
-				Array.Copy (this.Buffer, nBeginIndex, readBuffer, offset, count);
-				nBeginIndex += count;
-			} else {
-				int Length1 = this.Capacity - nBeginIndex - 1;
-				int Length2 = count - Length1;
-				if (Length1 > 0) {
-					Array.Copy (this.Buffer, nBeginIndex, readBuffer, offset, Length1);
-				}
-				Array.Copy (this.Buffer, 0, readBuffer, offset + Length1, Length2);
-
-				nBeginIndex = Length2;
-			}
-
-			dataLength -= count;
-			return count;
+			int readCount = CopyTo (index, readBuffer, offset, count);
+			this.ClearBuffer (index + count);
+			return readCount;
 		}
 
 		public int CopyTo(int index, T[] readBuffer, int offset, int copyLength)
@@ -178,12 +152,12 @@ namespace xk_System.DataStructure
 				return 0;
 			}
 
-			int tempBeginIndex = nBeginIndex + index;
+			int tempBeginIndex = nBeginReadIndex + index;
 
-			if (tempBeginIndex + copyLength < this.Capacity) {
+			if (tempBeginIndex + copyLength <= this.Capacity) {
 				Array.Copy (this.Buffer, tempBeginIndex, readBuffer, offset, copyLength);
 			} else {
-				int Length1 = this.Capacity - tempBeginIndex - 1;
+				int Length1 = this.Capacity - tempBeginIndex;
 				int Length2 = copyLength - Length1;
 				if (Length1 > 0) {
 					Array.Copy (this.Buffer, tempBeginIndex, readBuffer, offset, Length1);
@@ -198,14 +172,26 @@ namespace xk_System.DataStructure
 			if (readLength >= this.Length) {
 				this.reset ();
 			} else {
-				if (nBeginIndex + readLength < this.Capacity) {
-					nBeginIndex += readLength;
-				} else {
-					nBeginIndex = readLength - (this.Capacity - nBeginIndex);
-				}
-
 				dataLength -= readLength;
+				nBeginReadIndex += readLength;
+				if (nBeginReadIndex >= this.Capacity) {
+					nBeginReadIndex -= this.Capacity;
+				}
 			}
+		}
+
+		public void Print()
+		{
+			StringBuilder aaStr = new StringBuilder ();
+			aaStr.Append ("<color=red>");
+			aaStr.Append (this.GetType ().Name + ": ");
+			aaStr.Append ("</color>");
+			aaStr.Append ("<color=yellow>");
+			for (int i = 0; i < Length; i++) {
+				aaStr.Append (this [i] + " | ");
+			}
+			aaStr.Append ("</color>");
+			DebugSystem.Log (aaStr);
 		}
 	}
 }

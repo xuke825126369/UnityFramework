@@ -41,14 +41,15 @@ public class TCPServerTest : MonoBehaviour
 
 	private void Receive_ServerSenddata(NetPackage package)
 	{
-		csChatData mServerSendData = Protocol3Utility.getData<csChatData> (package.buffer,0,package.Length);
-
-		//Debug.Log ("Server接受数量: " + ++nReceiveCount);
+		csChatData mServerSendData = Protocol3Utility.getData<csChatData> (package.buffer, 0, package.Length);
+		Debug.Log ("Server接受数量: " + ++nReceiveCount);
 
 		scChatData mSenddata = new scChatData ();
 		mSenddata.ChatInfo = new struct_ChatInfo ();
 		mSenddata.ChatInfo.ChannelId = mServerSendData.ChannelId;
-			
 		mNetSystem.sendNetData (package.clientId, (int)ProtoCommand.ProtoChat, mSenddata);
 	}
+
 }
+
+

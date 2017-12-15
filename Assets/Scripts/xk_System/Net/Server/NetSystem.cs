@@ -214,6 +214,8 @@ namespace xk_System.Net.Server
 			lock (mReceiveStreamQueue) {
 				mReceiveStreamQueue.Enqueue (mPackage);
 			}
+
+			//DebugSystem.LogError ("Server 收到网络流：" + buffer.Length);
 		}
 
 		protected void HandleSocketStream ()
@@ -226,7 +228,7 @@ namespace xk_System.Net.Server
 				if (!mReceivedStreamDic.ContainsKey (mPackage.clientId)) {
 					mReceivedStreamDic [mPackage.clientId] = new CircularBuffer<byte> (1024);
 				}
-				mReceivedStreamDic [mPackage.clientId].WriteFrom (mPackage.buffer,0,mPackage.buffer.Length);
+				mReceivedStreamDic [mPackage.clientId].WriteFrom (mPackage.buffer, 0, mPackage.buffer.Length);
 				int clientId = mPackage.clientId;
 				lock (mReceivePackagePool) {
 					mReceivePackagePool.recycle (mPackage);
@@ -247,12 +249,17 @@ namespace xk_System.Net.Server
 		private NetPackage GetPackage (int clientId)
 		{
 			CircularBuffer<byte> msg = mReceivedStreamDic [clientId];
+			if (msg.Length <= 0) {
+				return null;
+			}
+
 			NetPackage mPackage = mCanUsePackageQueue.Pop ();
 			var bSuccess = NetEncryptionStream.DeEncryption (msg, mPackage);
 			if (bSuccess == false) {
 				return null;
 			}
 
+			DebugSystem.LogError ("解析成功");
 			mPackage.clientId = clientId;
 			return mPackage;
 		}

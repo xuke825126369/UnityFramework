@@ -98,6 +98,7 @@ namespace xk_System.Net.Client
 	//begin~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~网络发送系统~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	public class  NetSendSystem
 	{
+		protected ObjectPool<NetPackage> mCanUseNetPackageQueue;
 		protected Queue<NetPackage> mNeedHandleNetPackageQueue;
 		protected SocketSystem mSocketSystem;
 
@@ -105,14 +106,15 @@ namespace xk_System.Net.Client
 		{
 			this.mSocketSystem = socketSys;
 			mNeedHandleNetPackageQueue = new Queue<NetPackage> ();
+			mCanUseNetPackageQueue = new ObjectPool<NetPackage>();
 		}
 
 		public virtual void SendNetData (int id, byte[] buffer)
 		{
-			NetPackage mNetPackage = new NetPackage ();
+			NetPackage mNetPackage = mCanUseNetPackageQueue.Pop ();
 			mNetPackage.command = id;
 			mNetPackage.buffer = buffer;
-			HandleNetStream (mNetPackage);
+			mNeedHandleNetPackageQueue.Enqueue (mNetPackage);
 		}
 
 		public void HandleNetPackage ()
@@ -121,15 +123,16 @@ namespace xk_System.Net.Client
 			while (mNeedHandleNetPackageQueue.Count > 0) {
 				var mPackage = mNeedHandleNetPackageQueue.Dequeue ();
 				HandleNetStream (mPackage);
+				mCanUseNetPackageQueue.recycle (mPackage);
 				handlePackageCount++;
 
-				if (handlePackageCount > 3) {
-					//DebugSystem.LogError ("客户端 发送包的数量： " + handlePackageCount);
+				if (handlePackageCount > 0) {
+					DebugSystem.LogError ("客户端 发送包的数量： " + handlePackageCount);
 				}
 			}
 		}
 
-		public void HandleNetStream (NetPackage mPackage)
+		private void HandleNetStream (NetPackage mPackage)
 		{
 			byte[] stream = NetEncryptionStream.Encryption (mPackage);
 			mSocketSystem.SendNetStream (stream);
