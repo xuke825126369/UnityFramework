@@ -37,19 +37,20 @@ public class TCPServerTest : MonoBehaviour
 		}
 	}
 
-	int nReceiveCount = 0;
+	public static int nReceiveCount = 0;
 
 	private void Receive_ServerSenddata(NetPackage package)
 	{
 		csChatData mServerSendData = Protocol3Utility.getData<csChatData> (package.buffer, 0, package.Length);
-		Debug.Log ("Server接受数量: " + ++nReceiveCount);
 
 		scChatData mSenddata = new scChatData ();
 		mSenddata.ChatInfo = new struct_ChatInfo ();
 		mSenddata.ChatInfo.ChannelId = mServerSendData.ChannelId;
 		mNetSystem.sendNetData (package.clientId, (int)ProtoCommand.ProtoChat, mSenddata);
-	}
 
+		nReceiveCount++;
+		//Debug.Log ("Server接受数量: " + mServerSendData.ChannelId + "| " + ++nReceiveCount);
+	}
 }
 
 

@@ -33,8 +33,9 @@ namespace xk_System.Net.Client.Event
 		{
 			if (!mLogicFuncDic.ContainsKey (command)) {
 				mLogicFuncDic [command] = func;
+			} else {
+				mLogicFuncDic [command] += func;
 			}
-			mLogicFuncDic [command] += func;
 		}
 
 		public void removeNetListenFun(int command,Action<NetPackage> func)

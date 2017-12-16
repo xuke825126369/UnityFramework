@@ -43,7 +43,7 @@ namespace xk_System.Net.Server
 					DebugSystem.Log("远程IP: "+remoteIpstr);
 					if (length > 0)
 					{
-						mNetReceiveSystem.ReceiveSocketStream(1,data);
+						mNetReceiveSystem.ReceiveSocketStream(1,data,0,data.Length);
 					}
 				}catch(Exception e)
 				{

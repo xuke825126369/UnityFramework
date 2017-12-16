@@ -19,7 +19,7 @@ namespace xk_System.Net.Client
 
 		public NetSystem ()
 		{
-			mNetSocketSystem = new SocketSystem_1 ();
+			mNetSocketSystem = new SocketSystem_Select ();
 			mNetSendSystem = new NetSendSystem (mNetSocketSystem);
 			mNetReceiveSystem = new NetReceiveSystem (mNetSocketSystem);
 		}
@@ -61,37 +61,75 @@ namespace xk_System.Net.Client
 
 	public abstract class SocketSystem
 	{
-		protected const int receiveInfoPoolCapacity = 8192;
-		protected const int sendInfoPoolCapacity = 8192;
-		protected const int receiveTimeOut = 10000;
-		protected const int sendTimeOut = 5000;
-		protected NetReceiveSystem mNetReceiveSystem;
+		//protected const int receiveInfoPoolCapacity = 8192;
+		//protected const int sendInfoPoolCapacity = 8192;
+		//protected const int receiveTimeOut = 10000;
+		//protected const int sendTimeOut = 5000;
 
-		protected Socket mSocket;
+		protected const int receiveInfoPoolCapacity = 10;
+		protected const int sendInfoPoolCapacity = 10;
+		protected const int receiveTimeOut = 5000;
+		protected const int sendTimeOut = 5000;
 
 		public abstract void init (string ServerAddr, int ServerPort);
 
-		public abstract void SendNetStream (byte[] msg);
+		public abstract void SendNetStream (byte[] msg, int offset, int Length);
 
 		public abstract void Update ();
 
-		public bool IsPrepare ()
-		{
-			return mSocket != null;
-		}
+		public abstract void CloseNet ();
 
-		public void initSystem (NetReceiveSystem mNetReceiveSystem)
+		protected NetSendSystem mNetSendSystem;
+		protected NetReceiveSystem mNetReceiveSystem;
+
+		public void initReceieSystem (NetReceiveSystem mNetReceiveSystem)
 		{
 			this.mNetReceiveSystem = mNetReceiveSystem;
 		}
 
-		public virtual void CloseNet ()
+		public void initSendSystem (NetSendSystem mNetSendSystem)
 		{
-			if (mSocket != null) {
-				mSocket.Close ();
-				mSocket = null;
-			}
-			DebugSystem.Log ("关闭客户端TCP连接");
+			this.mNetSendSystem = mNetSendSystem;
+		}
+
+		public virtual void ConfigureSocket (Socket mSocket)
+		{
+			mSocket.ExclusiveAddressUse = true;
+			mSocket.LingerState = new LingerOption (true, 10);
+			mSocket.NoDelay = false;
+
+			mSocket.ReceiveBufferSize = 8192;
+			mSocket.ReceiveTimeout = 1000;
+			mSocket.SendBufferSize = 8192;
+			mSocket.SendTimeout = 1000;
+
+			mSocket.Blocking = false;
+			mSocket.Ttl = 42;
+		}
+
+		public void PrintSocketConfigInfo (Socket mSocket)
+		{
+			DebugSystem.Log ("------------------- Socket Config ------------------------ ");
+			DebugSystem.Log ("ExclusiveAddressUse :" + mSocket.ExclusiveAddressUse);
+			DebugSystem.Log ("LingerState: " + mSocket.LingerState.Enabled + " | " + mSocket.LingerState.LingerTime);
+			DebugSystem.Log ("Ttl: " + mSocket.Ttl);
+			DebugSystem.Log ("NoDelay: " + mSocket.NoDelay);
+
+			DebugSystem.Log ("Block: " + mSocket.Blocking);
+			DebugSystem.Log ("ReceiveTimeout: " + mSocket.ReceiveTimeout);
+			DebugSystem.Log ("SendTimeout: " + mSocket.SendTimeout);
+
+			DebugSystem.Log ("ReceiveBufferSize: " + mSocket.ReceiveBufferSize);
+			DebugSystem.Log ("SendBufferSize: " + mSocket.SendBufferSize);
+			DebugSystem.Log ("---------------- Finish -------------------");
+		}
+
+		public void PrintSocketState(Socket mSocket)
+		{
+			DebugSystem.Log ("------------------- Socket State ------------------------ ");
+			DebugSystem.Log ("IsBound: " + mSocket.IsBound);
+			DebugSystem.Log ("Connected: " + mSocket.Connected);
+			DebugSystem.Log ("---------------- Finish -------------------");
 		}
 	}
 
@@ -105,8 +143,9 @@ namespace xk_System.Net.Client
 		public NetSendSystem (SocketSystem socketSys)
 		{
 			this.mSocketSystem = socketSys;
+			this.mSocketSystem.initSendSystem (this);
 			mNeedHandleNetPackageQueue = new Queue<NetPackage> ();
-			mCanUseNetPackageQueue = new ObjectPool<NetPackage>();
+			mCanUseNetPackageQueue = new ObjectPool<NetPackage> ();
 		}
 
 		public virtual void SendNetData (int id, byte[] buffer)
@@ -114,6 +153,7 @@ namespace xk_System.Net.Client
 			NetPackage mNetPackage = mCanUseNetPackageQueue.Pop ();
 			mNetPackage.command = id;
 			mNetPackage.buffer = buffer;
+			mNetPackage.Length = buffer.Length;
 			mNeedHandleNetPackageQueue.Enqueue (mNetPackage);
 		}
 
@@ -125,17 +165,17 @@ namespace xk_System.Net.Client
 				HandleNetStream (mPackage);
 				mCanUseNetPackageQueue.recycle (mPackage);
 				handlePackageCount++;
+			}
 
-				if (handlePackageCount > 0) {
-					DebugSystem.LogError ("客户端 发送包的数量： " + handlePackageCount);
-				}
+			if (handlePackageCount > 5) {
+				//DebugSystem.Log ("客户端 发送包的数量： " + handlePackageCount);
 			}
 		}
 
 		private void HandleNetStream (NetPackage mPackage)
 		{
 			byte[] stream = NetEncryptionStream.Encryption (mPackage);
-			mSocketSystem.SendNetStream (stream);
+			mSocketSystem.SendNetStream (stream, 0, stream.Length);
 		}
 
 		public virtual void Destory ()
@@ -159,14 +199,14 @@ namespace xk_System.Net.Client
 			mReceiveStreamList = new CircularBuffer<byte> (1024);
 			mParseStreamList = new CircularBuffer<byte> (1024);
 			mReceiveNetPackage = new NetPackage ();
-			socketSys.initSystem (this);
+			socketSys.initReceieSystem (this);
 		}
 
 		public void addListenFun (Action<NetPackage> fun)
 		{
 			if (mReceiveFun != null) {
 				if (CheckDataBindFunIsExist (fun)) {
-					DebugSystem.LogError ("添加监听方法重复");
+					DebugSystem.Log ("添加监听方法重复");
 					return;
 				}
 				mReceiveFun += fun;
@@ -185,10 +225,10 @@ namespace xk_System.Net.Client
 			mReceiveFun -= fun;
 		}
 
-		public void ReceiveSocketStream (byte[] data)
+		public void ReceiveSocketStream (byte[] data, int index, int Length)
 		{
 			lock (mReceiveStreamList) {
-				mReceiveStreamList.WriteFrom (data, 0, data.Length);
+				mReceiveStreamList.WriteFrom (data, index, Length);
 			}
 		}
 
@@ -202,13 +242,13 @@ namespace xk_System.Net.Client
 			while (GetPackage ()) {
 				PackageCout++;
 
-				if (PackageCout > 1000) {
+				if (PackageCout > 100) {
 					break;
 				}
 			}
 
-			if (PackageCout > 3) {
-				DebugSystem.LogError ("客户端 解析包的数量： " + PackageCout);
+			if (PackageCout > 5) {
+				DebugSystem.Log ("客户端 解析包的数量： " + PackageCout);
 			}
 		}
 

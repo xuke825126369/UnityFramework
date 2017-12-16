@@ -4,6 +4,7 @@ using UnityEngine;
 using System;
 using xk_System.Net.Protocol;
 using Google.Protobuf;
+using xk_System.Debug;
 
 namespace xk_System.Net.Server.Event
 {
@@ -14,7 +15,7 @@ namespace xk_System.Net.Server.Event
 		void removeNetListenFun (Action<NetPackage> fun);
 	}
 
-	public class Protobuf3Event : MonoBehaviour
+	public class Protobuf3Event
 	{
 		private Dictionary<int, Action<NetPackage>> mLogicFuncDic = new Dictionary<int, Action<NetPackage>>();
 		private NetEventInterface mNetEventInterface;
@@ -39,8 +40,9 @@ namespace xk_System.Net.Server.Event
 		{
 			if (!mLogicFuncDic.ContainsKey (command)) {
 				mLogicFuncDic [command] = func;
+			} else {
+				mLogicFuncDic [command] += func;
 			}
-			mLogicFuncDic [command] += func;
 		}
 
 		public void removeNetListenFun(int command,Action<NetPackage> func)

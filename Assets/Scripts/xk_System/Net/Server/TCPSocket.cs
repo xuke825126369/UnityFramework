@@ -157,11 +157,8 @@ namespace xk_System.Net.Server
 				Interlocked.Add (ref m_totalBytesRead, e.BytesTransferred);
 				//DebugSystem.Log ("The server has read a total bytes： " + m_totalBytesRead + " | " + e.BytesTransferred);
 
-				byte[] mReceive = new byte[e.BytesTransferred];
-				Array.Copy (e.Buffer, 0, mReceive, 0, mReceive.Length);
-
 				var client = e.UserToken as Client;
-				mNetReceiveSystem.ReceiveSocketStream (client.getId (), mReceive);
+				mNetReceiveSystem.ReceiveSocketStream (client.getId (), e.Buffer, 0, e.BytesTransferred);
 
 				Socket socket = client.getSocket ();
 				if (!socket.ReceiveAsync (e)) {
@@ -191,7 +188,7 @@ namespace xk_System.Net.Server
 		{
 			if (e.SocketError == SocketError.Success)
 			{
-				DebugSystem.Log ("Server 发送成功");
+				//DebugSystem.Log ("Server 发送成功");
 			}
 			else
 			{

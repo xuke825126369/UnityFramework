@@ -10,27 +10,26 @@ using System.Net.Sockets;
 
 namespace xk_System.Net.Client.TCP
 {
-	//Select 
-	public class SocketSystem_1: SocketSystem
+	//Select
+	public class SocketSystem_Select: SocketSystem
 	{
+		private Socket mSocket;
+
 		private ArrayList m_ReadFD = new ArrayList ();
 		private ArrayList m_WriteFD = new ArrayList ();
 		private ArrayList m_ExceptFD = new ArrayList ();
 
 		byte[] mReceiveStream = new byte[receiveInfoPoolCapacity];
-		List<byte> mStoreByteList = new List<byte> ();
+		byte[] mSendStream = new byte[sendInfoPoolCapacity];
+
 		public override void init (string ServerAddr, int ServerPort)
 		{
 			try {
 				IPEndPoint mIPEndPoint = new IPEndPoint (IPAddress.Parse (ServerAddr), ServerPort);
 				mSocket = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 				mSocket.Connect (mIPEndPoint);
-				mSocket.ReceiveTimeout = receiveTimeOut;
-				mSocket.SendTimeout = sendTimeOut;
-				mSocket.ReceiveBufferSize = receiveInfoPoolCapacity;
-				mSocket.SendBufferSize = sendInfoPoolCapacity;
-				mSocket.Blocking = false;
-				DebugSystem.Log("Client Net Init Success： IP: " + ServerAddr + " | Port: " + ServerPort);
+				ConfigureSocket (mSocket);
+				DebugSystem.Log ("Client Net Init Success： IP: " + ServerAddr + " | Port: " + ServerPort);
 			} catch (SocketException e) {
 				DebugSystem.LogError (e.SocketErrorCode + " | " + e.Message);
 			} catch (Exception e) {
@@ -38,7 +37,27 @@ namespace xk_System.Net.Client.TCP
 			}
 		}
 
-		private bool Select ()
+		public override void ConfigureSocket (Socket mSocket)
+		{
+			mSocket.ReceiveTimeout = 1000;
+			mSocket.SendTimeout = 1000;
+			mSocket.ReceiveBufferSize = 10;
+			mSocket.SendBufferSize = 10;
+			mSocket.Blocking = false;
+			//PrintSocketConfigInfo (mSocket);
+		}
+			
+		private bool CheckSocketState()
+		{
+			if (mSocket == null) {
+				return false;
+			}
+
+			//PrintSocketState (mSocket);
+			return true;
+		}
+
+		private void Select ()
 		{
 			try {
 				this.m_ReadFD.Clear ();
@@ -50,88 +69,81 @@ namespace xk_System.Net.Client.TCP
 				this.m_ExceptFD.Add (this.mSocket);
 				Socket.Select (this.m_ReadFD, this.m_WriteFD, this.m_ExceptFD, 0);
 
+				if (this.m_ExceptFD.Contains (this.mSocket)) {
+					ProcessExcept ();
+				}
+
+				if (this.m_WriteFD.Contains (this.mSocket)) {
+					ProcessOutput ();
+				}else
+				{
+					DebugSystem.LogError("WriteFD 不可Send");
+				}
+
+				if (this.m_ReadFD.Contains (this.mSocket)) {
+					ProcessInput ();
+				}
 			} catch (SocketException e) {
 				DebugSystem.LogError (e.SocketErrorCode + " | " + e.Message);
-				return false;
 			} catch (Exception e) {
 				DebugSystem.LogError (e.Message);
-				return false;
 			}
-			return true;
 		}
 
-		private bool ProcessOutput ()
+		private void ProcessOutput ()
 		{
-			if (this.m_WriteFD.Contains (this.mSocket)) {
-			}
-			return true;
+			//DebugSystem.Log ("Client Can Write ...");
+			//m
+			//SocketError merror;
+			//mSocket.Send (mSendStream, 0, mSendStream.Length, SocketFlags.None, out merror);
+			//if (merror != SocketError.Success) {
+				//DebugSystem.LogError ("发送失败: " + merror);
+			//}
 		}
 
-		private bool ProcessInput ()
+		private void ProcessInput ()
 		{
-			if (this.m_ReadFD.Contains (this.mSocket)) {
-				SocketError error;
-				int Length = mSocket.Receive (mReceiveStream, 0, mReceiveStream.Length, SocketFlags.None, out error);
-				while (mSocket.Available > 0) {
-					for (int i = 0; i < Length; i++) {
-						mStoreByteList.Add (mReceiveStream [i]);
-					}
-					Length = mSocket.Receive (mReceiveStream, 0, mReceiveStream.Length, SocketFlags.None, out error);
-				}
+			//DebugSystem.Log ("Client Can Read ...");
+			SocketError error;
+			int Length = mSocket.Receive (mReceiveStream, 0, mReceiveStream.Length, SocketFlags.None, out error);
+			mNetReceiveSystem.ReceiveSocketStream (mReceiveStream, 0, Length);
 
-				byte[] mStr = null;
-				if (mStoreByteList.Count > 0) {
-					for (int i = 0; i < Length; i++) {
-						mStoreByteList.Add (mReceiveStream [i]);
-					}
-					mStr = mStoreByteList.ToArray ();
-					mStoreByteList.Clear ();
-				} else {
-					mStr = new byte[Length];
-					Array.Copy (mReceiveStream, mStr, Length);
-				}
-				//string Tag = "收到消息:" + Length;
-				//DebugSystem.LogBitStream (Tag, mStr);
-				mNetReceiveSystem.ReceiveSocketStream (mStr);
+			if (Length != mSocket.ReceiveBufferSize) {
+				Debug.DebugSystem.Log ("Client:ReceiveLength:  " + Length);
 			}
-			return true;
 		}
 
-		private bool ProcessExcept ()
+		private void ProcessExcept ()
 		{
-			if (this.m_ExceptFD.Contains (this.mSocket)) {
-				this.mSocket.Close ();
-				DebugSystem.LogError ("m_Socket.close(), SocketSystem::ProcessExcept");
-				return false;
-			}
-			return true;
+			//DebugSystem.LogError ("Client SocketExcept");
+			this.mSocket.Close ();
+			this.mSocket = null;
 		}
+
 
 		public override void Update ()
 		{
-			try {
-				if ((this.mSocket != null) && this.mSocket.Connected) {
-					if (Select () && ProcessExcept ()) {
-						ProcessInput ();
-					}
-				}
-			} catch (SocketException e) {
-				DebugSystem.LogError ("接受异常： " + e.Message + " | " + e.SocketErrorCode);
-			} catch (Exception e) {
-				DebugSystem.LogError ("接受异常： " + e.Message);
+			if (this.CheckSocketState ()) {
+				this.Select ();
 			}
 		}
 
-		public override void SendNetStream (byte[] msg)
+
+
+		public override void SendNetStream (byte[] msg, int index, int Length)
 		{
 			try {
 				SocketError merror;
-				mSocket.Send (msg, 0, msg.Length, SocketFlags.None, out merror);
-				if (merror == SocketError.Success) {
-					//string Tag = "发送消息:" + msg.Length;
-					//DebugSystem.LogBitStream (Tag, msg);
-				} else {
-					DebugSystem.LogError ("发送失败: " + merror);
+				int sendLength = mSocket.Send (msg, index, Length, SocketFlags.None, out merror);
+				if (sendLength != Length) {
+					//DebugSystem.Log ("Client:SendLength:  " + sendLength + " | " + Length);
+				}
+				if (merror != SocketError.Success) {
+					if (mSocket.Blocking == false && merror == SocketError.WouldBlock) {
+						SendNetStream (msg, index, Length);
+					} else {
+						DebugSystem.LogError ("发送失败: " + merror);
+					}
 				}
 			} catch (SocketException e) {
 				DebugSystem.LogError (e.SocketErrorCode + " | " + e.Message);
@@ -142,15 +154,19 @@ namespace xk_System.Net.Client.TCP
 
 		public override void CloseNet ()
 		{
-			base.CloseNet ();
+			if (mSocket != null) {
+				mSocket.Close ();
+				mSocket = null;
+			}
 		}
 	}
 
-	//同步非阻塞
-	public class SocketSystem_2 : SocketSystem
+	//Pool
+	public class SocketSystem_Poll : SocketSystem
 	{
 		bool OrConnection = false;
 
+		private Socket mSocket = null;
 		public override void init (string ServerAddr, int ServerPort)
 		{
 			try {
@@ -175,6 +191,14 @@ namespace xk_System.Net.Client.TCP
 
 		public override void Update ()
 		{
+			if (mSocket.Poll (-1, SelectMode.SelectWrite)) {
+				Console.WriteLine ("This Socket is writable.");
+			} else if (mSocket.Poll (-1, SelectMode.SelectRead)) {
+				Console.WriteLine ("This Socket is readable.");
+			} else if (mSocket.Poll (-1, SelectMode.SelectError)) {
+				Console.WriteLine ("This Socket has an error.");
+			}
+
 			try {
 				SocketError error;
 				int Length = mSocket.Receive (mbyteStr, 0, mbyteStr.Length, SocketFlags.None, out error);
@@ -192,7 +216,7 @@ namespace xk_System.Net.Client.TCP
 
 					string Tag = "收到消息:" + Length + " | " + mStr.Length + " | " + receiveInfoPoolCapacity;
 					DebugSystem.LogBitStream (Tag, mStr);
-					mNetReceiveSystem.ReceiveSocketStream (mStr);
+					mNetReceiveSystem.ReceiveSocketStream (mStr,0,mStr.Length);
 				}
 			} catch (SocketException e) {
 				DebugSystem.LogError ("接受异常0000： " + e.Message + " | " + e.SocketErrorCode);
@@ -201,11 +225,11 @@ namespace xk_System.Net.Client.TCP
 			}
 		}
 
-		public override void SendNetStream (byte[] msg)
+		public override void SendNetStream (byte[] msg,int offset,int Length)
 		{
 			try {
 				SocketError merror;
-				mSocket.Send (msg, 0, msg.Length, SocketFlags.None, out merror);
+				mSocket.Send (msg, offset, Length, SocketFlags.None, out merror);
 				if (merror == SocketError.Success) {
 					string Tag = "发送成功:" + msg.Length;
 					DebugSystem.LogBitStream (Tag, msg);
@@ -222,15 +246,18 @@ namespace xk_System.Net.Client.TCP
 
 		public override void CloseNet ()
 		{
-			base.CloseNet ();
+			if (mSocket != null) {
+				mSocket.Close ();
+				mSocket = null;
+			}
 		}
-
 	}
 
 	public class SocketSystem_Thread : SocketSystem
 	{
 		Thread mThread = null;
 
+		protected Socket mSocket = null;
 		public override void init (string ServerAddr, int ServerPort)
 		{
 			try {
@@ -273,6 +300,7 @@ namespace xk_System.Net.Client.TCP
 		private void ReceiveInfo ()
 		{
 			while (mSocket != null) {
+				Thread.Sleep (1);
 				try {                                     
 					SocketError error;                  
 					int Length = mSocket.Receive (mbyteStr, 0, mbyteStr.Length, SocketFlags.None, out error);                   
@@ -309,7 +337,7 @@ namespace xk_System.Net.Client.TCP
 						}
 						string Tag = "收到消息: " + Length + " | " + mStr.Length + " | " + receiveInfoPoolCapacity;
 						DebugSystem.LogBitStream (Tag, mStr);
-						mNetReceiveSystem.ReceiveSocketStream (mStr);
+						mNetReceiveSystem.ReceiveSocketStream (mStr,0,mStr.Length);
 					}
 				} catch (SocketException e) {
 					DebugSystem.LogError ("接受异常0000： " + e.Message + " | " + e.SocketErrorCode);
@@ -344,7 +372,7 @@ namespace xk_System.Net.Client.TCP
 					} else {
 						byte[] mStr = new byte[Length];
 						Array.Copy (mbyteStr, mStr, Length);
-						mNetReceiveSystem.ReceiveSocketStream (mStr);
+						mNetReceiveSystem.ReceiveSocketStream (mStr,0,mStr.Length);
 
 						string Tag = "收到消息: " + Length + " | " + mStr.Length + " | " + receiveInfoPoolCapacity;
 						DebugSystem.LogBitStream (Tag, mStr);
@@ -361,11 +389,11 @@ namespace xk_System.Net.Client.TCP
 			DebugSystem.LogError ("网络线程结束");
 		}
 
-		public override void SendNetStream (byte[] msg)
+		public override void SendNetStream (byte[] msg,int offset,int Length)
 		{
 			try {
 				SocketError merror;
-				mSocket.Send (msg, 0, msg.Length, SocketFlags.None, out merror);
+				mSocket.Send (msg, offset, Length, SocketFlags.None, out merror);
 				string Tag = "";
 				if (merror == SocketError.Success) {
 					Tag = "发送成功:" + msg.Length;
@@ -383,16 +411,19 @@ namespace xk_System.Net.Client.TCP
 		public override void CloseNet ()
 		{
 			mThread = null;
-			base.CloseNet ();     
+			if (mSocket != null) {
+				mSocket.Close ();
+				mSocket = null;
+			}   
 		}
 	}
 
-	//网络异步
 	public class SocketSystem_Async:SocketSystem
 	{
 		public int _sendTimeout = 3;
 		public int _revTimeout = 3;
 
+		private Socket mSocket = null;
 		public SocketSystem_Async ()
 		{
 
@@ -421,13 +452,11 @@ namespace xk_System.Net.Client.TCP
 			}
 		}
 
-		public override void SendNetStream (byte[] msg)
+		public override void SendNetStream (byte[] msg,int offset,int Length)
 		{
 			Send (msg);
 		}
-
-
-		// 异步连接回调
+			
 		void ConnectionCallback (System.IAsyncResult ar)
 		{
 			mSocket.EndConnect (ar);
@@ -459,7 +488,7 @@ namespace xk_System.Net.Client.TCP
 					return;
 				}
 
-				mNetReceiveSystem.ReceiveSocketStream (stream);
+				mNetReceiveSystem.ReceiveSocketStream (stream,0,stream.Length);
 				mSocket.BeginReceive (stream, 0, stream.Length, SocketFlags.None, new System.AsyncCallback (ReceiveInfo), stream);
 
 			} catch (System.Exception e) {
@@ -512,12 +541,18 @@ namespace xk_System.Net.Client.TCP
 			}
 
 		}
+
+		public override void CloseNet()
+		{
+			Disconnect (0);
+		}
 	}
 
 	public class SocketSystem_SocketAsyncEventArgs:SocketSystem
 	{
 		SocketAsyncEventArgs ReceiveArgs;
 
+		private Socket mSocket = null;
 		public override void init (string ServerAddr, int ServerPort)
 		{
 			try {
@@ -545,11 +580,11 @@ namespace xk_System.Net.Client.TCP
 			mSocket.ReceiveAsync (ReceiveArgs);
 		}
 
-		public override void SendNetStream (byte[] msg)
+		public override void SendNetStream (byte[] msg,int offset,int Length)
 		{
 			SocketError mError = SocketError.SocketError;
 			try {
-				mSocket.Send (msg, 0, msg.Length, SocketFlags.None, out mError);
+				mSocket.Send (msg, offset, Length, SocketFlags.None, out mError);
 			} catch (Exception e) {
 				DebugSystem.LogError ("发送字节失败： " + e.Message + " | " + mError.ToString ());
 			}
@@ -581,7 +616,7 @@ namespace xk_System.Net.Client.TCP
 							mbyteArray = new byte[e.BytesTransferred];
 							Array.Copy (e.Buffer, mbyteArray, mbyteArray.Length);                         
 						}
-						mNetReceiveSystem.ReceiveSocketStream (mbyteArray);
+						mNetReceiveSystem.ReceiveSocketStream (mbyteArray,0,mbyteArray.Length);
 					}
 
 					mSocket.ReceiveAsync (e);
@@ -592,10 +627,12 @@ namespace xk_System.Net.Client.TCP
 			}
 		}
 
-
 		public override void CloseNet ()
 		{
-			base.CloseNet ();
+			if (mSocket != null) {
+				mSocket.Close ();
+				mSocket = null;
+			}
 		}
 			
 	}

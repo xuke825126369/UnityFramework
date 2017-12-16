@@ -14,14 +14,16 @@ namespace xk_System.Net.Client.Udp
 	class SocketSystem_Udp:SocketSystem
 	{
 		private EndPoint ep;
+		private Socket mSocket = null;
+
 		public override void init (string ServerAddr, int ServerPort)
 		{
-			mSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);//初始化一个Scoket协议
+			mSocket = new Socket (AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);//初始化一个Scoket协议
 
-			IPEndPoint iep = new IPEndPoint(IPAddress.Parse(ServerAddr), ServerPort);//初始化一个侦听局域网内部所有IP和指定端口
+			IPEndPoint iep = new IPEndPoint (IPAddress.Parse (ServerAddr), ServerPort);//初始化一个侦听局域网内部所有IP和指定端口
 			ep = (EndPoint)iep;
 
-			Thread mThread = new Thread (new ThreadStart(HandData));
+			Thread mThread = new Thread (HandData);
 			mThread.Start ();
 		}
 
@@ -36,7 +38,7 @@ namespace xk_System.Net.Client.Udp
 					length = mSocket.ReceiveFrom (data, ref ep);
 					if (length>0)
 					{
-						mNetReceiveSystem.ReceiveSocketStream(data);
+						mNetReceiveSystem.ReceiveSocketStream(data,0,data.Length);
 					}
 				}catch(Exception e)
 				{
@@ -51,10 +53,24 @@ namespace xk_System.Net.Client.Udp
 			
 		}
 
-		public override void SendNetStream (byte[] msg)
+		public void Send(byte[] msg,int offset,int Length)
 		{
-			mSocket.SendTo (msg, ep);
+			mSocket.Connect (ep);
+			SocketError merror;
+			mSocket.Send (msg, offset, Length, SocketFlags.None, out merror);
+		}
+
+		public override void SendNetStream (byte[] msg,int offset,int Length)
+		{
+			mSocket.SendTo (msg, offset, Length, SocketFlags.None, ep);
+		}
+
+		public override void CloseNet ()
+		{
+			if (mSocket != null) {
+				mSocket.Close ();
+				mSocket = null;
+			}
 		}
 	}
-
 }

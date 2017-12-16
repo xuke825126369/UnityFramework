@@ -87,7 +87,7 @@ namespace xk_System.Net.Server
 				mSocket.Close ();
 				mSocket = null;
 			}
-			DebugSystem.Log ("关闭客户端TCP连接");
+			DebugSystem.Log ("关闭 服务器 TCP连接");
 		}
 	}
 
@@ -111,6 +111,7 @@ namespace xk_System.Net.Server
 			mPackage.clientId = clientId;
 			mPackage.command = command;
 			mPackage.buffer = buffer;
+			mPackage.Length = buffer.Length;
 			mNeedHandleNetPackageQueue.Enqueue (mPackage);
 		}
 
@@ -122,10 +123,14 @@ namespace xk_System.Net.Server
 				HandleNetStream (mPackage);
 				mCanUsePackagePool.recycle (mPackage);
 				handlePackageCount++;
+
+				if (handlePackageCount >= ServerConfig.nPerFrameHandlePackageCount) {
+					break;
+				}
 			}
 
-			if (handlePackageCount > 3) {
-				DebugSystem.LogError ("服务器 发送包的数量： " + handlePackageCount);
+			if (handlePackageCount > 10) {
+				//DebugSystem.Log ("服务器 发送包的数量： " + handlePackageCount);
 			}
 		}
 
@@ -146,21 +151,19 @@ namespace xk_System.Net.Server
 	public class NetReceiveSystem
 	{
 		protected Dictionary<int,CircularBuffer<byte>> mReceivedStreamDic;
-		protected Queue<NetPackage> mReceiveStreamQueue;
-		protected ObjectPool<NetPackage> mReceivePackagePool;
-
-		protected Queue<NetPackage> mNeedHandlePackageQueue;
-		protected ObjectPool<NetPackage> mCanUsePackageQueue;
+		protected Queue<ClientNetBuffer> mReceiveStreamQueue;
+		protected ObjectPool<ClientNetBuffer> mCanUsePackageQueue;
+		protected NetPackage mReceivePackage;
 
 		protected Action<NetPackage> mReceiveFun;
 
 		public NetReceiveSystem (SocketSystem socketSys)
 		{
 			mReceivedStreamDic = new Dictionary<int, CircularBuffer<byte>> ();
-			mReceiveStreamQueue = new Queue<NetPackage> ();
-			mReceivePackagePool = new ObjectPool<NetPackage> ();
-			mNeedHandlePackageQueue = new Queue<NetPackage> ();
-			mCanUsePackageQueue = new ObjectPool<NetPackage> ();
+			mReceiveStreamQueue = new Queue<ClientNetBuffer> ();;
+			mCanUsePackageQueue = new ObjectPool<ClientNetBuffer>();
+
+			mReceivePackage = new NetPackage ();
 			socketSys.initSystem (this);
 		}
 
@@ -168,8 +171,7 @@ namespace xk_System.Net.Server
 		{
 			if (mReceiveFun != null) {
 				if (CheckDataBindFunIsExist (fun)) {
-					DebugSystem.LogError ("添加监听方法重复");
-					return;
+					DebugSystem.Log ("添加监听方法重复");
 				}
 				mReceiveFun += fun;
 			} else {
@@ -187,93 +189,83 @@ namespace xk_System.Net.Server
 			mReceiveFun -= fun;
 		}
 
-		public void HandleNetPackage ()
+		public void ReceiveSocketStream (int clientId, byte[] buffer,int offset,int Length)
 		{
-			HandleSocketStream ();
-			if (mNeedHandlePackageQueue != null) {
-				while (mNeedHandlePackageQueue.Count > 0) {
-					NetPackage mPackage = mNeedHandlePackageQueue.Dequeue ();
-					if (mReceiveFun != null) {
-						mReceiveFun (mPackage);
-					}
-					mCanUsePackageQueue.recycle (mPackage);
-				}
-			}
-		}
-
-		public void ReceiveSocketStream (int clientId, byte[] buffer)
-		{
-			NetPackage mPackage = null;
-			lock (mReceivePackagePool) {
-				mPackage = mReceivePackagePool.Pop ();
-				mPackage.clientId = clientId;
-				mPackage.buffer = buffer;
-				mPackage.Length = buffer.Length;
+			ClientNetBuffer mPackage = null;
+			lock (mCanUsePackageQueue) {
+				mPackage = mCanUsePackageQueue.Pop ();
 			}
 
 			lock (mReceiveStreamQueue) {
+				mPackage.WriteFrom (clientId, buffer, offset, Length);
 				mReceiveStreamQueue.Enqueue (mPackage);
 			}
-
-			//DebugSystem.LogError ("Server 收到网络流：" + buffer.Length);
 		}
 
-		protected void HandleSocketStream ()
+		public void HandleNetPackage ()
 		{
+			int nPackageCount = 0;
 			while (mReceiveStreamQueue.Count > 0) {
-				NetPackage mPackage = null;
-				lock (mReceivePackagePool) {
+				ClientNetBuffer mPackage = null;
+				lock (mReceiveStreamQueue) {
 					mPackage = mReceiveStreamQueue.Dequeue ();
 				}
-				if (!mReceivedStreamDic.ContainsKey (mPackage.clientId)) {
-					mReceivedStreamDic [mPackage.clientId] = new CircularBuffer<byte> (1024);
-				}
-				mReceivedStreamDic [mPackage.clientId].WriteFrom (mPackage.buffer, 0, mPackage.buffer.Length);
-				int clientId = mPackage.clientId;
-				lock (mReceivePackagePool) {
-					mReceivePackagePool.recycle (mPackage);
-				}
-				mPackage = null;
 
-				while (true) {
-					mPackage = GetPackage (clientId);
-					if (mPackage != null) {
-						mNeedHandlePackageQueue.Enqueue (mPackage);
-					} else {
+				if (!mReceivedStreamDic.ContainsKey (mPackage.ClientId)) {
+					int BufferSize = ServerConfig.nMaxPackageSize * ServerConfig.nPerFrameHandlePackageCount;
+					mReceivedStreamDic [mPackage.ClientId] = new CircularBuffer<byte> (BufferSize);
+				}
+
+				mReceivedStreamDic [mPackage.ClientId].WriteFrom (mPackage.Buffer, 0, mPackage.Length);
+
+				while (GetPackage (mPackage.ClientId)) {
+					nPackageCount++;
+					if (nPackageCount >= ServerConfig.nPerFrameHandlePackageCount) {
 						break;
 					}
 				}
+
+				lock (mCanUsePackageQueue) {
+					mCanUsePackageQueue.recycle (mPackage);
+				}
+
+				if (nPackageCount >= ServerConfig.nPerFrameHandlePackageCount) {
+					break;
+				}
+			}
+
+			if (nPackageCount > 10) {
+				//DebugSystem.Log ("Server 处理的网络包数量：" + nPackageCount);
 			}
 		}
 
-		private NetPackage GetPackage (int clientId)
+		private bool GetPackage (int clientId)
 		{
 			CircularBuffer<byte> msg = mReceivedStreamDic [clientId];
 			if (msg.Length <= 0) {
-				return null;
+				return false;
 			}
-
-			NetPackage mPackage = mCanUsePackageQueue.Pop ();
-			var bSuccess = NetEncryptionStream.DeEncryption (msg, mPackage);
-			if (bSuccess == false) {
-				return null;
+				
+			var bSuccess = NetEncryptionStream.DeEncryption (msg, mReceivePackage);
+			if (bSuccess == true) {
+				mReceivePackage.clientId = clientId;
+				if (mReceiveFun != null) {
+					mReceiveFun (mReceivePackage);
+				}
 			}
-
-			DebugSystem.LogError ("解析成功");
-			mPackage.clientId = clientId;
-			return mPackage;
+				
+			return bSuccess;
 		}
 
 		public virtual void Destory ()
 		{
-			lock (mReceivePackagePool) {
-				mReceivePackagePool.release ();
+			lock (mCanUsePackageQueue) {
+				mCanUsePackageQueue.release ();
 			}
-
-			mNeedHandlePackageQueue.Clear ();
-			mCanUsePackageQueue.release ();
+			lock (mReceiveStreamQueue) {
+				mReceiveStreamQueue.Clear ();
+			}
 			mReceivedStreamDic.Clear ();
-			mNeedHandlePackageQueue.Clear ();
 		}
 	}
 }
