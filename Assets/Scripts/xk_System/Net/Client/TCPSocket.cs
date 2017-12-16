@@ -19,9 +19,7 @@ namespace xk_System.Net.Client.TCP
 		private ArrayList m_WriteFD = new ArrayList ();
 		private ArrayList m_ExceptFD = new ArrayList ();
 
-		byte[] mReceiveStream = new byte[receiveInfoPoolCapacity];
-		byte[] mSendStream = new byte[sendInfoPoolCapacity];
-
+		byte[] mReceiveStream = new byte[ClientConfig.nMaxPackageSize * ClientConfig.nPerFrameHandlePackageCount];
 		public override void init (string ServerAddr, int ServerPort)
 		{
 			try {
@@ -39,12 +37,11 @@ namespace xk_System.Net.Client.TCP
 
 		public override void ConfigureSocket (Socket mSocket)
 		{
-			mSocket.ReceiveTimeout = 1000;
-			mSocket.SendTimeout = 1000;
-			mSocket.ReceiveBufferSize = 10;
-			mSocket.SendBufferSize = 10;
+			mSocket.ReceiveBufferSize = 100;
+			mSocket.ReceiveTimeout = 0;
+			mSocket.SendTimeout = 0;
 			mSocket.Blocking = false;
-			//PrintSocketConfigInfo (mSocket);
+			PrintSocketConfigInfo (mSocket);
 		}
 			
 		private bool CheckSocketState()
@@ -75,9 +72,8 @@ namespace xk_System.Net.Client.TCP
 
 				if (this.m_WriteFD.Contains (this.mSocket)) {
 					ProcessOutput ();
-				}else
-				{
-					DebugSystem.LogError("WriteFD 不可Send");
+				} else {
+					DebugSystem.LogError ("WriteFD 不可Send");
 				}
 
 				if (this.m_ReadFD.Contains (this.mSocket)) {
@@ -93,12 +89,6 @@ namespace xk_System.Net.Client.TCP
 		private void ProcessOutput ()
 		{
 			//DebugSystem.Log ("Client Can Write ...");
-			//m
-			//SocketError merror;
-			//mSocket.Send (mSendStream, 0, mSendStream.Length, SocketFlags.None, out merror);
-			//if (merror != SocketError.Success) {
-				//DebugSystem.LogError ("发送失败: " + merror);
-			//}
 		}
 
 		private void ProcessInput ()
@@ -106,10 +96,15 @@ namespace xk_System.Net.Client.TCP
 			//DebugSystem.Log ("Client Can Read ...");
 			SocketError error;
 			int Length = mSocket.Receive (mReceiveStream, 0, mReceiveStream.Length, SocketFlags.None, out error);
-			mNetReceiveSystem.ReceiveSocketStream (mReceiveStream, 0, Length);
+			if (error == SocketError.Success) {
+				mNetReceiveSystem.ReceiveSocketStream (mReceiveStream, 0, Length);
+				if (mSocket.Available > 0) {
+					DebugSystem.LogError ("Available > 0： " + Length + " | " + mReceiveStream.Length);
+					ProcessInput ();
 
-			if (Length != mSocket.ReceiveBufferSize) {
-				Debug.DebugSystem.Log ("Client:ReceiveLength:  " + Length);
+				}
+			} else {
+				DebugSystem.LogError (error.ToString ());
 			}
 		}
 
@@ -128,15 +123,13 @@ namespace xk_System.Net.Client.TCP
 			}
 		}
 
-
-
 		public override void SendNetStream (byte[] msg, int index, int Length)
 		{
 			try {
 				SocketError merror;
 				int sendLength = mSocket.Send (msg, index, Length, SocketFlags.None, out merror);
 				if (sendLength != Length) {
-					//DebugSystem.Log ("Client:SendLength:  " + sendLength + " | " + Length);
+					DebugSystem.LogError ("Client:SendLength:  " + sendLength + " | " + Length);
 				}
 				if (merror != SocketError.Success) {
 					if (mSocket.Blocking == false && merror == SocketError.WouldBlock) {
@@ -164,9 +157,8 @@ namespace xk_System.Net.Client.TCP
 	//Pool
 	public class SocketSystem_Poll : SocketSystem
 	{
-		bool OrConnection = false;
-
 		private Socket mSocket = null;
+		byte[] mReceiveStream = new byte[receiveInfoPoolCapacity];
 		public override void init (string ServerAddr, int ServerPort)
 		{
 			try {
@@ -186,43 +178,31 @@ namespace xk_System.Net.Client.TCP
 			}
 		}
 
-		List<byte> mStoreByteList = new List<byte> ();
-		byte[] mbyteStr = new byte[receiveInfoPoolCapacity];
+		private void Poll()
+		{
+			if (mSocket.Poll (0, SelectMode.SelectWrite)) {
+				DebugSystem.Log ("This Socket is writable.");
+			} 
+
+			if (mSocket.Poll (0, SelectMode.SelectRead)) {
+				DebugSystem.Log ("This Socket is readable.");
+			}
+
+			if (mSocket.Poll (0, SelectMode.SelectError)) {
+				DebugSystem.Log ("This Socket has an error.");
+			}
+		}
+
+		private void ProcessInput()
+		{
+			SocketError error;
+			int Length = mSocket.Receive (mReceiveStream, 0, mReceiveStream.Length, SocketFlags.None, out error);
+			mNetReceiveSystem.ReceiveSocketStream (mReceiveStream, 0, Length);
+		}
 
 		public override void Update ()
 		{
-			if (mSocket.Poll (-1, SelectMode.SelectWrite)) {
-				Console.WriteLine ("This Socket is writable.");
-			} else if (mSocket.Poll (-1, SelectMode.SelectRead)) {
-				Console.WriteLine ("This Socket is readable.");
-			} else if (mSocket.Poll (-1, SelectMode.SelectError)) {
-				Console.WriteLine ("This Socket has an error.");
-			}
-
-			try {
-				SocketError error;
-				int Length = mSocket.Receive (mbyteStr, 0, mbyteStr.Length, SocketFlags.None, out error);
-				if (Length == -1) {
-					DebugSystem.Log (Length);
-				} else if (Length == 0) {
-					if (error == SocketError.TimedOut) {
-						DebugSystem.Log ("连接超时");
-					} else if (error == SocketError.Success) {
-						DebugSystem.Log ("服务器主动断开连接");
-					}
-				} else {
-					byte[] mStr = new byte[Length];
-					Array.Copy (mbyteStr, mStr, Length);
-
-					string Tag = "收到消息:" + Length + " | " + mStr.Length + " | " + receiveInfoPoolCapacity;
-					DebugSystem.LogBitStream (Tag, mStr);
-					mNetReceiveSystem.ReceiveSocketStream (mStr,0,mStr.Length);
-				}
-			} catch (SocketException e) {
-				DebugSystem.LogError ("接受异常0000： " + e.Message + " | " + e.SocketErrorCode);
-			} catch (Exception e) {
-				DebugSystem.LogError ("接受异常11111： " + e.Message + " | " + e.StackTrace);
-			}
+			Poll ();
 		}
 
 		public override void SendNetStream (byte[] msg,int offset,int Length)

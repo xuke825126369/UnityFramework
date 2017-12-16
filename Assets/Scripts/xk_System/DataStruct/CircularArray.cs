@@ -182,6 +182,11 @@ namespace xk_System.DataStructure
 
 		public void Print()
 		{
+			DebugSystem.Log (this.ToString ());
+		}
+
+		public override string ToString ()
+		{
 			StringBuilder aaStr = new StringBuilder ();
 			aaStr.Append ("<color=red>");
 			aaStr.Append (this.GetType ().Name + ": ");
@@ -191,7 +196,7 @@ namespace xk_System.DataStructure
 				aaStr.Append (this [i] + " | ");
 			}
 			aaStr.Append ("</color>");
-			DebugSystem.Log (aaStr);
+			return aaStr.ToString ();
 		}
 	}
 }

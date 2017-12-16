@@ -36,7 +36,7 @@ public class TCPClientTest : MonoBehaviour
 		int TestCount = 0;
 		int nMaxTestCount = 50;
 		while (TestCount < nMaxTestCount) {
-			for (int i = 0; i < 5; i++) {
+			for (int i = 0; i < 50; i++) {
 				request_ClientSendData (1, "xuke", "I love you111111111111111111111111111111111111111111111111" +
 				"111111111111111111111111111111111111111111111111111111111111111111111111111dgdgsdfshsdfh,as" +
 				"mfamsfdmasdfamslmdfamsd;fmamfdamfd;amsfdwsjdfasjfasjfdkjaskfdjas;ojfd;asjdfasjdfsfasdfaksfdk" +
@@ -47,18 +47,14 @@ public class TCPClientTest : MonoBehaviour
 			yield return new WaitForSeconds (0.5f);
 		}
 
-		yield return new WaitForSeconds (1f);
-
-		//if (nSendCount != TCPServerTest.nReceiveCount) {
-		//	Debug.LogError ("丢包了000 ： " + nSendCount + " | " + TCPServerTest.nReceiveCount);
-		//}
-
 		if (nSendCount != nReceiveCount) {
 			Debug.LogError ("丢包了111： " + nSendCount + " | " + nReceiveCount);
 		}
 
-		yield return new WaitForSeconds (10f);
-		Debug.LogError ("丢包了111： " + nSendCount + " | " + nReceiveCount);
+		while (nSendCount != nReceiveCount) {
+			yield return new WaitForSeconds (1f);
+			Debug.LogError ("丢包了111： " + nSendCount + " | " + nReceiveCount);
+		}
 
 		Debug.Log ("发送完毕： " + nSendCount);
 	}

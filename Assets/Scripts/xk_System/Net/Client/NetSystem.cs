@@ -8,6 +8,7 @@ using xk_System.Net.Client.TCP;
 using xk_System.Net;
 using System;
 using xk_System.DataStructure;
+using xk_System.Event;
 
 namespace xk_System.Net.Client
 {
@@ -189,66 +190,53 @@ namespace xk_System.Net.Client
 	//begin~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~网络接受系统~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	public class NetReceiveSystem
 	{
-		protected CircularBuffer<byte> mReceiveStreamList;
-		protected CircularBuffer<byte> mParseStreamList;
-		protected NetPackage mReceiveNetPackage = null;
-		protected Action<NetPackage> mReceiveFun = null;
+		protected CircularBuffer<byte> mParseStreamList = null;
+		protected DataBind<NetPackage> mBindReceiveNetPackage = null;
 
 		public NetReceiveSystem (SocketSystem socketSys)
 		{
-			mReceiveStreamList = new CircularBuffer<byte> (1024);
-			mParseStreamList = new CircularBuffer<byte> (1024);
-			mReceiveNetPackage = new NetPackage ();
+			mParseStreamList = new CircularBuffer<byte> (ClientConfig.nMaxPackageSize * ClientConfig.nPerFrameHandlePackageCount);
+			mBindReceiveNetPackage = new DataBind<NetPackage> (new NetPackage ());
 			socketSys.initReceieSystem (this);
 		}
 
+		//Add More Protocol Interface
 		public void addListenFun (Action<NetPackage> fun)
 		{
-			if (mReceiveFun != null) {
-				if (CheckDataBindFunIsExist (fun)) {
-					DebugSystem.Log ("添加监听方法重复");
-					return;
-				}
-				mReceiveFun += fun;
-			} else {
-				mReceiveFun = fun;
-			}              
-		}
-
-		private bool CheckDataBindFunIsExist (Action<NetPackage> fun)
-		{
-			return DelegateUtility.CheckFunIsExist<NetPackage> (mReceiveFun, fun);
+			mBindReceiveNetPackage.addDataBind (fun);
 		}
 
 		public void removeListenFun (Action<NetPackage> fun)
 		{
-			mReceiveFun -= fun;
+			mBindReceiveNetPackage.removeDataBind (fun);
 		}
 
 		public void ReceiveSocketStream (byte[] data, int index, int Length)
 		{
-			lock (mReceiveStreamList) {
-				mReceiveStreamList.WriteFrom (data, index, Length);
+			lock (mParseStreamList) {
+				mParseStreamList.WriteFrom (data, index, Length);
 			}
 		}
 
 		public void HandleNetPackage ()
 		{
-			lock (mReceiveStreamList) {
-				mParseStreamList.WriteFrom (mReceiveStreamList, mReceiveStreamList.Length);
-			}
-
 			int PackageCout = 0;
-			while (GetPackage ()) {
-				PackageCout++;
+			lock (mParseStreamList) {
+				while (GetPackage ()) {
+					PackageCout++;
 
-				if (PackageCout > 100) {
-					break;
+					if (PackageCout > 100) {
+						break;
+					}
 				}
 			}
 
 			if (PackageCout > 5) {
 				DebugSystem.Log ("客户端 解析包的数量： " + PackageCout);
+			} else if (PackageCout == 0) {
+				if (mParseStreamList.Length > 0) {
+					DebugSystem.LogError ("客户端 正在解包 ");
+				}
 			}
 		}
 
@@ -258,11 +246,9 @@ namespace xk_System.Net.Client
 				return false;
 			}
 
-			bool bSucccess = NetEncryptionStream.DeEncryption (mParseStreamList, mReceiveNetPackage);
+			bool bSucccess = NetEncryptionStream.DeEncryption (mParseStreamList, mBindReceiveNetPackage.bindData);
 			if (bSucccess) {
-				if (mReceiveFun != null) {
-					mReceiveFun (mReceiveNetPackage);
-				}
+				mBindReceiveNetPackage.DispatchEvent ();
 			}
 		
 			return bSucccess;
@@ -270,7 +256,7 @@ namespace xk_System.Net.Client
 
 		public virtual void Destory ()
 		{
-			mReceiveNetPackage.reset ();
+			
 		}
 	}
 }
