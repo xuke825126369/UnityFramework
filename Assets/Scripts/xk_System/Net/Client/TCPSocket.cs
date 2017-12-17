@@ -14,17 +14,19 @@ namespace xk_System.Net.Client.TCP
 	public class SocketSystem_Select: SocketSystem
 	{
 		private Socket mSocket;
-
-		private ArrayList m_ReadFD = new ArrayList ();
-		private ArrayList m_WriteFD = new ArrayList ();
-		private ArrayList m_ExceptFD = new ArrayList ();
-
-		byte[] mReceiveStream = new byte[ClientConfig.nMaxPackageSize * ClientConfig.nPerFrameHandlePackageCount];
+		private ArrayList m_ReadFD = null;
+		private ArrayList m_WriteFD = null;
+		private ArrayList m_ExceptFD = null;
+		byte[] mReceiveStream = null;
 
 		public SocketSystem_Select ()
 		{
 			mNetSendSystem = new NetSendSystem (this);
 			mNetReceiveSystem = new NetNoLockReceiveSystem (this);
+			mReceiveStream = new byte[ClientConfig.receiveBufferSize];
+			m_ReadFD = new ArrayList ();
+			m_WriteFD = new ArrayList ();
+			m_ExceptFD = new ArrayList ();
 		}
 
 		public override void InitNet (string ServerAddr, int ServerPort)
@@ -47,7 +49,7 @@ namespace xk_System.Net.Client.TCP
 			//mSocket.ReceiveBufferSize = 100;
 			//mSocket.ReceiveTimeout = 1000;
 			//mSocket.SendTimeout = 1000;
-			mSocket.Blocking = true;
+			mSocket.Blocking = false;
 			PrintSocketConfigInfo (mSocket);
 		}
 			
@@ -103,10 +105,10 @@ namespace xk_System.Net.Client.TCP
 			int Length = mSocket.Receive (mReceiveStream, 0, mReceiveStream.Length, SocketFlags.None, out error);
 			if (error == SocketError.Success) {
 				mNetReceiveSystem.ReceiveSocketStream (mReceiveStream, 0, Length);
-				//if (mSocket.Available > 0) {
-				//	DebugSystem.LogError ("Available > 0： " + Length + " | " + mReceiveStream.Length);
-				//	ProcessInput ();
-				//}
+				if (mSocket.Available > 0) {
+					DebugSystem.LogError ("Available > 0： " + mSocket.Available +" | "+ Length + " | " + mReceiveStream.Length);
+					//ProcessInput ();
+				}
 			} else {
 				DebugSystem.LogError (error.ToString ());
 			}

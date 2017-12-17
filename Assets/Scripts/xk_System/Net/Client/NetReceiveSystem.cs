@@ -16,7 +16,7 @@ namespace xk_System.Net.Client
 
 		public NetNoLockReceiveSystem (SocketSystem socketSys)
 		{
-			mParseStreamList = new CircularBuffer<byte> (2 * ClientConfig.nMaxPackageSize * ClientConfig.nPerFrameHandlePackageCount);
+			mParseStreamList = new CircularBuffer<byte> (2 * ClientConfig.receiveBufferSize);
 			mBindReceiveNetPackage = new DataBind<NetPackage> (new NetPackage ());
 		}
 
@@ -31,6 +31,11 @@ namespace xk_System.Net.Client
 			mBindReceiveNetPackage.removeDataBind (fun);
 		}
 
+		public bool isCanReceiveFromSocketStream()
+		{
+			return true;
+		}
+
 		public void ReceiveSocketStream (byte[] data, int index, int Length)
 		{
 			mParseStreamList.WriteFrom (data, index, Length);
@@ -41,10 +46,6 @@ namespace xk_System.Net.Client
 			int PackageCout = 0;
 			while (GetPackage ()) {
 				PackageCout++;
-
-				if (PackageCout > 100) {
-					break;
-				}
 			}
 
 			if (PackageCout > 5) {
@@ -80,14 +81,14 @@ namespace xk_System.Net.Client
 	//和线程打交道
 	public class NetLockReceiveSystem:NetReceiveSystemInterface
 	{
-		protected ListBuffer<byte> mReceiveStreamList= null;
+		protected CircularBuffer<byte> mReceiveStreamList= null;
 		protected CircularBuffer<byte> mParseStreamList = null;
 		protected DataBind<NetPackage> mBindReceiveNetPackage = null;
 
 		public NetLockReceiveSystem (SocketSystem socketSys)
 		{
-			mReceiveStreamList = new ListBuffer<byte> (ClientConfig.nMaxPackageSize * ClientConfig.nPerFrameHandlePackageCount);
-			mParseStreamList = new CircularBuffer<byte> (2 * ClientConfig.nMaxPackageSize * ClientConfig.nPerFrameHandlePackageCount);
+			mReceiveStreamList = new CircularBuffer<byte> (ClientConfig.nThreadSaveMaxBuffer);
+			mParseStreamList = new CircularBuffer<byte> (2 * ClientConfig.receiveBufferSize);
 			mBindReceiveNetPackage = new DataBind<NetPackage> (new NetPackage ());
 		}
 
@@ -102,10 +103,14 @@ namespace xk_System.Net.Client
 			mBindReceiveNetPackage.removeDataBind (fun);
 		}
 
+		public bool isCanReceiveFromSocketStream()
+		{
+			return mReceiveStreamList.isCanWriteFrom (ServerConfig.receiveBufferSize);
+		}
+
 		public void ReceiveSocketStream (byte[] data, int index, int Length)
 		{
 			lock (mParseStreamList) {
-				//mParseStreamList.WriteFrom (data, index, Length);
 				mReceiveStreamList.WriteFrom (data, index, Length);
 			}
 		}
@@ -115,18 +120,11 @@ namespace xk_System.Net.Client
 			int PackageCout = 0;
 
 			lock (mReceiveStreamList) {
-				mParseStreamList.WriteFrom (mReceiveStreamList.Buffer, 0, mReceiveStreamList.Length);
-				mReceiveStreamList.Length = 0;
+				int readBytes = mParseStreamList.WriteFrom (mReceiveStreamList, ClientConfig.receiveBufferSize);
 			}
-
-			lock (mParseStreamList) {
-				while (GetPackage ()) {
-					PackageCout++;
-
-					if (PackageCout > 100) {
-						break;
-					}
-				}
+				
+			while (GetPackage ()) {
+				PackageCout++;
 			}
 
 			if (PackageCout > 5) {

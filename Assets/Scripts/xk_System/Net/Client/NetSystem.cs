@@ -135,6 +135,7 @@ namespace xk_System.Net.Client
 		void addListenFun (Action<NetPackage> fun);
 		void removeListenFun (Action<NetPackage> fun);
 
+		bool isCanReceiveFromSocketStream ();
 		void ReceiveSocketStream (byte[] data, int index, int Length);
 		void HandleNetPackage ();
 		void release ();

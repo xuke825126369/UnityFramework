@@ -9,6 +9,7 @@ using xk_System.Net.Client;
 using Google.Protobuf;
 using xk_System.Net.Protocol;
 using xk_System.Net.Client.Event;
+using System.IO;
 
 public class TCPClientTest : MonoBehaviour 
 {
@@ -34,14 +35,16 @@ public class TCPClientTest : MonoBehaviour
 	IEnumerator Run()
 	{           
 		int TestCount = 0;
-		int nMaxTestCount = 50;
+		int nMaxTestCount = 53;
 		while (TestCount < nMaxTestCount) {
-			for (int i = 0; i < 50; i++) {
+			for (int i = 0; i < 53; i++) {
 				request_ClientSendData (1, "xuke", "I love you111111111111111111111111111111111111111111111111" +
 				"111111111111111111111111111111111111111111111111111111111111111111111111111dgdgsdfshsdfh,as" +
 				"mfamsfdmasdfamslmdfamsd;fmamfdamfd;amsfdwsjdfasjfasjfdkjaskfdjas;ojfd;asjdfasjdfsfasdfaksfdk" +
 				"safdasdfjajfdjadjsajkf;lsdjf;alsjdf;lasjdf;lajsl;fdjalsjdfa;jsdf;aj;fjda;sjdfsjfdkjsdfkjasdf" +
-				"jsfdasfsdfasdfasfdasdfasdfjkasjdfassfjpojpeoi97893472941947194y913742057");
+				"jsfdasfsdfasdfasfdasdfasdfjkasjdfassfjpojpeoi97893472941947194y913742057sdfasfdasdfasdfsfasdfasfdasd" +
+				"sfasfdasdfasdfasfddddddddddddddddddddddddddddddddddddddddddddddddddfasdfasdfasdfasdfasdfsdfasdfasfda" +
+				"sfsfsfsdfsd09035923-940592394523096-548623489510948920384*((*&^&%^$%$$%#sfsfd");
 			}
 			TestCount++;
 			yield return new WaitForSeconds (0.5f);

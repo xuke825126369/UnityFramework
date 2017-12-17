@@ -10,84 +10,115 @@ using xk_System.DataStructure;
 
 namespace xk_System.Net.Server
 {
-	public class NetSystem :NetEventInterface
+	public class NetSystem :SocketSystem_TCPServer, NetEventInterface
 	{
-		private NetSendSystem mNetSendSystem;
-		private NetReceiveSystem mNetReceiveSystem;
-		private SocketSystem mNetSocketSystem;
-
-		public NetSystem ()
-		{
-			mNetSocketSystem = new SocketSystem_TCPServer ();
-			mNetSendSystem = new NetSendSystem (mNetSocketSystem);
-			mNetReceiveSystem = new NetReceiveSystem (mNetSocketSystem);
-		}
-
 		public void initNet (string ServerAddr, int ServerPort)
 		{
-			mNetSocketSystem.init (ServerAddr, ServerPort);
+			base.InitNet (ServerAddr, ServerPort);
 		}
 
 		public void sendNetData (int clientId, int command, byte[] buffer)
 		{
-			mNetSendSystem.SendNetData (clientId, command, buffer);  
+			base.mNetSendSystem.SendNetData (clientId, command, buffer);  
 		}
 
 		public void handleNetData ()
+		{
+			base.HandleNetPackage ();
+		}
+
+		public void addNetListenFun (Action<NetPackage> fun)
+		{
+			base.mNetReceiveSystem.addListenFun (fun);
+		}
+
+		public void removeNetListenFun (Action<NetPackage> fun)
+		{
+			base.mNetReceiveSystem.removeListenFun (fun);
+		}
+
+		public void closeNet ()
+		{
+			base.CloseNet ();
+		}
+	}
+
+	public class SocketConfig
+	{
+		protected const int receiveInfoPoolCapacity = 10;
+		protected const int sendInfoPoolCapacity = 10;
+		protected const int receiveTimeOut = 5000;
+		protected const int sendTimeOut = 5000;
+
+		public virtual void ConfigureSocket (Socket mSocket)
+		{
+			mSocket.ExclusiveAddressUse = true;
+			mSocket.LingerState = new LingerOption (true, 10);
+			mSocket.NoDelay = false;
+
+			mSocket.ReceiveBufferSize = 8192;
+			mSocket.ReceiveTimeout = 1000;
+			mSocket.SendBufferSize = 8192;
+			mSocket.SendTimeout = 1000;
+
+			mSocket.Blocking = false;
+			mSocket.Ttl = 42;
+
+			mSocket.SetSocketOption (SocketOptionLevel.Tcp, SocketOptionName.MaxConnections, 100);
+		}
+
+		public void PrintSocketConfigInfo (Socket mSocket)
+		{
+			DebugSystem.Log ("------------------- Socket Config ------------------------ ");
+			DebugSystem.Log ("ExclusiveAddressUse :" + mSocket.ExclusiveAddressUse);
+			DebugSystem.Log ("LingerState: " + mSocket.LingerState.Enabled + " | " + mSocket.LingerState.LingerTime);
+			DebugSystem.Log ("Ttl: " + mSocket.Ttl);
+			DebugSystem.Log ("NoDelay: " + mSocket.NoDelay);
+
+			DebugSystem.Log ("Block: " + mSocket.Blocking);
+			DebugSystem.Log ("ReceiveTimeout: " + mSocket.ReceiveTimeout);
+			DebugSystem.Log ("SendTimeout: " + mSocket.SendTimeout);
+
+			DebugSystem.Log ("ReceiveBufferSize: " + mSocket.ReceiveBufferSize);
+			DebugSystem.Log ("SendBufferSize: " + mSocket.SendBufferSize);
+			DebugSystem.Log ("---------------- Finish -------------------");
+		}
+
+		public void PrintSocketState(Socket mSocket)
+		{
+			DebugSystem.Log ("------------------- Socket State ------------------------ ");
+			DebugSystem.Log ("IsBound: " + mSocket.IsBound);
+			DebugSystem.Log ("Connected: " + mSocket.Connected);
+			DebugSystem.Log ("---------------- Finish -------------------");
+		}
+
+	}
+
+	public class SocketSystem: SocketConfig
+	{
+		protected NetReceiveSystem mNetReceiveSystem;
+		protected NetSendSystem mNetSendSystem;
+
+		public virtual void InitNet (string ServerAddr, int ServerPort)
+		{
+
+		}
+
+		public virtual void SendNetStream (int clientId,byte[] msg)
+		{
+
+		}
+
+		public virtual void HandleNetPackage()
 		{
 			mNetSendSystem.HandleNetPackage ();
 			mNetReceiveSystem.HandleNetPackage ();
 		}
 
-		public void addNetListenFun (Action<NetPackage> fun)
-		{
-			mNetReceiveSystem.addListenFun (fun);
-		}
-
-		public void removeNetListenFun (Action<NetPackage> fun)
-		{
-			mNetReceiveSystem.removeListenFun (fun);
-		}
-
-		public void closeNet ()
-		{
-			mNetSocketSystem.CloseNet ();
-			mNetSendSystem.Destory ();
-			mNetReceiveSystem.Destory ();
-		}
-	}
-
-	public abstract class SocketSystem
-	{
-		protected const int receiveInfoPoolCapacity = 8192;
-		protected const int sendInfoPoolCapacity = 8192;
-		protected const int receiveTimeOut = 10000;
-		protected const int sendTimeOut = 5000;
-		protected NetReceiveSystem mNetReceiveSystem;
-
-		protected Socket mSocket;
-
-		public abstract void init (string ServerAddr, int ServerPort);
-
-		public abstract void SendNetStream (int clientId,byte[] msg);
-
-		public bool IsPrepare ()
-		{
-			return mSocket != null;
-		}
-
-		public void initSystem (NetReceiveSystem mNetReceiveSystem)
-		{
-			this.mNetReceiveSystem = mNetReceiveSystem;
-		}
-
 		public virtual void CloseNet ()
 		{
-			if (mSocket != null) {
-				mSocket.Close ();
-				mSocket = null;
-			}
-			DebugSystem.Log ("关闭 服务器 TCP连接");
+			mNetSendSystem.Destory ();
+			mNetReceiveSystem.Destory ();
 		}
 	}
 
@@ -123,10 +154,6 @@ namespace xk_System.Net.Server
 				HandleNetStream (mPackage);
 				mCanUsePackagePool.recycle (mPackage);
 				handlePackageCount++;
-
-				if (handlePackageCount >= ServerConfig.nPerFrameHandlePackageCount) {
-					break;
-				}
 			}
 
 			if (handlePackageCount > 10) {
@@ -134,7 +161,7 @@ namespace xk_System.Net.Server
 			}
 		}
 
-		public void HandleNetStream (NetPackage mPackage)
+		private void HandleNetStream (NetPackage mPackage)
 		{
 			byte[] stream = NetEncryptionStream.Encryption (mPackage);
 			mSocketSystem.SendNetStream (mPackage.clientId, stream);
@@ -160,11 +187,10 @@ namespace xk_System.Net.Server
 		public NetReceiveSystem (SocketSystem socketSys)
 		{
 			mReceivedStreamDic = new Dictionary<int, CircularBuffer<byte>> ();
-			mReceiveStreamQueue = new Queue<ClientNetBuffer> ();;
-			mCanUsePackageQueue = new ObjectPool<ClientNetBuffer>();
+			mReceiveStreamQueue = new Queue<ClientNetBuffer> ();
+			mCanUsePackageQueue = new ObjectPool<ClientNetBuffer> ();
 
 			mReceivePackage = new NetPackage ();
-			socketSys.initSystem (this);
 		}
 
 		public void addListenFun (Action<NetPackage> fun)
@@ -205,37 +231,38 @@ namespace xk_System.Net.Server
 		public void HandleNetPackage ()
 		{
 			int nPackageCount = 0;
-			while (mReceiveStreamQueue.Count > 0) {
-				ClientNetBuffer mPackage = null;
-				lock (mReceiveStreamQueue) {
-					mPackage = mReceiveStreamQueue.Dequeue ();
-				}
+			lock (mReceiveStreamQueue) {
+				while (mReceiveStreamQueue.Count > 0) {
+					ClientNetBuffer mPackage = null;
+					lock (mReceiveStreamQueue) {
+						mPackage = mReceiveStreamQueue.Peek ();
+					}
 
-				if (!mReceivedStreamDic.ContainsKey (mPackage.ClientId)) {
-					int BufferSize = ServerConfig.nMaxPackageSize * ServerConfig.nPerFrameHandlePackageCount;
-					mReceivedStreamDic [mPackage.ClientId] = new CircularBuffer<byte> (BufferSize);
-				}
+					if (!mReceivedStreamDic.ContainsKey (mPackage.ClientId)) {
+						int BufferSize = 2 * ServerConfig.receiveBufferSize;
+						mReceivedStreamDic [mPackage.ClientId] = new CircularBuffer<byte> (BufferSize);
+					}
 
-				mReceivedStreamDic [mPackage.ClientId].WriteFrom (mPackage.Buffer, 0, mPackage.Length);
+					if (mReceivedStreamDic [mPackage.ClientId].isCanWriteFrom (mPackage.Length)) {
+						mPackage = mReceiveStreamQueue.Dequeue ();
+						mReceivedStreamDic [mPackage.ClientId].WriteFrom (mPackage.Buffer, 0, mPackage.Length);
 
-				while (GetPackage (mPackage.ClientId)) {
-					nPackageCount++;
-					if (nPackageCount >= ServerConfig.nPerFrameHandlePackageCount) {
+						while (GetPackage (mPackage.ClientId)) {
+							nPackageCount++;
+						}
+
+						lock (mCanUsePackageQueue) {
+							mCanUsePackageQueue.recycle (mPackage);
+						}
+					} else {
+						//DebugSystem.Log ("PackageSize111: " + mPackage.Length + " | " + mReceivedStreamDic [mPackage.ClientId].Capacity);
 						break;
 					}
 				}
 
-				lock (mCanUsePackageQueue) {
-					mCanUsePackageQueue.recycle (mPackage);
+				if (nPackageCount > 10) {
+					DebugSystem.Log ("Server 处理的网络包数量：" + nPackageCount);
 				}
-
-				if (nPackageCount >= ServerConfig.nPerFrameHandlePackageCount) {
-					break;
-				}
-			}
-
-			if (nPackageCount > 10) {
-				//DebugSystem.Log ("Server 处理的网络包数量：" + nPackageCount);
 			}
 		}
 

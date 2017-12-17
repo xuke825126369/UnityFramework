@@ -10,7 +10,7 @@ namespace xk_System.Net.Server
 		public int clientId;
 		public int command;
 		private int realLength = 0;
-		public byte[] buffer = new byte [ServerConfig.nMaxPackageSize];
+		public byte[] buffer = new byte [1024];
 
 		public int Length {
 			set {
@@ -34,11 +34,17 @@ namespace xk_System.Net.Server
 		}
 	}
 
-	public class ClientNetBuffer
+	public class ClientNetBuffer: ObjectPoolInterface
 	{
 		private int clientId;
 		private byte[] buffer;
 		private int dataLength;
+
+		public void reset()
+		{
+			clientId = -1;
+			dataLength = 0;
+		}
 
 		public int ClientId {
 			get {

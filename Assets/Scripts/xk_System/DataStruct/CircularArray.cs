@@ -64,18 +64,27 @@ namespace xk_System.DataStructure
 				}
 			}
 		}
+
+		public bool isCanWriteFrom(int countT)
+		{
+			if (this.Capacity - this.Length >= countT) {      
+				return true;
+			} else {
+				return false;
+			}
+		}
 			
-		public void WriteFrom (T[] writeBuffer, int offset, int count)
+		public int WriteFrom (T[] writeBuffer, int offset, int count)
 		{
 			if (writeBuffer.Length < count) {
 				count = writeBuffer.Length;
 			}
 
 			if (count <= 0) {
-				return;
+				return count;
 			}
 
-			if (this.Capacity - this.Length >= count) {                          
+			if (isCanWriteFrom (count)) {                          
 				if (nBeginWriteIndex + count <= this.Capacity) {        
 					Array.Copy (writeBuffer, offset, this.Buffer, nBeginWriteIndex, count);
 				} else {
@@ -91,21 +100,25 @@ namespace xk_System.DataStructure
 					nBeginWriteIndex -= this.Capacity;
 				}
 			} else {
-				throw new Exception ("环形缓冲区 写 溢出");
+				DebugSystem.LogWarning ("环形缓冲区 写 溢出 " + this.Capacity + " | " + this.Length + " | " + count);
+				DebugSystem.LogWarning ("环形缓冲区 写入失败");
+				return -1;
 			}
+
+			return count;
 		}
 
-		public void WriteFrom (CircularBuffer<T> writeBuffer, int count)
+		public int WriteFrom (CircularBuffer<T> writeBuffer, int count)
 		{
 			if (writeBuffer.Length < count) {
 				count = writeBuffer.Length;
 			}
 
 			if (count <= 0) {
-				return;
+				return 0;
 			}
 
-			if (this.Capacity - this.Length >= count) {                          
+			if (isCanWriteFrom (count)) {                          
 				if (nBeginWriteIndex + count <= this.Capacity) {
 					for (int i = 0; i < count; i++) {
 						this.Buffer [nBeginWriteIndex + i] = writeBuffer [i];
@@ -131,8 +144,11 @@ namespace xk_System.DataStructure
 
 				writeBuffer.ClearBuffer (count);
 			} else {
-				throw new Exception ("环形缓冲区 写 溢出");
+				DebugSystem.LogWarning ("环形缓冲区 写 溢出");
+				return  -1;
 			}
+
+			return count;
 		}
 
 		public int WriteTo (int index, T[] readBuffer, int offset, int count)

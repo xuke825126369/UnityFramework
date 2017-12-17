@@ -13,8 +13,8 @@ namespace xk_System.Net.Server
 	public class SocketSystem_UdpServer : SocketSystem
 	{
 		EndPoint ep = null;
-
-		public override void init (string ServerAddr, int ServerPort)
+		private Socket mSocket = null;
+		public override void InitNet (string ServerAddr, int ServerPort)
 		{
 			mSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);//初始化一个Scoket实习,采用UDP传输
 

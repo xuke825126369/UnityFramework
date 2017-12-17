@@ -1,154 +1,188 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Net;
-using System.Net.Sockets;
-using System.Threading;
 using System.IO;
 using xk_System.Debug;
-using UnityEngine;
-using xk_System.Crypto;
 using System.Collections;
-using Google.Protobuf;
-using game.protobuf.data;
+using System.Net.Sockets;
+using System.Threading;
+using System.Text;
 
 namespace xk_System.Net.Server
 {
+	class BufferManager
+	{
+    	int m_numBytes;                 // the total number of bytes controlled by the buffer pool
+    	byte[] m_buffer;                // the underlying byte array maintained by the Buffer Manager
+    	Stack<int> m_freeIndexPool;     // 
+    	int m_currentIndex;
+    	int m_bufferSize;
+
+    	public BufferManager(int totalBytes, int bufferSize)
+		{
+			m_numBytes = totalBytes;
+			m_currentIndex = 0;
+			m_bufferSize = bufferSize;
+			m_freeIndexPool = new Stack<int> ();
+		}
+
+    	// Allocates buffer space used by the buffer pool
+    	public void InitBuffer()
+    	{
+        	// create one big large buffer and divide that 
+        	// out to each SocketAsyncEventArg object
+        	m_buffer = new byte[m_numBytes];
+    	}
+
+    	// Assigns a buffer from the buffer pool to the 
+    	// specified SocketAsyncEventArgs object
+    	//
+    	// <returns>true if the buffer was successfully set, else false</returns>
+    	public bool SetBuffer(SocketAsyncEventArgs args)
+		{
+			if (m_freeIndexPool.Count > 0) {
+				args.SetBuffer (m_buffer, m_freeIndexPool.Pop (), m_bufferSize);
+			} else {
+				if ((m_numBytes - m_bufferSize) < m_currentIndex) {
+					return false;
+				}
+				args.SetBuffer (m_buffer, m_currentIndex, m_bufferSize);
+				m_currentIndex += m_bufferSize;
+			}
+			return true;
+		}
+
+    	// Removes the buffer from a SocketAsyncEventArg object.  
+    	// This frees the buffer back to the buffer pool
+    	public void FreeBuffer(SocketAsyncEventArgs args)
+    	{
+        	m_freeIndexPool.Push(args.Offset);
+        	args.SetBuffer(null, 0, 0);
+    	}
+	}
+
 	/// <summary>
 	/// 基于SocketAsyncEventArgs 实现 IOCP 服务器
 	/// </summary>
 	public class SocketSystem_TCPServer:SocketSystem
 	{
-		private static Mutex mutex = new Mutex();
-		private Int32 numConnectedSockets;
-		int m_totalBytesRead; 
-		private Int32 numConnections;
-		private Int32 bufferSize;
+		Semaphore m_maxNumberAcceptedClients;
+		int m_numConnectedSockets = 0;
+		int m_totalBytesRead = 0;
 
 		private ObjectPool<SocketAsyncEventArgs> ioContextPool;
 		private List<SocketAsyncEventArgs> mUsedContextPool;
+		BufferManager mBufferManager;
 
-		internal SocketSystem_TCPServer(Int32 numConnections = 100 , Int32 bufferSize = 8192)
+		private Socket mmListenSocket = null;
+		internal SocketSystem_TCPServer()
 		{
-			this.m_totalBytesRead = 0;
-			this.numConnectedSockets = 0;
-			this.numConnections = numConnections;
-			this.bufferSize = bufferSize;
+			mNetSendSystem = new NetSendSystem (this);
+			mNetReceiveSystem = new NetReceiveSystem (this);
+
+			m_maxNumberAcceptedClients = new Semaphore (ServerConfig.numConnections, ServerConfig.numConnections);
 			mUsedContextPool = new List<SocketAsyncEventArgs> ();
+			ioContextPool = new ObjectPool<SocketAsyncEventArgs> ();
 
-			ioContextPool = new ObjectPool<SocketAsyncEventArgs>();
+			mBufferManager = new BufferManager (2 * ServerConfig.receiveBufferSize * ServerConfig.numConnections, ServerConfig.receiveBufferSize);
+			mBufferManager.InitBuffer ();
 
-			for (Int32 i = 0; i < this.numConnections; i++)
-			{
-				SocketAsyncEventArgs ioContext = new SocketAsyncEventArgs();
-				ioContext.Completed += new EventHandler<SocketAsyncEventArgs>(OnIOCompleted);
-				ioContext.SetBuffer(new Byte[this.bufferSize], 0, this.bufferSize);
-				ioContextPool.recycle(ioContext);
+			for (Int32 i = 0; i < ServerConfig.numConnections; i++) {
+				SocketAsyncEventArgs ioContext = new SocketAsyncEventArgs ();
+				ioContext.Completed += new EventHandler<SocketAsyncEventArgs> (OnIOCompleted);
+				mBufferManager.SetBuffer (ioContext);
+				ioContextPool.recycle (ioContext);
 			}
 		}
 
-		public override void init (string ServerAddr, int ServerPort)
+		public override void InitNet (string ServerAddr, int ServerPort)
 		{
 			IPAddress serverAddr = IPAddress.Parse (ServerAddr);
-			IPEndPoint localEndPoint = new IPEndPoint(serverAddr, ServerPort);
+			IPEndPoint localEndPoint = new IPEndPoint (serverAddr, ServerPort);
 
-			this.mSocket = new Socket(localEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-			this.mSocket.ReceiveBufferSize = bufferSize;
-			this.mSocket.SendBufferSize = bufferSize;
+			this.mmListenSocket = new Socket (localEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+			ConfigServerSocket (this.mmListenSocket);
 
-			this.mSocket.Bind(localEndPoint);
-			this.mSocket.Listen(numConnections);
+			this.mmListenSocket.Bind (localEndPoint);
+			this.mmListenSocket.Listen (0);
 
-			this.StartAccept(null);
-
-			mutex.WaitOne();
+			this.StartAccept (null);
 		}
-			
-		private void StartAccept(SocketAsyncEventArgs acceptEventArg)
+
+		public void ConfigServerSocket(Socket mmListenSocket)
 		{
-			if (acceptEventArg == null)
-			{
-				acceptEventArg = new SocketAsyncEventArgs();
-				acceptEventArg.Completed += new EventHandler<SocketAsyncEventArgs>(OnAcceptCompleted);
-			}
-			else
-			{
-				acceptEventArg.AcceptSocket = null;
-			}
-
-			if (!this.mSocket.AcceptAsync(acceptEventArg))
-			{
-				this.ProcessAccept(acceptEventArg);
-			}
+			//mmListenSocket.ReceiveBufferSize = 0;
+			//mmListenSocket.SendBufferSize = 0;
 		}
-			
+
+		public void ConfigClientSocket(Socket mmListenSocket)
+		{
+			//mmListenSocket.ReceiveBufferSize = 0;
+			//mmListenSocket.SendBufferSize = bufferSize;
+		}
+
 		private void OnIOCompleted(object sender, SocketAsyncEventArgs e)
 		{
-			// Determine which type of operation just completed and call the associated handler.
-			switch (e.LastOperation)
-			{
+			switch (e.LastOperation) {
 			case SocketAsyncOperation.Receive:
 				this.ProcessReceive (e);
 				break;
 			case SocketAsyncOperation.Send:
-				this.ProcessSend(e);
+				this.ProcessSend (e);
 				break;
 			default:
-				throw new ArgumentException("The last operation completed on the socket was not a receive or send");
+				throw new ArgumentException ("The last operation completed on the socket was not a receive or send");
+			}
+		}
+			
+		private void StartAccept(SocketAsyncEventArgs acceptEventArg)
+		{
+			if (acceptEventArg == null) {
+				acceptEventArg = new SocketAsyncEventArgs ();
+				acceptEventArg.Completed += new EventHandler<SocketAsyncEventArgs> (OnAcceptCompleted);
+			} else {
+				acceptEventArg.AcceptSocket = null;
+			}
+
+			m_maxNumberAcceptedClients.WaitOne ();
+			if (!this.mmListenSocket.AcceptAsync (acceptEventArg)) {
+				this.ProcessAccept (acceptEventArg);
 			}
 		}
 
-		private void OnAcceptCompleted(object sender, SocketAsyncEventArgs e)
+		private void OnAcceptCompleted(object sender,SocketAsyncEventArgs args)
 		{
-			this.ProcessAccept(e);
+			this.ProcessAccept (args);
 		}
 
 		private void ProcessAccept(SocketAsyncEventArgs e)
 		{
 			Socket s = e.AcceptSocket;
-			if (s.Connected)
-			{
-				try
-				{
-					SocketAsyncEventArgs ioContext = ioContextPool.Pop();
-					mUsedContextPool.Add(ioContext);
-					if (ioContext != null)
-					{
-						Client mClient = new Client(s);
-						ioContext.UserToken = mClient;
+			ConfigClientSocket (s);
 
-						Interlocked.Increment(ref this.numConnectedSockets);
-						string outStr = String.Format("客户 {0} 连入, 共有 {1} 个连接。",  s.RemoteEndPoint.ToString(),this.numConnectedSockets);
-						DebugSystem.Log(outStr);
+			SocketAsyncEventArgs ioContext = ioContextPool.Pop ();
+			mUsedContextPool.Add (ioContext);
+			if (ioContext != null) {
+				Client mClient = new Client (s);
+				ioContext.UserToken = mClient;
 
-						ClientFactory.Instance.AddClient(mClient);
+				Interlocked.Increment (ref m_numConnectedSockets);
+				string outStr = String.Format ("客户 {0} 连入, 共有 {1} 个连接。", s.RemoteEndPoint.ToString (), this.m_numConnectedSockets);
+				DebugSystem.Log (outStr);
 
-						if (!s.ReceiveAsync(ioContext))
-						{
-							this.ProcessReceive(ioContext);
-						}
-					}
-					else
-					{
-						s.Send(Encoding.Default.GetBytes("连接已经达到最大数!"));
-						string outStr = String.Format("连接已满，拒绝 {0} 的连接。", s.RemoteEndPoint);
-						DebugSystem.Log(outStr);
-						s.Close();
-					}
+				ClientFactory.Instance.AddClient (mClient);
+
+				if (!s.ReceiveAsync (ioContext)) {
+					this.ProcessReceive (ioContext);
 				}
-				catch (SocketException ex)
-				{
-					Socket token = e.UserToken as Socket;
-					string outStr = String.Format("接收客户 {0} 数据出错, 异常信息： {1} 。", token.RemoteEndPoint, ex.ToString());
-					DebugSystem.LogError (outStr);
-				}
-				catch (Exception ex)
-				{
-					DebugSystem.LogError ("异常：" + ex.ToString ());
-				}
-				// 投递下一个接受请求
-				this.StartAccept(e);
+			} else {
+				s.Send (Encoding.Default.GetBytes ("连接已经达到最大数!"));
+				string outStr = String.Format ("连接已满，拒绝 {0} 的连接。", s.RemoteEndPoint);
+				DebugSystem.Log (outStr);
+				s.Close ();
 			}
+
+			this.StartAccept (e);
 		}
 
 		private void ProcessReceive(SocketAsyncEventArgs e)
@@ -172,38 +206,34 @@ namespace xk_System.Net.Server
 		public override void SendNetStream(int socketId,byte[] msg)
 		{
 			Client mClient = ClientFactory.Instance.GetClient (socketId);
-			SocketError mError=SocketError.SocketError;
-			try
-			{
-				var senddata = ioContextPool.Pop();
-				senddata.SetBuffer(msg, 0, msg.Length);
-				mClient.getSocket().SendAsync(senddata);
-			}catch(Exception e)
-			{
-				DebugSystem.LogError("Server 发送失败： "+e.Message+" | "+mError.ToString());
+			try {
+				var senddata = ioContextPool.Pop ();
+				senddata.SetBuffer (msg, 0, msg.Length);
+				mClient.getSocket ().SendAsync (senddata);
+			} catch (SocketException e) {
+				DebugSystem.LogError ("SocketError: " + e.SocketErrorCode);
+			} catch (Exception e) {
+				DebugSystem.LogError ("Server 发送失败： " + e.StackTrace);
 			}
 		}
-			
+
 		private void ProcessSend(SocketAsyncEventArgs e)
 		{
-			if (e.SocketError == SocketError.Success)
-			{
+			if (e.SocketError == SocketError.Success) {
 				//DebugSystem.Log ("Server 发送成功");
-			}
-			else
-			{
-				this.CloseClientSocket(e);
+				ioContextPool.recycle (e);
+			} else {
+				this.CloseClientSocket (e);
 			}
 		}
 			
-		//这里是关闭客户端链接
 		private void CloseClientSocket(SocketAsyncEventArgs e)
 		{
-			Interlocked.Decrement (ref this.numConnectedSockets);
+			Interlocked.Decrement (ref this.m_numConnectedSockets);
 			Client client = e.UserToken as Client;
 			Socket s = client.getSocket ();
 
-			string outStr = String.Format ("客户 {0} 断开, 共有 {1} 个连接。", s.RemoteEndPoint.ToString (), this.numConnectedSockets);
+			string outStr = String.Format ("客户 {0} 断开, 共有 {1} 个连接。", s.RemoteEndPoint.ToString (), this.m_numConnectedSockets);
 			DebugSystem.Log (outStr);        
 			IPEndPoint localEp = s.LocalEndPoint as IPEndPoint;
 			if (e.SocketError != SocketError.Success) {
@@ -214,23 +244,29 @@ namespace xk_System.Net.Server
 			mUsedContextPool.Remove (e);
 			ioContextPool.recycle (e);
 
-			s.Close ();
+			try {
+				s.Shutdown (SocketShutdown.Send);
+			} catch (SocketException  e1) {
+				s.Close ();
+				DebugSystem.LogError (e1.Message);
+			} catch (Exception e2) {
+				s.Close ();
+				DebugSystem.LogError (e2.Message);
+			}
+
 			s = null;
 		}
 			
-		//关闭服务器
 		public override void CloseNet ()
 		{
-			while(mUsedContextPool.Count > 0)
-			{
+			while (mUsedContextPool.Count > 0) {
 				var v = mUsedContextPool [0];
 				CloseClientSocket (v);
 			}
-
 			ioContextPool.release ();
 
+			m_maxNumberAcceptedClients.Release ();
 			base.CloseNet ();
-			mutex.ReleaseMutex();
 		}
 	}
 }

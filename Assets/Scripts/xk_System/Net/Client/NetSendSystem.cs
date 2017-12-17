@@ -1,43 +1,47 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using xk_System.Debug;
+using xk_System.DataStructure;
 
 namespace xk_System.Net.Client
 {
 	public class  NetSendSystem:NetSendSystemInterface
 	{
-		protected ObjectPool<NetPackage> mCanUseNetPackageQueue;
-		protected Queue<NetPackage> mNeedHandleNetPackageQueue;
+		protected QueueArraySegment<byte> mWaitSendBuffer = null;
+		NetPackage mNetPackage = null;
 		protected SocketSystem mSocketSystem;
 
 		public NetSendSystem (SocketSystem socketSys)
 		{
 			this.mSocketSystem = socketSys;
-			mNeedHandleNetPackageQueue = new Queue<NetPackage> ();
-			mCanUseNetPackageQueue = new ObjectPool<NetPackage> ();
+			mWaitSendBuffer = new QueueArraySegment<byte> (64, ClientConfig.sendBufferSize);
+			mNetPackage = new NetPackage ();
 		}
 
 		public void SendNetData (int id, byte[] buffer)
 		{
-			NetPackage mNetPackage = mCanUseNetPackageQueue.Pop ();
 			mNetPackage.command = id;
 			mNetPackage.buffer = buffer;
 			mNetPackage.Length = buffer.Length;
-			mNeedHandleNetPackageQueue.Enqueue (mNetPackage);
+
+			byte[] stream = NetEncryptionStream.Encryption (mNetPackage);
+			mWaitSendBuffer.WriteFrom (stream, 0, stream.Length);
 		}
 
 		public void HandleNetPackage ()
 		{
-			int handlePackageCount = 0;
-			while (mNeedHandleNetPackageQueue.Count > 0) {
-				var mPackage = mNeedHandleNetPackageQueue.Dequeue ();
-				HandleNetStream (mPackage);
-				mCanUseNetPackageQueue.recycle (mPackage);
-				handlePackageCount++;
-			}
+			if (mWaitSendBuffer.Length > 0) {
+				byte[] tempBuffer = mWaitSendBuffer.ToArray ();
+				if (tempBuffer != null) {
+					mSocketSystem.SendNetStream (tempBuffer, 0, tempBuffer.Length);
+				}
 
-			if (handlePackageCount > 5) {
-				//DebugSystem.Log ("客户端 发送包的数量： " + handlePackageCount);
+				mWaitSendBuffer.reset ();
+			
+				if (tempBuffer.Length > ClientConfig.sendBufferSize) {
+					DebugSystem.LogError ("客户端 发送字节数： " + tempBuffer.Length);
+				}
 			}
 		}
 
@@ -49,9 +53,8 @@ namespace xk_System.Net.Client
 
 		public void release ()
 		{
-			lock (mNeedHandleNetPackageQueue) {
-				mNeedHandleNetPackageQueue.Clear ();
-			}
+			mWaitSendBuffer.release ();
+			mNetPackage.reset ();
 		}
 	}
 }

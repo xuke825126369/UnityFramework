@@ -49,15 +49,13 @@ namespace xk_System.DataStructure
 			}
 		}
 
-
-
 		public void WriteFrom (T[] otherBuffer, int offset, int count)
 		{
 			if (count > dataLength) {
 				buffer = new T[count];
 			}
 
-			Array.Copy (otherBuffer, offset, buffer, 0, count);
+			Array.Copy (otherBuffer, offset, buffer, dataLength, count);
 			dataLength = count;
 		}
 	}
