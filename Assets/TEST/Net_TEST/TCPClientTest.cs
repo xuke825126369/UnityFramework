@@ -53,7 +53,7 @@ public class TCPClientTest : MonoBehaviour
 
 		while (nSendCount != nReceiveCount) {
 			yield return new WaitForSeconds (1f);
-			Debug.LogError ("丢包了111： " + nSendCount + " | " + nReceiveCount);
+			Debug.LogError ("丢包了111： " + nSendCount + " | " + nReceiveCount + " | " + TCPServerTest.nReceiveCount);
 		}
 
 		Debug.Log ("发送完毕： " + nSendCount);

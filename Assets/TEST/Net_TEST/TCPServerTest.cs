@@ -46,6 +46,7 @@ public class TCPServerTest : MonoBehaviour
 		scChatData mSenddata = new scChatData ();
 		mSenddata.ChatInfo = new struct_ChatInfo ();
 		mSenddata.ChatInfo.ChannelId = mServerSendData.ChannelId;
+		mSenddata.ChatInfo.TalkMsg = mServerSendData.TalkMsg;
 		mNetSystem.sendNetData (package.clientId, (int)ProtoCommand.ProtoChat, mSenddata);
 
 		nReceiveCount++;

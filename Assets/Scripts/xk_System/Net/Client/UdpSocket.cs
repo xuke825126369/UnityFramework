@@ -16,7 +16,7 @@ namespace xk_System.Net.Client.Udp
 		private EndPoint ep;
 		private Socket mSocket = null;
 
-		public override void init (string ServerAddr, int ServerPort)
+		public override  void InitNet (string ServerAddr, int ServerPort)
 		{
 			mSocket = new Socket (AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);//初始化一个Scoket协议
 
@@ -48,7 +48,7 @@ namespace xk_System.Net.Client.Udp
 			}
 		}
 
-		public override void Update ()
+		public override void HandleNetPackage ()
 		{
 			
 		}
@@ -60,7 +60,7 @@ namespace xk_System.Net.Client.Udp
 			mSocket.Send (msg, offset, Length, SocketFlags.None, out merror);
 		}
 
-		public override void SendNetStream (byte[] msg,int offset,int Length)
+		public void SendNetStream (byte[] msg,int offset,int Length)
 		{
 			mSocket.SendTo (msg, offset, Length, SocketFlags.None, ep);
 		}

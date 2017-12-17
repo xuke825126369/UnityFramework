@@ -20,14 +20,21 @@ namespace xk_System.Net.Client.TCP
 		private ArrayList m_ExceptFD = new ArrayList ();
 
 		byte[] mReceiveStream = new byte[ClientConfig.nMaxPackageSize * ClientConfig.nPerFrameHandlePackageCount];
-		public override void init (string ServerAddr, int ServerPort)
+
+		public SocketSystem_Select ()
+		{
+			mNetSendSystem = new NetSendSystem (this);
+			mNetReceiveSystem = new NetNoLockReceiveSystem (this);
+		}
+
+		public override void InitNet (string ServerAddr, int ServerPort)
 		{
 			try {
 				IPEndPoint mIPEndPoint = new IPEndPoint (IPAddress.Parse (ServerAddr), ServerPort);
 				mSocket = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 				mSocket.Connect (mIPEndPoint);
 				ConfigureSocket (mSocket);
-				DebugSystem.Log ("Client Net Init Success： IP: " + ServerAddr + " | Port: " + ServerPort);
+				DebugSystem.Log ("Client Net InitNet Success： IP: " + ServerAddr + " | Port: " + ServerPort);
 			} catch (SocketException e) {
 				DebugSystem.LogError (e.SocketErrorCode + " | " + e.Message);
 			} catch (Exception e) {
@@ -37,10 +44,10 @@ namespace xk_System.Net.Client.TCP
 
 		public override void ConfigureSocket (Socket mSocket)
 		{
-			mSocket.ReceiveBufferSize = 100;
-			mSocket.ReceiveTimeout = 0;
-			mSocket.SendTimeout = 0;
-			mSocket.Blocking = false;
+			//mSocket.ReceiveBufferSize = 100;
+			//mSocket.ReceiveTimeout = 1000;
+			//mSocket.SendTimeout = 1000;
+			mSocket.Blocking = true;
 			PrintSocketConfigInfo (mSocket);
 		}
 			
@@ -72,8 +79,6 @@ namespace xk_System.Net.Client.TCP
 
 				if (this.m_WriteFD.Contains (this.mSocket)) {
 					ProcessOutput ();
-				} else {
-					DebugSystem.LogError ("WriteFD 不可Send");
 				}
 
 				if (this.m_ReadFD.Contains (this.mSocket)) {
@@ -98,11 +103,10 @@ namespace xk_System.Net.Client.TCP
 			int Length = mSocket.Receive (mReceiveStream, 0, mReceiveStream.Length, SocketFlags.None, out error);
 			if (error == SocketError.Success) {
 				mNetReceiveSystem.ReceiveSocketStream (mReceiveStream, 0, Length);
-				if (mSocket.Available > 0) {
-					DebugSystem.LogError ("Available > 0： " + Length + " | " + mReceiveStream.Length);
-					ProcessInput ();
-
-				}
+				//if (mSocket.Available > 0) {
+				//	DebugSystem.LogError ("Available > 0： " + Length + " | " + mReceiveStream.Length);
+				//	ProcessInput ();
+				//}
 			} else {
 				DebugSystem.LogError (error.ToString ());
 			}
@@ -116,10 +120,12 @@ namespace xk_System.Net.Client.TCP
 		}
 
 
-		public override void Update ()
+		public override void HandleNetPackage ()
 		{
 			if (this.CheckSocketState ()) {
 				this.Select ();
+
+				base.HandleNetPackage ();
 			}
 		}
 
@@ -151,6 +157,9 @@ namespace xk_System.Net.Client.TCP
 				mSocket.Close ();
 				mSocket = null;
 			}
+
+			DebugSystem.Log ("关闭 Socket TCP 客户端");
+			base.CloseNet ();
 		}
 	}
 
@@ -159,7 +168,7 @@ namespace xk_System.Net.Client.TCP
 	{
 		private Socket mSocket = null;
 		byte[] mReceiveStream = new byte[receiveInfoPoolCapacity];
-		public override void init (string ServerAddr, int ServerPort)
+		public override void InitNet (string ServerAddr, int ServerPort)
 		{
 			try {
 				IPEndPoint mIPEndPoint = new IPEndPoint (IPAddress.Parse (ServerAddr), ServerPort);
@@ -170,7 +179,7 @@ namespace xk_System.Net.Client.TCP
 				mSocket.ReceiveBufferSize = receiveInfoPoolCapacity;
 				mSocket.SendBufferSize = sendInfoPoolCapacity;
 				mSocket.Blocking = false;
-				DebugSystem.Log ("Client Net Init Success： IP: " + ServerAddr + " | Port: " + ServerPort);
+				DebugSystem.Log ("Client Net InitNet Success： IP: " + ServerAddr + " | Port: " + ServerPort);
 			} catch (SocketException e) {
 				DebugSystem.LogError ("客户端初始化失败000： " + e.SocketErrorCode + " | " + e.Message);
 			} catch (Exception e) {
@@ -200,12 +209,12 @@ namespace xk_System.Net.Client.TCP
 			mNetReceiveSystem.ReceiveSocketStream (mReceiveStream, 0, Length);
 		}
 
-		public override void Update ()
+		public override void HandleNetPackage ()
 		{
 			Poll ();
 		}
 
-		public override void SendNetStream (byte[] msg,int offset,int Length)
+		public void SendNetStream (byte[] msg,int offset,int Length)
 		{
 			try {
 				SocketError merror;
@@ -238,7 +247,7 @@ namespace xk_System.Net.Client.TCP
 		Thread mThread = null;
 
 		protected Socket mSocket = null;
-		public override void init (string ServerAddr, int ServerPort)
+		public override void InitNet (string ServerAddr, int ServerPort)
 		{
 			try {
 				IPEndPoint mIPEndPoint = new IPEndPoint (IPAddress.Parse (ServerAddr), ServerPort);
@@ -251,7 +260,7 @@ namespace xk_System.Net.Client.TCP
 				mSocket.Blocking = false;
 
 				NewStartThread_Receive ();
-				DebugSystem.Log ("Client Net Init Success： IP: " + ServerAddr + " | Port: " + ServerPort);
+				DebugSystem.Log ("Client Net InitNet Success： IP: " + ServerAddr + " | Port: " + ServerPort);
 			} catch (SocketException e) {
 				DebugSystem.LogError (e.SocketErrorCode + " | " + e.Message);
 			} catch (Exception e) {
@@ -259,7 +268,7 @@ namespace xk_System.Net.Client.TCP
 			}
 		}
 
-		public override void Update ()
+		public override void HandleNetPackage ()
 		{
 			
 		}
@@ -369,7 +378,7 @@ namespace xk_System.Net.Client.TCP
 			DebugSystem.LogError ("网络线程结束");
 		}
 
-		public override void SendNetStream (byte[] msg,int offset,int Length)
+		public void SendNetStream (byte[] msg,int offset,int Length)
 		{
 			try {
 				SocketError merror;
@@ -409,12 +418,12 @@ namespace xk_System.Net.Client.TCP
 
 		}
 
-		public override void Update ()
+		public override void HandleNetPackage ()
 		{
 			
 		}
 
-		public override void init (string ServerAddr, int ServerPort)
+		public override void InitNet (string ServerAddr, int ServerPort)
 		{       
 			if (mSocket != null && mSocket.Connected) {
 				return;
@@ -432,7 +441,7 @@ namespace xk_System.Net.Client.TCP
 			}
 		}
 
-		public override void SendNetStream (byte[] msg,int offset,int Length)
+		public void SendNetStream (byte[] msg,int offset,int Length)
 		{
 			Send (msg);
 		}
@@ -533,7 +542,7 @@ namespace xk_System.Net.Client.TCP
 		SocketAsyncEventArgs ReceiveArgs;
 
 		private Socket mSocket = null;
-		public override void init (string ServerAddr, int ServerPort)
+		public override void InitNet (string ServerAddr, int ServerPort)
 		{
 			try {
 				mSocket = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
@@ -541,13 +550,13 @@ namespace xk_System.Net.Client.TCP
 				IPEndPoint mIPEndPoint = new IPEndPoint (mIPAddress, ServerPort);
 				mSocket.Connect (mIPEndPoint);
 				ConnectServer ();
-				DebugSystem.Log ("Client Net Init Success： IP: " + ServerAddr + " | Port: " + ServerPort);
+				DebugSystem.Log ("Client Net InitNet Success： IP: " + ServerAddr + " | Port: " + ServerPort);
 			} catch (SocketException e) {
 				DebugSystem.LogError ("客户端初始化失败：" + e.Message + " | " + e.SocketErrorCode);
 			}
 		}
 
-		public override void Update ()
+		public override void HandleNetPackage ()
 		{
 			
 		}
@@ -560,7 +569,7 @@ namespace xk_System.Net.Client.TCP
 			mSocket.ReceiveAsync (ReceiveArgs);
 		}
 
-		public override void SendNetStream (byte[] msg,int offset,int Length)
+		public void SendNetStream (byte[] msg,int offset,int Length)
 		{
 			SocketError mError = SocketError.SocketError;
 			try {
