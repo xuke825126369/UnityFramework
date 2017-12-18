@@ -43,18 +43,12 @@ namespace xk_System.DataStructure
 			}
 		}
 
-		public int nBeginWriteIndex {
-			get {
-				return dataLength;
-			}
-		}
-
 		public void WriteFrom (T[] otherBuffer, int offset, int count)
 		{
 			if (count > dataLength) {
-				buffer = new T[count];
+				buffer = new T[buffer.Length];
 			}
-
+			
 			Array.Copy (otherBuffer, offset, buffer, dataLength, count);
 			dataLength = count;
 		}

@@ -23,7 +23,6 @@ namespace xk_System.Net.Client
 		{
 			mNetPackage.command = id;
 			mNetPackage.buffer = buffer;
-			mNetPackage.Length = buffer.Length;
 
 			byte[] stream = NetEncryptionStream.Encryption (mNetPackage);
 			mWaitSendBuffer.WriteFrom (stream, 0, stream.Length);
@@ -40,7 +39,7 @@ namespace xk_System.Net.Client
 				mWaitSendBuffer.reset ();
 			
 				if (tempBuffer.Length > ClientConfig.sendBufferSize) {
-					DebugSystem.LogError ("客户端 发送字节数： " + tempBuffer.Length);
+					//DebugSystem.LogError ("客户端 发送字节数： " + tempBuffer.Length);
 				}
 			}
 		}

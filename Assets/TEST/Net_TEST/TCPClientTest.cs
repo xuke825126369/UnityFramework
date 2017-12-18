@@ -74,9 +74,8 @@ public class TCPClientTest : MonoBehaviour
 
 	private void Receive_ServerSenddata(NetPackage package)
 	{
-		scChatData mServerSendData = Protocol3Utility.getData<scChatData> (package.buffer, 0, package.Length);
+		scChatData mServerSendData = Protocol3Utility.getData<scChatData> (package.buffer, 0, package.buffer.Length);
 		//Debug.Log ("Client 接受 渠道ID " + mServerSendData.ChatInfo.ChannelId);
-
 		nReceiveCount++;
 	}
 }

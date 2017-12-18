@@ -124,8 +124,23 @@ namespace xk_System.Crypto
     /// <summary>
     /// 本类无法解析Linux上的AES密文,现在可以解析了
     /// </summary>
-	internal static class Encryption_AES
+	internal class Encryption_AES
     {
+		private byte[] mKeyArray = null;
+		private byte[] mVectorArray = null;
+
+		public Encryption_AES(string Key, string Vector)
+		{
+			mKeyArray = Encoding.UTF8.GetBytes (Key);
+			mVectorArray = Encoding.UTF8.GetBytes (Vector);
+		}
+
+		public Encryption_AES(byte[] Key, byte[] Vector)
+		{
+			mKeyArray = Key;
+			mVectorArray = Vector;
+		}
+
         /// <summary>  
         /// AES加密  
         /// </summary>  
@@ -133,33 +148,27 @@ namespace xk_System.Crypto
         /// <param name="Key">密钥:it should be 16, 24 or 32 bytes long</param>  
         /// <param name="Vector">向量:it should be 16 bytes long</param>  
         /// <returns>密文</returns>  
-		public static byte[] Encryption(Byte[] Data, string Key, string Vector)
-        {
-            Byte[] bKey = Encoding.UTF8.GetBytes(Key);
-            Byte[] bVector = Encoding.UTF8.GetBytes(Vector);
-            Byte[] Cryptograph = null; // 加密后的密文  
+		public byte[] Encryption(Byte[] Data,int offset,int Length)
+		{
+			Byte[] Cryptograph = null; // 加密后的密文  
 
-            Rijndael Aes = Rijndael.Create();
-            Aes.Mode = CipherMode.CBC;
-            Aes.Key = bKey;
-            Aes.IV = bVector;
-            //printAesInfo(Aes);
-            ICryptoTransform cTransform = Aes.CreateEncryptor();
-            try
-            {
-                Cryptograph = cTransform.TransformFinalBlock(Data, 0, Data.Length);
-            }
-            catch (Exception e)
-            {
-                DebugSystem.LogError("Encryption_AES: " + e.Message);
-            }
-            if (Cryptograph == null)
-            {
-                DebugSystem.LogError("Encryption_AES: value is null");
-            }
-            Aes.Clear();
-            return Cryptograph;
-        }
+			Rijndael Aes = Rijndael.Create ();
+			Aes.Mode = CipherMode.CBC;
+			Aes.Key = mKeyArray;
+			Aes.IV = mVectorArray;
+			ICryptoTransform cTransform = Aes.CreateEncryptor ();
+			try {
+				Cryptograph = cTransform.TransformFinalBlock (Data, offset, Length);
+			} catch (Exception e) {
+				DebugSystem.LogError ("Encryption_AES: " + e.Message);
+			}
+			if (Cryptograph == null) {
+				DebugSystem.LogError ("Encryption_AES: value is null");
+			}
+			Aes.Clear ();
+			return Cryptograph;
+		}
+
         /// <summary>  
         /// AES解密  
         /// </summary>  
@@ -167,36 +176,27 @@ namespace xk_System.Crypto
         /// <param name="Key">密钥:it should be 16, 24 or 32 bytes long.</param>  
         /// <param name="Vector">向量:it should be 16 bytes long</param>  
         /// <returns>明文</returns>        
-		public static byte[] Decryption(Byte[] Data, string Key, string Vector)
-        {
-           // DebugSystem.Log("Data Length:" + Data.Length);
-            Byte[] bKey = Encoding.UTF8.GetBytes(Key);
-            Byte[] bVector = Encoding.UTF8.GetBytes(Vector);
-            Byte[] original = null; // 解密后的明文  
+		public byte[] Decryption(Byte[] Data,int offset,int Length)
+		{
+			Byte[] original = null; // 解密后的明文  
 
-            Rijndael Aes = Rijndael.Create();
-            // Aes.Padding = PaddingMode.Zeros;
-            Aes.Mode = CipherMode.CBC;
-            Aes.Key = bKey;
-            Aes.IV = bVector;
-            //printAesInfo(Aes);
-            ICryptoTransform cTransform = Aes.CreateDecryptor();
-            try
-            {
-                original = cTransform.TransformFinalBlock(Data, 0, Data.Length);
-            }
-            catch (Exception e)
-            {
-                DebugSystem.Log("Decryption_AES:" + e.Message);
-            }
-            Aes.Clear();
+			Rijndael Aes = Rijndael.Create ();
+			Aes.Mode = CipherMode.CBC;
+			Aes.Key = mKeyArray;
+			Aes.IV = mVectorArray;
+			ICryptoTransform cTransform = Aes.CreateDecryptor ();
+			try {
+				original = cTransform.TransformFinalBlock (Data, offset, Length);
+			} catch (Exception e) {
+				DebugSystem.Log ("Decryption_AES:" + e.Message);
+			}
+			Aes.Clear ();
 
-            if (original == null)
-            {
-                DebugSystem.LogError("Decryption_AES: value is null");
-            }
-            return original;
-        }
+			if (original == null) {
+				DebugSystem.LogError ("Decryption_AES: value is null");
+			}
+			return original;
+		}
 
 		private static void printAesInfo(Rijndael Aes)
         {
@@ -207,7 +207,7 @@ namespace xk_System.Crypto
             DebugSystem.Log("Padding:" + Aes.Padding);
 
         }
-    }
+	}
 
 
 	internal static class Encryption_DSA
