@@ -10,8 +10,8 @@ public class test_md5 : MonoBehaviour {
 
 	// Use this for initialization
 	void Start ()
-    {
-
+	{
+		/*
         string data = "123456789asdffasfdasdfasdfasdfasdfasdfsdfasfasdfasdfsdfasdfasfasdfasdfsadfsfsdfsdfsdfsfsdfsdfsdfsdfsdfsdfsdfsdfsdf";
         string key = "1234567891234567";
         string iv = "1234567891234567";
@@ -34,7 +34,8 @@ public class test_md5 : MonoBehaviour {
             DebugSystem.LogError("bbb错误");
         }
         DebugSystem.Log("bbb:" + Encoding.UTF8.GetString(bbb));
-    }
+        */
+	}
 
 	void Update ()
     {

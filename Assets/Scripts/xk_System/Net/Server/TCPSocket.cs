@@ -203,12 +203,13 @@ namespace xk_System.Net.Server
 			}
 		}
 
-		public override void SendNetStream(int socketId,byte[] msg)
+		public override void SendNetStream(int socketId, ArraySegment<byte> msg)
 		{
 			Client mClient = ClientFactory.Instance.GetClient (socketId);
 			try {
 				var senddata = ioContextPool.Pop ();
-				senddata.SetBuffer (msg, 0, msg.Length);
+				Array.Copy (msg.Array, msg.Offset, senddata.Buffer, senddata.Offset, msg.Count);
+				senddata.SetBuffer (senddata.Offset, msg.Count);
 				mClient.getSocket ().SendAsync (senddata);
 			} catch (SocketException e) {
 				DebugSystem.LogError ("SocketError: " + e.SocketErrorCode);

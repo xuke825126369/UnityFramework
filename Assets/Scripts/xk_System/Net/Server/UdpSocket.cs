@@ -53,9 +53,9 @@ namespace xk_System.Net.Server
 			}
 		}
 
-		public override void SendNetStream (int clientId,byte[] msg)
+		public override void SendNetStream (int clientId,ArraySegment<byte> msg)
 		{
-			mSocket.SendTo (msg, ep);
+			//mSocket.SendTo (msg, ep);
 		}
 
 		public override void CloseNet ()

@@ -41,7 +41,7 @@ public class TCPServerTest : MonoBehaviour
 
 	private void Receive_ServerSenddata(NetPackage package)
 	{
-		csChatData mServerSendData = Protocol3Utility.getData<csChatData> (package.buffer, 0, package.Length);
+		csChatData mServerSendData = Protocol3Utility.getData<csChatData> (package.buffer, 0, package.buffer.Length);
 
 		scChatData mSenddata = new scChatData ();
 		mSenddata.ChatInfo = new struct_ChatInfo ();

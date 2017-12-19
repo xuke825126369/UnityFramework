@@ -9,28 +9,12 @@ namespace xk_System.Net.Server
 	{
 		public int clientId;
 		public int command;
-		private int realLength = 0;
-		public byte[] buffer = new byte [1024];
-
-		public int Length {
-			set {
-				if (value > buffer.Length) {
-					int tempLength = buffer.Length * (value / buffer.Length + 1);
-					buffer = new byte[tempLength];
-				}
-
-				realLength = value;
-			}
-
-			get {
-				return realLength;
-			}
-		}
+		public byte[] buffer = null;
 
 		public void reset()
 		{
 			command = -1;
-			Length = 0;
+			buffer = null;
 		}
 	}
 

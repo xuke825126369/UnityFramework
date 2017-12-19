@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using UnityEngine;
 using xk_System.Debug;
 using xk_System.DataStructure;
+using System;
 
 namespace xk_System.Net.Client
 {
 	public class  NetSendSystem:NetSendSystemInterface
 	{
 		protected QueueArraySegment<byte> mWaitSendBuffer = null;
-		NetPackage mNetPackage = null;
+		protected NetPackage mNetPackage = null;
 		protected SocketSystem mSocketSystem;
 
 		public NetSendSystem (SocketSystem socketSys)
@@ -24,8 +25,8 @@ namespace xk_System.Net.Client
 			mNetPackage.command = id;
 			mNetPackage.buffer = buffer;
 
-			byte[] stream = NetEncryptionStream.Encryption (mNetPackage);
-			mWaitSendBuffer.WriteFrom (stream, 0, stream.Length);
+			ArraySegment<byte> stream = NetEncryptionStream.Encryption (mNetPackage);
+			mWaitSendBuffer.WriteFrom (stream.Array, stream.Offset, stream.Count);
 		}
 
 		public void HandleNetPackage ()
@@ -42,12 +43,6 @@ namespace xk_System.Net.Client
 					//DebugSystem.LogError ("客户端 发送字节数： " + tempBuffer.Length);
 				}
 			}
-		}
-
-		private void HandleNetStream (NetPackage mPackage)
-		{
-			byte[] stream = NetEncryptionStream.Encryption (mPackage);
-			mSocketSystem.SendNetStream (stream, 0, stream.Length);
 		}
 
 		public void release ()

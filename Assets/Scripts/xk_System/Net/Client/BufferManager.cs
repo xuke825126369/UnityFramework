@@ -25,7 +25,7 @@ namespace xk_System.Net.Client
 		public bool SetBuffer (SocketAsyncEventArgs args)
 		{
 			if (m_freeIndexPool.Count > 0) {
-				args.SetBuffer (m_buffer, m_freeIndexPool.Pop ());
+				args.SetBuffer (m_buffer, m_freeIndexPool.Pop (), nBufferSize);
 			} else {
 				if (nReadIndex + nBufferSize > Length) {
 					return false;

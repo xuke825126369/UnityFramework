@@ -9,106 +9,82 @@ using xk_System.DataStructure;
 
 namespace xk_System.Net.Server
 {
+	/// <summary>
+	/// 把数据拿出来
+	/// </summary>
 	public static class NetEncryptionStream
 	{
-		public const int stream_head_Length = 2;
-		public const int stream_tail_Length = 2;
-		public const int msg_head_BodyLength = 4;
-		private static byte[] mStreamHeadArray = new byte[stream_head_Length] { 7, 7 };
-		private static byte[] mStreamTailArray = new byte[stream_head_Length] { 7, 7 };
-
-		public  const  int msg_head_command_length = 4;
-		public  const string Encrytption_Key = "1234567891234567";
-		public  const string Encrytption_iv = "1234567891234567";
-
-		static byte[] msg_Head_Array = new byte[2];
-		static byte[] msg_BodyLength_Array = new byte[4];
-		static byte[] BodyData = new byte[1024];
-		static int BodyLength = 0;
+		private static byte[] mCheck = new byte[4] { (byte)'A', (byte)'B', (byte)'C', (byte)'D' };
+		private static Encryption_AES mAES = new Encryption_AES ("1234567891234567", "1234567891234567");
+		private static byte[] mReceiveBuffer = new byte[1024];
+		private static byte[] mSendBuffer = new byte[1024];
 
 		public static bool DeEncryption (CircularBuffer<byte> data, NetPackage mPackage)
 		{
-			if (data.Length - 8 <= 0) {
-				//DebugSystem.LogError ("Server 系统池解析错误： 0000000000000000");
+			if (data.Length <= 8) {
 				return false;
 			}
 
-			int readLength = data.CopyTo (2, msg_BodyLength_Array, 0, 4);
-			if (readLength < 4) {
-				//DebugSystem.LogError ("Server 系统池解析错误： 1111111111111111");
+			for (int i = 0; i < 4; i++) {
+				if (data [i] != mCheck [i]) {
+					return false;
+				}
+			}
+
+			int nBodyLength1 = data [4] | data [5] << 8 | data [6] << 16 | data [7] << 24;
+			if (nBodyLength1 <= 0 || nBodyLength1 + 8 > data.Length) {
 				return false;
 			}
 
-			BodyLength = msg_BodyLength_Array [0] | msg_BodyLength_Array [1] << 8 | msg_BodyLength_Array [2] << 16 | msg_BodyLength_Array [3] << 24;
-			if (BodyLength <= 0 || BodyLength + 8 > data.Length) {
-				//DebugSystem.LogError ("Server 系统池解析错误： 2222222222222222222：" + BodyLength);
+			if (nBodyLength1 > mReceiveBuffer.Length) {
+				mReceiveBuffer = new byte[nBodyLength1];
+			}
+
+			data.CopyTo (8, mReceiveBuffer, 0, nBodyLength1);
+			data.ClearBuffer (nBodyLength1 + 8);
+
+			byte[] msg = mAES.Decryption (mReceiveBuffer, 0, nBodyLength1);
+			if (msg.Length < 4) {
+				DebugSystem.LogError ("解包失败");
 				return false;
 			}
 
-			if (BodyLength > BodyData.Length) {
-				BodyData = new byte[BodyLength];
-			}
+			int command = msg [0] | msg [1] << 8 | msg [2] << 16 | msg [3] << 24;
+			int nBodyLength2 = msg.Length - 4;
 
-			data.CopyTo (6, BodyData, 0, BodyLength);
-			data.ClearBuffer (BodyLength + 8);
+			byte[] buffer = new byte[nBodyLength2];
+			Array.Copy (msg, 4, buffer, 0, nBodyLength2);
 
-			//DebugSystem.LogError ("Server 系统池解析成功: " + BodyLength);
-			byte[] aesStream = new byte[BodyLength];
-			Array.Copy (BodyData, 0, aesStream, 0, BodyLength);
-			//DebugSystem.LogBitStream ("AES 解密 前： ", aesStream);
-			byte[] msg = Encryption_AES.Decryption (aesStream, Encrytption_Key, Encrytption_iv);
-
-			//DebugSystem.LogError ("Server AES 解密成功: " + msg.Length);
-			//DebugSystem.LogBitStream ("AES 解密流： ", msg);
-			int buffer_Length = msg.Length - msg_head_command_length;
-			if (buffer_Length <= 0) {
-				DebugSystem.LogError ("Server 系统池解析错误： 333333333333333333333333333：" + buffer_Length +" | " + msg.Length);
-				return false;
-			}
-
-			byte[] byte_head_command = new byte[msg_head_command_length];
-			Array.Copy (msg, 0, byte_head_command, 0, msg_head_command_length);
-			mPackage.command = byte_head_command [0] | byte_head_command [1] << 8 | byte_head_command [2] << 16 | byte_head_command [3] << 24;
-
-			mPackage.Length = buffer_Length;
-			Array.Copy (msg, msg_head_command_length, mPackage.buffer, 0, buffer_Length);
+			mPackage.command = command;
+			mPackage.buffer = buffer;
 			return true;
 		}
 
-		public static byte[] Encryption (NetPackage mPackage)
+		public static ArraySegment<byte> Encryption (NetPackage mPackage)
 		{
 			int command = mPackage.command;
 			byte[] msg = mPackage.buffer;
 
-			int buffer_Length = mPackage.Length;
-			int sum_Length = msg_head_command_length + buffer_Length;
-			byte[] data = new byte[sum_Length];
+			int buffer_Length = mPackage.buffer.Length;
+			int sum_Length = 4 + buffer_Length;
 
-			byte[] byte_head_command = new byte[msg_head_command_length];
-			byte_head_command [0] = (byte)command;
-			byte_head_command [1] = (byte)(command >> 8);
-			byte_head_command [2] = (byte)(command >> 16);
-			byte_head_command [3] = (byte)(command >> 24);
+			mSendBuffer [0] = (byte)command;
+			mSendBuffer [1] = (byte)(command >> 8);
+			mSendBuffer [2] = (byte)(command >> 16);
+			mSendBuffer [3] = (byte)(command >> 24);
 
-			Array.Copy (byte_head_command, 0, data, 0, msg_head_command_length);
-			Array.Copy (msg, 0, data, msg_head_command_length, buffer_Length);
-			data = Encryption_AES.Encryption (data, Encrytption_Key, Encrytption_iv);
+			Array.Copy (msg, 0, mSendBuffer, 4, buffer_Length);
+			byte[] data = mAES.Encryption (mSendBuffer, 0, sum_Length);
+			Array.Copy (data, 0, mSendBuffer, 8, data.Length);
 
-			byte[] Encryption_data = null;
+			Array.Copy (mCheck, mSendBuffer, 4);
 			buffer_Length = data.Length;
-			byte[] byte_head_BufferLength = new byte[msg_head_BodyLength];
-			byte_head_BufferLength [0] = (byte)buffer_Length;
-			byte_head_BufferLength [1] = (byte)(buffer_Length >> 8);
-			byte_head_BufferLength [2] = (byte)(buffer_Length >> 16);
-			byte_head_BufferLength [3] = (byte)(buffer_Length >> 24);
+			mSendBuffer [4] = (byte)buffer_Length;
+			mSendBuffer [5] = (byte)(buffer_Length >> 8);
+			mSendBuffer [6] = (byte)(buffer_Length >> 16);
+			mSendBuffer [7] = (byte)(buffer_Length >> 24);
 
-			Encryption_data = new byte[buffer_Length + msg_head_BodyLength + stream_head_Length + stream_tail_Length];
-			Array.Copy (mStreamHeadArray, Encryption_data, stream_head_Length);
-			Array.Copy (byte_head_BufferLength, 0, Encryption_data, stream_head_Length, msg_head_BodyLength);
-			Array.Copy (data, 0, Encryption_data, stream_head_Length + msg_head_BodyLength, buffer_Length);
-			Array.Copy (mStreamTailArray, 0, Encryption_data, msg_head_BodyLength + stream_head_Length + buffer_Length, stream_tail_Length);
-
-			return Encryption_data;
+			return new ArraySegment<byte> (mSendBuffer, 0, data.Length + 8);
 		}
 	}
 }

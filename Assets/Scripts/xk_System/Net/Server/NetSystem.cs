@@ -104,7 +104,7 @@ namespace xk_System.Net.Server
 
 		}
 
-		public virtual void SendNetStream (int clientId,byte[] msg)
+		public virtual void SendNetStream (int clientId,ArraySegment<byte> buffer)
 		{
 
 		}
@@ -125,59 +125,40 @@ namespace xk_System.Net.Server
 	//begin~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~网络发送系统~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	public class  NetSendSystem
 	{
-		protected Queue<NetPackage> mNeedHandleNetPackageQueue;
 		protected SocketSystem mSocketSystem;
-		protected ObjectPool<NetPackage> mCanUsePackagePool;
+		protected NetPackage mPackage = null;
 
 		public NetSendSystem (SocketSystem socketSys)
 		{
 			this.mSocketSystem = socketSys;
-			mNeedHandleNetPackageQueue = new Queue<NetPackage> ();
-			mCanUsePackagePool = new ObjectPool<NetPackage> ();
+			mPackage = new NetPackage ();
 		}
 
 		public virtual void SendNetData (int clientId, int command, byte[] buffer)
 		{
-			NetPackage mPackage = mCanUsePackagePool.Pop ();
 			mPackage.clientId = clientId;
 			mPackage.command = command;
 			mPackage.buffer = buffer;
-			mPackage.Length = buffer.Length;
-			mNeedHandleNetPackageQueue.Enqueue (mPackage);
+
+			ArraySegment<byte> stream = NetEncryptionStream.Encryption (mPackage);
+			mSocketSystem.SendNetStream (mPackage.clientId, stream);
 		}
 
 		public void HandleNetPackage ()
 		{
-			int handlePackageCount = 0;
-			while (mNeedHandleNetPackageQueue.Count > 0) {
-				var mPackage = mNeedHandleNetPackageQueue.Dequeue ();
-				HandleNetStream (mPackage);
-				mCanUsePackagePool.recycle (mPackage);
-				handlePackageCount++;
-			}
-
-			if (handlePackageCount > 10) {
-				//DebugSystem.Log ("服务器 发送包的数量： " + handlePackageCount);
-			}
-		}
-
-		private void HandleNetStream (NetPackage mPackage)
-		{
-			byte[] stream = NetEncryptionStream.Encryption (mPackage);
-			mSocketSystem.SendNetStream (mPackage.clientId, stream);
+			
 		}
 
 		public virtual void Destory ()
 		{
-			mNeedHandleNetPackageQueue.Clear ();
-			mCanUsePackagePool.release ();
+			
 		}
 	}
 
 	//begin~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~网络接受系统~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	public class NetReceiveSystem
 	{
-		protected Dictionary<int,CircularBuffer<byte>> mReceivedStreamDic;
+		protected Dictionary<int, CircularBuffer<byte>> mReceivedStreamDic;
 		protected Queue<ClientNetBuffer> mReceiveStreamQueue;
 		protected ObjectPool<ClientNetBuffer> mCanUsePackageQueue;
 		protected NetPackage mReceivePackage;
@@ -189,7 +170,6 @@ namespace xk_System.Net.Server
 			mReceivedStreamDic = new Dictionary<int, CircularBuffer<byte>> ();
 			mReceiveStreamQueue = new Queue<ClientNetBuffer> ();
 			mCanUsePackageQueue = new ObjectPool<ClientNetBuffer> ();
-
 			mReceivePackage = new NetPackage ();
 		}
 
