@@ -12,7 +12,7 @@ using xk_System.Event;
 
 namespace xk_System.Net.Client
 {
-	public class NetSystem:SocketSystem_Select, NetEventInterface
+	public class NetSystem:SocketSystem_SocketAsyncEventArgs, NetEventInterface
 	{
 		public void initNet (string ServerAddr, int ServerPort)
 		{

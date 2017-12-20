@@ -61,9 +61,6 @@ namespace xk_System.Net.Server
     	}
 	}
 
-	/// <summary>
-	/// 基于SocketAsyncEventArgs 实现 IOCP 服务器
-	/// </summary>
 	public class SocketSystem_TCPServer:SocketSystem
 	{
 		Semaphore m_maxNumberAcceptedClients;
@@ -101,24 +98,11 @@ namespace xk_System.Net.Server
 			IPEndPoint localEndPoint = new IPEndPoint (serverAddr, ServerPort);
 
 			this.mmListenSocket = new Socket (localEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-			ConfigServerSocket (this.mmListenSocket);
 
 			this.mmListenSocket.Bind (localEndPoint);
 			this.mmListenSocket.Listen (0);
 
 			this.StartAccept (null);
-		}
-
-		public void ConfigServerSocket(Socket mmListenSocket)
-		{
-			//mmListenSocket.ReceiveBufferSize = 0;
-			//mmListenSocket.SendBufferSize = 0;
-		}
-
-		public void ConfigClientSocket(Socket mmListenSocket)
-		{
-			//mmListenSocket.ReceiveBufferSize = 0;
-			//mmListenSocket.SendBufferSize = bufferSize;
 		}
 
 		private void OnIOCompleted(object sender, SocketAsyncEventArgs e)
@@ -158,8 +142,6 @@ namespace xk_System.Net.Server
 		private void ProcessAccept(SocketAsyncEventArgs e)
 		{
 			Socket s = e.AcceptSocket;
-			ConfigClientSocket (s);
-
 			SocketAsyncEventArgs ioContext = ioContextPool.Pop ();
 			mUsedContextPool.Add (ioContext);
 			if (ioContext != null) {
@@ -206,23 +188,23 @@ namespace xk_System.Net.Server
 		public override void SendNetStream(int socketId, ArraySegment<byte> msg)
 		{
 			Client mClient = ClientFactory.Instance.GetClient (socketId);
-			try {
-				var senddata = ioContextPool.Pop ();
-				Array.Copy (msg.Array, msg.Offset, senddata.Buffer, senddata.Offset, msg.Count);
-				senddata.SetBuffer (senddata.Offset, msg.Count);
-				mClient.getSocket ().SendAsync (senddata);
-			} catch (SocketException e) {
-				DebugSystem.LogError ("SocketError: " + e.SocketErrorCode);
-			} catch (Exception e) {
-				DebugSystem.LogError ("Server 发送失败： " + e.StackTrace);
+			SocketAsyncEventArgs senddata = null;
+			lock(ioContextPool)
+			{
+				senddata = ioContextPool.Pop ();
 			}
+			DebugSystem.Assert (senddata != null, "Array is Null");
+			Array.Copy (msg.Array, msg.Offset, senddata.Buffer, senddata.Offset, msg.Count);
+			senddata.SetBuffer (senddata.Offset, msg.Count);
+			mClient.getSocket ().SendAsync (senddata);
 		}
 
 		private void ProcessSend(SocketAsyncEventArgs e)
 		{
 			if (e.SocketError == SocketError.Success) {
-				//DebugSystem.Log ("Server 发送成功");
-				ioContextPool.recycle (e);
+				lock (ioContextPool) {
+					ioContextPool.recycle (e);
+				}
 			} else {
 				this.CloseClientSocket (e);
 			}

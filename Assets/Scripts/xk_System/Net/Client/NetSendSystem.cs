@@ -24,7 +24,6 @@ namespace xk_System.Net.Client
 		{
 			mNetPackage.command = id;
 			mNetPackage.buffer = buffer;
-
 			ArraySegment<byte> stream = NetEncryptionStream.Encryption (mNetPackage);
 			mWaitSendBuffer.WriteFrom (stream.Array, stream.Offset, stream.Count);
 		}
