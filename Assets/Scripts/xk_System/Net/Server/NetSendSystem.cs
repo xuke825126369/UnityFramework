@@ -7,15 +7,17 @@ using System;
 
 namespace xk_System.Net.Server
 {
-	public class  NetSendSystem
+	public class NetSendSystem_SocketAsyncEventArgs:NetSendSystemInterface
 	{
 		protected SocketSystem mSocketSystem;
 		protected NetPackage mPackage = null;
+		protected CircularBuffer<byte> mWaitSendBuffer = null;
 
-		public NetSendSystem (SocketSystem socketSys)
+		public NetSendSystem_SocketAsyncEventArgs (SocketSystem socketSys)
 		{
 			this.mSocketSystem = socketSys;
 			mPackage = new NetPackage ();
+			mWaitSendBuffer = new CircularBuffer<byte> ();
 		}
 
 		public virtual void SendNetData (int clientId, int command, byte[] buffer)
@@ -25,34 +27,46 @@ namespace xk_System.Net.Server
 			mPackage.buffer = buffer;
 
 			ArraySegment<byte> stream = NetEncryptionStream.Encryption (mPackage);
+			mWaitSendBuffer.WriteFrom (stream.Array, stream.Offset, stream.Count);
 			mSocketSystem.SendNetStream (mPackage.clientId, stream);
 		}
 
 		public void HandleNetPackage ()
 		{
+			if (mWaitSendBuffer.Length > 0) {
+				byte[] tempBuffer = mWaitSendBuffer.ToArray ();
+				if (tempBuffer != null) {
+					mSocketSystem.SendNetStream (tempBuffer, 0, tempBuffer.Length);
+				}
 
+				mWaitSendBuffer.reset ();
+
+				if (tempBuffer.Length > ClientConfig.nMaxBufferSize) {
+					//DebugSystem.LogError ("客户端 发送字节数： " + tempBuffer.Length);
+				}
+			}
 		}
 
-		public virtual void Destory ()
+		public void release ()
 		{
 
 		}
 	}
 
-	public class  NetSendSystem1
+	public class  NetSendSystem_Select:NetSendSystemInterface
 	{
 		protected QueueArraySegment<byte> mWaitSendBuffer = null;
 		protected NetPackage mNetPackage = null;
 		protected SocketSystem mSocketSystem;
 
-		public NetSendSystem1 (SocketSystem socketSys)
+		public NetSendSystem_Select (SocketSystem socketSys)
 		{
 			this.mSocketSystem = socketSys;
-			mWaitSendBuffer = new QueueArraySegment<byte> (64, ClientConfig.sendBufferSize);
+			mWaitSendBuffer = new QueueArraySegment<byte> (64, ClientConfig.nMaxBufferSize);
 			mNetPackage = new NetPackage ();
 		}
 
-		public void SendNetData (int id, byte[] buffer)
+		public void SendNetData (int clientId, int id, byte[] buffer)
 		{
 			mNetPackage.command = id;
 			mNetPackage.buffer = buffer;
@@ -70,7 +84,7 @@ namespace xk_System.Net.Server
 
 				mWaitSendBuffer.reset ();
 			
-				if (tempBuffer.Length > ClientConfig.sendBufferSize) {
+				if (tempBuffer.Length > ClientConfig.nMaxBufferSize) {
 					//DebugSystem.LogError ("客户端 发送字节数： " + tempBuffer.Length);
 				}
 			}

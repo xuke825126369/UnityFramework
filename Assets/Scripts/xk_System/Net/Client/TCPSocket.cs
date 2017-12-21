@@ -20,7 +20,7 @@ namespace xk_System.Net.Client.TCP
 		{
 			mNetSendSystem = new NetSendSystem (this);
 			mNetReceiveSystem = new NetNoLockReceiveSystem (this);
-			mReceiveStream = new byte[ClientConfig.receiveBufferSize];
+			mReceiveStream = new byte[ClientConfig.nMaxBufferSize];
 		}
 
 		public override void InitNet (string ServerAddr, int ServerPort)
@@ -113,7 +113,7 @@ namespace xk_System.Net.Client.TCP
 		{
 			mNetSendSystem = new NetSendSystem (this);
 			mNetReceiveSystem = new NetLockReceiveSystem (this);
-			mReceiveStream = new byte[ClientConfig.receiveBufferSize];
+			mReceiveStream = new byte[ClientConfig.nMaxBufferSize];
 		}
 
 		public override void InitNet (string ServerAddr, int ServerPort)
@@ -241,7 +241,7 @@ namespace xk_System.Net.Client.TCP
 		{
 			ReceiveArgs = new SocketAsyncEventArgs ();
 			ReceiveArgs.Completed += Receive_Fun;
-			ReceiveArgs.SetBuffer (new byte[ClientConfig.receiveBufferSize], 0, ClientConfig.receiveBufferSize);
+			ReceiveArgs.SetBuffer (new byte[ClientConfig.nMaxBufferSize], 0, ClientConfig.nMaxBufferSize);
 			mSocket.ReceiveAsync (ReceiveArgs);
 		}
 

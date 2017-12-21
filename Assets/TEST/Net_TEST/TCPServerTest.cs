@@ -30,7 +30,7 @@ public class TCPServerTest : MonoBehaviour
 		
 	IEnumerator Run()
 	{    
-		for (int i = 0; i < 1; i++) {
+		for (int i = 0; i < 20; i++) {
 			GameObject obj = new GameObject ();
 			obj.AddComponent<TCPClientTest> ();
 			yield return new WaitForSeconds (1f);

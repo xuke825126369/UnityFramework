@@ -96,8 +96,8 @@ namespace xk_System.Net.Server
 
 	public class SocketSystem: SocketConfig
 	{
-		protected NetReceiveSystem mNetReceiveSystem;
-		protected NetSendSystem mNetSendSystem;
+		protected NetReceiveSystemInterface mNetReceiveSystem;
+		protected NetSendSystemInterface mNetSendSystem;
 
 		public virtual void InitNet (string ServerAddr, int ServerPort)
 		{
@@ -117,9 +117,27 @@ namespace xk_System.Net.Server
 
 		public virtual void CloseNet ()
 		{
-			mNetSendSystem.Destory ();
-			mNetReceiveSystem.Destory ();
+			mNetSendSystem.release ();
+			mNetReceiveSystem.release ();
 		}
+	}
+
+	public interface  NetSendSystemInterface
+	{
+		void SendNetData (int clientId,int id, byte[] buffer);
+		void HandleNetPackage ();
+		void release ();
+	}
+
+	public interface NetReceiveSystemInterface
+	{
+		void addListenFun (Action<NetPackage> fun);
+		void removeListenFun (Action<NetPackage> fun);
+
+		bool isCanReceiveFromSocketStream ();
+		void ReceiveSocketStream (int clientId,byte[] data, int index, int Length);
+		void HandleNetPackage ();
+		void release ();
 	}
 }
 

@@ -16,7 +16,7 @@ namespace xk_System.Net.Client
 
 		public NetNoLockReceiveSystem (SocketSystem socketSys)
 		{
-			mParseStreamList = new CircularBuffer<byte> (2 * ClientConfig.receiveBufferSize);
+			mParseStreamList = new CircularBuffer<byte> (2 * ClientConfig.nMaxBufferSize);
 			mBindReceiveNetPackage = new DataBind<NetPackage> (new NetPackage ());
 		}
 
@@ -87,8 +87,8 @@ namespace xk_System.Net.Client
 
 		public NetLockReceiveSystem (SocketSystem socketSys)
 		{
-			mReceiveStreamList = new CircularBuffer<byte> (ClientConfig.nThreadSaveMaxBuffer);
-			mParseStreamList = new CircularBuffer<byte> (2 * ClientConfig.receiveBufferSize);
+			mReceiveStreamList = new CircularBuffer<byte> (ClientConfig.nMaxBufferSize);
+			mParseStreamList = new CircularBuffer<byte> (2 * ClientConfig.nMaxBufferSize);
 			mBindReceiveNetPackage = new DataBind<NetPackage> (new NetPackage ());
 		}
 
@@ -105,7 +105,7 @@ namespace xk_System.Net.Client
 
 		public bool isCanReceiveFromSocketStream()
 		{
-			return mReceiveStreamList.isCanWriteFrom (ServerConfig.receiveBufferSize);
+			return mReceiveStreamList.isCanWriteFrom (ServerConfig.nMaxBufferSize);
 		}
 
 		public void ReceiveSocketStream (byte[] data, int index, int Length)
@@ -120,7 +120,7 @@ namespace xk_System.Net.Client
 			int PackageCout = 0;
 
 			lock (mReceiveStreamList) {
-				int readBytes = mParseStreamList.WriteFrom (mReceiveStreamList, ClientConfig.receiveBufferSize);
+				int readBytes = mParseStreamList.WriteFrom (mReceiveStreamList, ClientConfig.nMaxBufferSize);
 			}
 				
 			while (GetPackage ()) {

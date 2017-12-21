@@ -12,7 +12,6 @@ namespace xk_System.Net.Server
 {
 	public class SocketSystem_SocketAsyncEventArgs:SocketSystem
 	{
-		Semaphore m_maxNumberAcceptedClients;
 		int m_numConnectedSockets = 0;
 		int m_totalBytesRead = 0;
 
@@ -23,16 +22,16 @@ namespace xk_System.Net.Server
 		private Socket mListenSocket = null;
 		internal SocketSystem_SocketAsyncEventArgs()
 		{
-			mNetSendSystem = new NetSendSystem (this);
-			mNetReceiveSystem = new NetReceiveSystem (this);
+			mNetSendSystem = new NetSendSystem_SocketAsyncEventArgs (this);
+			mNetReceiveSystem = new NetReceiveSystem_SocketAsyncEventArgs (this);
 
-			m_maxNumberAcceptedClients = new Semaphore (ServerConfig.numConnections, ServerConfig.numConnections);
+		
 			mUsedContextPool = new List<SocketAsyncEventArgs> ();
 			ioContextPool = new ObjectPool<SocketAsyncEventArgs> ();
 
-			mBufferManager = new BufferManager (2 * ServerConfig.receiveBufferSize * ServerConfig.numConnections, ServerConfig.receiveBufferSize);
+			mBufferManager = new BufferManager (2 * ServerConfig.nMaxBufferSize * ServerConfig.numConnections, ServerConfig.nMaxBufferSize);
 			
-			for (Int32 i = 0; i < ServerConfig.numConnections; i++) {
+			for (int i = 0; i < ServerConfig.numConnections; i++) {
 				SocketAsyncEventArgs ioContext = new SocketAsyncEventArgs ();
 				ioContext.Completed += new EventHandler<SocketAsyncEventArgs> (OnIOCompleted);
 				mBufferManager.SetBuffer (ioContext);
@@ -75,8 +74,7 @@ namespace xk_System.Net.Server
 			} else {
 				acceptEventArg.AcceptSocket = null;
 			}
-
-			m_maxNumberAcceptedClients.WaitOne ();
+				
 			if (!this.mListenSocket.AcceptAsync (acceptEventArg)) {
 				this.ProcessAccept (acceptEventArg);
 			}
@@ -96,7 +94,7 @@ namespace xk_System.Net.Server
 				Client mClient = new Client (s);
 				ioContext.UserToken = mClient;
 
-				Interlocked.Increment (ref m_numConnectedSockets);
+				m_numConnectedSockets++;
 				string outStr = String.Format ("客户 {0} 连入, 共有 {1} 个连接。", s.RemoteEndPoint.ToString (), this.m_numConnectedSockets);
 				DebugSystem.Log (outStr);
 
@@ -118,9 +116,6 @@ namespace xk_System.Net.Server
 		private void ProcessReceive(SocketAsyncEventArgs e)
 		{
 			if (e.SocketError == SocketError.Success && e.BytesTransferred > 0) {
-				Interlocked.Add (ref m_totalBytesRead, e.BytesTransferred);
-				//DebugSystem.Log ("The server has read a total bytes： " + m_totalBytesRead + " | " + e.BytesTransferred);
-
 				var client = e.UserToken as Client;
 				mNetReceiveSystem.ReceiveSocketStream (client.getId (), e.Buffer, 0, e.BytesTransferred);
 
@@ -137,8 +132,7 @@ namespace xk_System.Net.Server
 		{
 			Client mClient = ClientFactory.Instance.GetClient (socketId);
 			SocketAsyncEventArgs senddata = null;
-			lock(ioContextPool)
-			{
+			lock (ioContextPool) {
 				senddata = ioContextPool.Pop ();
 			}
 			DebugSystem.Assert (senddata != null, "Array is Null");
@@ -172,8 +166,13 @@ namespace xk_System.Net.Server
 				DebugSystem.LogError (outStr);
 			}
 
-			mUsedContextPool.Remove (e);
-			ioContextPool.recycle (e);
+			lock (mUsedContextPool) {
+				mUsedContextPool.Remove (e);
+			}
+
+			lock (ioContextPool) {
+				ioContextPool.recycle (e);
+			}
 
 			try {
 				s.Shutdown (SocketShutdown.Send);
@@ -195,8 +194,6 @@ namespace xk_System.Net.Server
 				CloseClientSocket (v);
 			}
 			ioContextPool.release ();
-
-			m_maxNumberAcceptedClients.Release ();
 			base.CloseNet ();
 		}
 	}
@@ -212,9 +209,9 @@ namespace xk_System.Net.Server
 
 		public SocketSystem_Select ()
 		{
-			mNetSendSystem = new NetSendSystem (this);
-			mNetReceiveSystem = new NetReceiveSystem (this);
-			mReceiveStream = new byte[ClientConfig.receiveBufferSize];
+			mNetSendSystem = new NetSendSystem_Select (this);
+			mNetReceiveSystem = new NetReceiveSystem_Select (this);
+			mReceiveStream = new byte[ClientConfig.nMaxBufferSize];
 			m_ReadFD = new ArrayList ();
 			m_WriteFD = new ArrayList ();
 			m_ExceptFD = new ArrayList ();

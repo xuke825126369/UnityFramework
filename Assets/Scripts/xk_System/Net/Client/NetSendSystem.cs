@@ -16,7 +16,7 @@ namespace xk_System.Net.Client
 		public NetSendSystem (SocketSystem socketSys)
 		{
 			this.mSocketSystem = socketSys;
-			mWaitSendBuffer = new QueueArraySegment<byte> (64, ClientConfig.sendBufferSize);
+			mWaitSendBuffer = new QueueArraySegment<byte> (64, ClientConfig.nMaxBufferSize);
 			mNetPackage = new NetPackage ();
 		}
 
@@ -38,7 +38,7 @@ namespace xk_System.Net.Client
 
 				mWaitSendBuffer.reset ();
 			
-				if (tempBuffer.Length > ClientConfig.sendBufferSize) {
+				if (tempBuffer.Length > ClientConfig.nMaxBufferSize) {
 					//DebugSystem.LogError ("客户端 发送字节数： " + tempBuffer.Length);
 				}
 			}
