@@ -10,58 +10,7 @@ using System.Text;
 
 namespace xk_System.Net.Server
 {
-	class BufferManager
-	{
-    	int m_numBytes;                 // the total number of bytes controlled by the buffer pool
-    	byte[] m_buffer;                // the underlying byte array maintained by the Buffer Manager
-    	Stack<int> m_freeIndexPool;     // 
-    	int m_currentIndex;
-    	int m_bufferSize;
-
-    	public BufferManager(int totalBytes, int bufferSize)
-		{
-			m_numBytes = totalBytes;
-			m_currentIndex = 0;
-			m_bufferSize = bufferSize;
-			m_freeIndexPool = new Stack<int> ();
-		}
-
-    	// Allocates buffer space used by the buffer pool
-    	public void InitBuffer()
-    	{
-        	// create one big large buffer and divide that 
-        	// out to each SocketAsyncEventArg object
-        	m_buffer = new byte[m_numBytes];
-    	}
-
-    	// Assigns a buffer from the buffer pool to the 
-    	// specified SocketAsyncEventArgs object
-    	//
-    	// <returns>true if the buffer was successfully set, else false</returns>
-    	public bool SetBuffer(SocketAsyncEventArgs args)
-		{
-			if (m_freeIndexPool.Count > 0) {
-				args.SetBuffer (m_buffer, m_freeIndexPool.Pop (), m_bufferSize);
-			} else {
-				if ((m_numBytes - m_bufferSize) < m_currentIndex) {
-					return false;
-				}
-				args.SetBuffer (m_buffer, m_currentIndex, m_bufferSize);
-				m_currentIndex += m_bufferSize;
-			}
-			return true;
-		}
-
-    	// Removes the buffer from a SocketAsyncEventArg object.  
-    	// This frees the buffer back to the buffer pool
-    	public void FreeBuffer(SocketAsyncEventArgs args)
-    	{
-        	m_freeIndexPool.Push(args.Offset);
-        	args.SetBuffer(null, 0, 0);
-    	}
-	}
-
-	public class SocketSystem_TCPServer:SocketSystem
+	public class SocketSystem_SocketAsyncEventArgs:SocketSystem
 	{
 		Semaphore m_maxNumberAcceptedClients;
 		int m_numConnectedSockets = 0;
@@ -71,8 +20,8 @@ namespace xk_System.Net.Server
 		private List<SocketAsyncEventArgs> mUsedContextPool;
 		BufferManager mBufferManager;
 
-		private Socket mmListenSocket = null;
-		internal SocketSystem_TCPServer()
+		private Socket mListenSocket = null;
+		internal SocketSystem_SocketAsyncEventArgs()
 		{
 			mNetSendSystem = new NetSendSystem (this);
 			mNetReceiveSystem = new NetReceiveSystem (this);
@@ -82,8 +31,7 @@ namespace xk_System.Net.Server
 			ioContextPool = new ObjectPool<SocketAsyncEventArgs> ();
 
 			mBufferManager = new BufferManager (2 * ServerConfig.receiveBufferSize * ServerConfig.numConnections, ServerConfig.receiveBufferSize);
-			mBufferManager.InitBuffer ();
-
+			
 			for (Int32 i = 0; i < ServerConfig.numConnections; i++) {
 				SocketAsyncEventArgs ioContext = new SocketAsyncEventArgs ();
 				ioContext.Completed += new EventHandler<SocketAsyncEventArgs> (OnIOCompleted);
@@ -97,10 +45,10 @@ namespace xk_System.Net.Server
 			IPAddress serverAddr = IPAddress.Parse (ServerAddr);
 			IPEndPoint localEndPoint = new IPEndPoint (serverAddr, ServerPort);
 
-			this.mmListenSocket = new Socket (localEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+			this.mListenSocket = new Socket (localEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
-			this.mmListenSocket.Bind (localEndPoint);
-			this.mmListenSocket.Listen (0);
+			this.mListenSocket.Bind (localEndPoint);
+			this.mListenSocket.Listen (0);
 
 			this.StartAccept (null);
 		}
@@ -129,7 +77,7 @@ namespace xk_System.Net.Server
 			}
 
 			m_maxNumberAcceptedClients.WaitOne ();
-			if (!this.mmListenSocket.AcceptAsync (acceptEventArg)) {
+			if (!this.mListenSocket.AcceptAsync (acceptEventArg)) {
 				this.ProcessAccept (acceptEventArg);
 			}
 		}
@@ -249,6 +197,161 @@ namespace xk_System.Net.Server
 			ioContextPool.release ();
 
 			m_maxNumberAcceptedClients.Release ();
+			base.CloseNet ();
+		}
+	}
+
+	//Select
+	public class SocketSystem_Select: SocketSystem
+	{
+		private Socket mSocket;
+		private ArrayList m_ReadFD = null;
+		private ArrayList m_WriteFD = null;
+		private ArrayList m_ExceptFD = null;
+		byte[] mReceiveStream = null;
+
+		public SocketSystem_Select ()
+		{
+			mNetSendSystem = new NetSendSystem (this);
+			mNetReceiveSystem = new NetReceiveSystem (this);
+			mReceiveStream = new byte[ClientConfig.receiveBufferSize];
+			m_ReadFD = new ArrayList ();
+			m_WriteFD = new ArrayList ();
+			m_ExceptFD = new ArrayList ();
+		}
+
+		public override void InitNet (string ServerAddr, int ServerPort)
+		{
+			try {
+				IPEndPoint mIPEndPoint = new IPEndPoint (IPAddress.Parse (ServerAddr), ServerPort);
+				mSocket = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+				mSocket.Connect (mIPEndPoint);
+				ConfigureSocket (mSocket);
+				DebugSystem.Log ("Client Net InitNet Success： IP: " + ServerAddr + " | Port: " + ServerPort);
+			} catch (SocketException e) {
+				DebugSystem.LogError (e.SocketErrorCode + " | " + e.Message);
+			} catch (Exception e) {
+				DebugSystem.LogError ("客户端初始化失败：" + e.Message);
+			}
+		}
+
+		public override void ConfigureSocket (Socket mSocket)
+		{
+			//mSocket.ReceiveBufferSize = 100;
+			//mSocket.ReceiveTimeout = 1000;
+			//mSocket.SendTimeout = 1000;
+			mSocket.Blocking = false;
+			PrintSocketConfigInfo (mSocket);
+		}
+
+		private bool CheckSocketState()
+		{
+			if (mSocket == null) {
+				return false;
+			}
+
+			//PrintSocketState (mSocket);
+			return true;
+		}
+
+		private void Select ()
+		{
+			try {
+				this.m_ReadFD.Clear ();
+				this.m_WriteFD.Clear ();
+				this.m_ExceptFD.Clear ();
+
+				this.m_ReadFD.Add (this.mSocket);
+				this.m_WriteFD.Add (this.mSocket);
+				this.m_ExceptFD.Add (this.mSocket);
+				Socket.Select (this.m_ReadFD, this.m_WriteFD, this.m_ExceptFD, 0);
+
+				if (this.m_ExceptFD.Contains (this.mSocket)) {
+					ProcessExcept ();
+				}
+
+				if (this.m_WriteFD.Contains (this.mSocket)) {
+					ProcessOutput ();
+				}
+
+				if (this.m_ReadFD.Contains (this.mSocket)) {
+					ProcessInput ();
+				}
+			} catch (SocketException e) {
+				DebugSystem.LogError (e.SocketErrorCode + " | " + e.Message);
+			} catch (Exception e) {
+				DebugSystem.LogError (e.Message);
+			}
+		}
+
+		private void ProcessOutput ()
+		{
+			//DebugSystem.Log ("Client Can Write ...");
+		}
+
+		private void ProcessInput ()
+		{
+			//DebugSystem.Log ("Client Can Read ...");
+			SocketError error;
+			int Length = mSocket.Receive (mReceiveStream, 0, mReceiveStream.Length, SocketFlags.None, out error);
+			if (error == SocketError.Success) {
+				//mNetReceiveSystem.ReceiveSocketStream (mReceiveStream, 0, Length);
+				if (mSocket.Available > 0) {
+					DebugSystem.LogError ("Available > 0： " + mSocket.Available +" | "+ Length + " | " + mReceiveStream.Length);
+					//ProcessInput ();
+				}
+			} else {
+				DebugSystem.LogError (error.ToString ());
+			}
+		}
+
+		private void ProcessExcept ()
+		{
+			//DebugSystem.LogError ("Client SocketExcept");
+			this.mSocket.Close ();
+			this.mSocket = null;
+		}
+
+
+		public override void HandleNetPackage ()
+		{
+			if (this.CheckSocketState ()) {
+				this.Select ();
+
+				base.HandleNetPackage ();
+			}
+		}
+
+		public void SendNetStream (byte[] msg, int index, int Length)
+		{
+			try {
+				SocketError merror;
+				int sendLength = mSocket.Send (msg, index, Length, SocketFlags.None, out merror);
+				if (sendLength != Length) {
+					DebugSystem.LogError ("Client:SendLength:  " + sendLength + " | " + Length);
+				}
+				if (merror != SocketError.Success) {
+					if (mSocket.Blocking == false && merror == SocketError.WouldBlock) {
+						SendNetStream (msg, index, Length);
+					} else {
+						DebugSystem.LogError ("发送失败: " + merror);
+					}
+				}
+			} catch (SocketException e) {
+				DebugSystem.LogError (e.SocketErrorCode + " | " + e.Message);
+			} catch (Exception e) {
+				DebugSystem.LogError (e.Message);
+			}
+		}
+
+		public override void CloseNet ()
+		{
+			if (mSocket != null) {
+				mSocket.Close ();
+				mSocket = null;
+			}
+
+			DebugSystem.Log ("关闭 Socket TCP 客户端");
 			base.CloseNet ();
 		}
 	}
