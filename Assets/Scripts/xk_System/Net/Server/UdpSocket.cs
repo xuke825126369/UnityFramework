@@ -10,11 +10,11 @@ using System.Text;
 
 namespace xk_System.Net.Server
 {		
-	public class SocketSystem_UdpServer : SocketSystem
+	public class SocketSystem_UdpServer 
 	{
 		EndPoint ep = null;
 		private Socket mSocket = null;
-		public override void InitNet (string ServerAddr, int ServerPort)
+		public void InitNet (string ServerAddr, int ServerPort)
 		{
 			mSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);//初始化一个Scoket实习,采用UDP传输
 
@@ -43,7 +43,7 @@ namespace xk_System.Net.Server
 					DebugSystem.Log("远程IP: "+remoteIpstr);
 					if (length > 0)
 					{
-						mNetReceiveSystem.ReceiveSocketStream(1,data,0,data.Length);
+						//mNetReceiveSystem.ReceiveSocketStream(data,0,data.Length);
 					}
 				}catch(Exception e)
 				{
@@ -53,14 +53,14 @@ namespace xk_System.Net.Server
 			}
 		}
 
-		public override void SendNetStream (int clientId,ArraySegment<byte> msg)
+		public void SendNetStream (int clientId,byte[] msg,int offset, int count)
 		{
 			//mSocket.SendTo (msg, ep);
 		}
 
-		public override void CloseNet ()
+		public  void CloseNet ()
 		{
-			base.CloseNet ();
+			
 		}
 	}
 }

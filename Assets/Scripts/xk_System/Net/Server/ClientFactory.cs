@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 using System.Net.Sockets;
+using System;
+using xk_System.Debug;
 
 namespace xk_System.Net.Server
 {
@@ -47,15 +49,17 @@ namespace xk_System.Net.Server
 		}
 	}
 
-	public class Client
+	public class SocketAsyncEventArgs_Token
 	{
 		private int Id;
 		private Socket clientSocekt;
+		private SocketAsyncEventArgs mSend_SocketAsyncEventArgs = null;
 
-		public Client(Socket clientSocekt)
+		public void init(Socket clientSocekt, SocketAsyncEventArgs send)
 		{
 			this.Id = IdManager.Instance.allot ();
 			this.clientSocekt = clientSocekt;
+			mSend_SocketAsyncEventArgs = send;
 		}
 
 		public Socket getSocket()
@@ -74,6 +78,26 @@ namespace xk_System.Net.Server
 			clientSocekt.Close ();
 			clientSocekt = null;
 		}
+
+		public void SendNetStream(byte[] msg,int offset,int Length)
+		{
+			if (Length > ServerConfig.nMaxBufferSize) {
+				DebugSystem.LogError ("发送Buffer 超过最大尺寸");
+				return;
+			}
+			Array.Copy (msg, offset, mSend_SocketAsyncEventArgs.Buffer, mSend_SocketAsyncEventArgs.Offset, Length);
+			mSend_SocketAsyncEventArgs.SetBuffer (mSend_SocketAsyncEventArgs.Offset, Length);
+			clientSocekt.SendAsync (mSend_SocketAsyncEventArgs);
+		}
+	}
+
+	public class Client : NetSystem_SocketAsyncEventArgs
+	{
+		public Client()
+		{
+
+		}
+
 	}
 }
 

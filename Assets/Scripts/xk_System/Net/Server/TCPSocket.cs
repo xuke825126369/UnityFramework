@@ -10,7 +10,7 @@ using System.Text;
 
 namespace xk_System.Net.Server
 {
-	public class SocketSystem_SocketAsyncEventArgs:SocketSystem
+	public class SocketSystem_SocketAsyncEventArgs
 	{
 		int m_numConnectedSockets = 0;
 		int m_totalBytesRead = 0;
@@ -22,10 +22,6 @@ namespace xk_System.Net.Server
 		private Socket mListenSocket = null;
 		internal SocketSystem_SocketAsyncEventArgs()
 		{
-			mNetSendSystem = new NetSendSystem_SocketAsyncEventArgs (this);
-			mNetReceiveSystem = new NetReceiveSystem_SocketAsyncEventArgs (this);
-
-		
 			mUsedContextPool = new List<SocketAsyncEventArgs> ();
 			ioContextPool = new ObjectPool<SocketAsyncEventArgs> ();
 
@@ -39,7 +35,7 @@ namespace xk_System.Net.Server
 			}
 		}
 
-		public override void InitNet (string ServerAddr, int ServerPort)
+		public void InitNet (string ServerAddr, int ServerPort)
 		{
 			IPAddress serverAddr = IPAddress.Parse (ServerAddr);
 			IPEndPoint localEndPoint = new IPEndPoint (serverAddr, ServerPort);
@@ -91,14 +87,15 @@ namespace xk_System.Net.Server
 			SocketAsyncEventArgs ioContext = ioContextPool.Pop ();
 			mUsedContextPool.Add (ioContext);
 			if (ioContext != null) {
-				Client mClient = new Client (s);
+				SocketAsyncEventArgs_Token mClient = new Client ();
+				mClient.init (s, ioContextPool.Pop());
 				ioContext.UserToken = mClient;
 
 				m_numConnectedSockets++;
 				string outStr = String.Format ("客户 {0} 连入, 共有 {1} 个连接。", s.RemoteEndPoint.ToString (), this.m_numConnectedSockets);
 				DebugSystem.Log (outStr);
 
-				ClientFactory.Instance.AddClient (mClient);
+				ClientFactory.Instance.AddClient ((Client)mClient);
 
 				if (!s.ReceiveAsync (ioContext)) {
 					this.ProcessReceive (ioContext);
@@ -117,7 +114,7 @@ namespace xk_System.Net.Server
 		{
 			if (e.SocketError == SocketError.Success && e.BytesTransferred > 0) {
 				var client = e.UserToken as Client;
-				mNetReceiveSystem.ReceiveSocketStream (client.getId (), e.Buffer, 0, e.BytesTransferred);
+				client.ReceiveSocketStream (e.Buffer, 0, e.BytesTransferred);
 
 				Socket socket = client.getSocket ();
 				if (!socket.ReceiveAsync (e)) {
@@ -128,30 +125,15 @@ namespace xk_System.Net.Server
 			}
 		}
 
-		public override void SendNetStream(int socketId, ArraySegment<byte> msg)
-		{
-			Client mClient = ClientFactory.Instance.GetClient (socketId);
-			SocketAsyncEventArgs senddata = null;
-			lock (ioContextPool) {
-				senddata = ioContextPool.Pop ();
-			}
-			DebugSystem.Assert (senddata != null, "Array is Null");
-			Array.Copy (msg.Array, msg.Offset, senddata.Buffer, senddata.Offset, msg.Count);
-			senddata.SetBuffer (senddata.Offset, msg.Count);
-			mClient.getSocket ().SendAsync (senddata);
-		}
-
 		private void ProcessSend(SocketAsyncEventArgs e)
 		{
-			if (e.SocketError == SocketError.Success) {
-				lock (ioContextPool) {
-					ioContextPool.recycle (e);
-				}
+			if (e.SocketError == SocketError.Success && e.BytesTransferred > 0) {
+				
 			} else {
 				this.CloseClientSocket (e);
 			}
 		}
-			
+
 		private void CloseClientSocket(SocketAsyncEventArgs e)
 		{
 			Interlocked.Decrement (ref this.m_numConnectedSockets);
@@ -186,20 +168,21 @@ namespace xk_System.Net.Server
 
 			s = null;
 		}
-			
-		public override void CloseNet ()
+
+		public void CloseNet ()
 		{
 			while (mUsedContextPool.Count > 0) {
 				var v = mUsedContextPool [0];
 				CloseClientSocket (v);
 			}
 			ioContextPool.release ();
-			base.CloseNet ();
+			mListenSocket.Close ();
+			mListenSocket = null;
 		}
 	}
 
 	//Select
-	public class SocketSystem_Select: SocketSystem
+	public class SocketSystem_Select
 	{
 		private Socket mSocket;
 		private ArrayList m_ReadFD = null;
@@ -209,15 +192,13 @@ namespace xk_System.Net.Server
 
 		public SocketSystem_Select ()
 		{
-			mNetSendSystem = new NetSendSystem_Select (this);
-			mNetReceiveSystem = new NetReceiveSystem_Select (this);
 			mReceiveStream = new byte[ClientConfig.nMaxBufferSize];
 			m_ReadFD = new ArrayList ();
 			m_WriteFD = new ArrayList ();
 			m_ExceptFD = new ArrayList ();
 		}
 
-		public override void InitNet (string ServerAddr, int ServerPort)
+		public void InitNet (string ServerAddr, int ServerPort)
 		{
 			try {
 				IPEndPoint mIPEndPoint = new IPEndPoint (IPAddress.Parse (ServerAddr), ServerPort);
@@ -232,13 +213,9 @@ namespace xk_System.Net.Server
 			}
 		}
 
-		public override void ConfigureSocket (Socket mSocket)
+		public void ConfigureSocket (Socket mSocket)
 		{
-			//mSocket.ReceiveBufferSize = 100;
-			//mSocket.ReceiveTimeout = 1000;
-			//mSocket.SendTimeout = 1000;
 			mSocket.Blocking = false;
-			PrintSocketConfigInfo (mSocket);
 		}
 
 		private bool CheckSocketState()
@@ -310,16 +287,14 @@ namespace xk_System.Net.Server
 		}
 
 
-		public override void HandleNetPackage ()
+		public void HandleNetPackage ()
 		{
 			if (this.CheckSocketState ()) {
 				this.Select ();
-
-				base.HandleNetPackage ();
 			}
 		}
 
-		public void SendNetStream (byte[] msg, int index, int Length)
+		public void SendNetStream (int clientId,byte[] msg, int index, int Length)
 		{
 			try {
 				SocketError merror;
@@ -329,7 +304,7 @@ namespace xk_System.Net.Server
 				}
 				if (merror != SocketError.Success) {
 					if (mSocket.Blocking == false && merror == SocketError.WouldBlock) {
-						SendNetStream (msg, index, Length);
+						SendNetStream (clientId, msg, index, Length);
 					} else {
 						DebugSystem.LogError ("发送失败: " + merror);
 					}
@@ -341,7 +316,7 @@ namespace xk_System.Net.Server
 			}
 		}
 
-		public override void CloseNet ()
+		public void CloseNet ()
 		{
 			if (mSocket != null) {
 				mSocket.Close ();
@@ -349,7 +324,6 @@ namespace xk_System.Net.Server
 			}
 
 			DebugSystem.Log ("关闭 Socket TCP 客户端");
-			base.CloseNet ();
 		}
 	}
 }
