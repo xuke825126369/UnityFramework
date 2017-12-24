@@ -14,9 +14,9 @@ namespace xk_System.Net.UDP.Server
 	{
 		public static Protobuf3Event mEventSystem = new Protobuf3Event ();
 
-		public void initNet (string ServerAddr, int ServerPort)
+		public void initNet (int ServerPort)
 		{
-			base.InitNet (ServerAddr, ServerPort);
+			base.InitNet (ServerPort);
 		}
 
 		public void Update ()

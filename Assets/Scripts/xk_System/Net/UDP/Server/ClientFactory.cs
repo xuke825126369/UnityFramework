@@ -32,9 +32,9 @@ namespace xk_System.Net.UDP.Server
 		
 	public class ClientFactory:Singleton<ClientFactory>
 	{
-		public Dictionary<int,Client_Select> mClientPool = new Dictionary<int, Client_Select> ();
+		public Dictionary<int,SocketPeer> mClientPool = new Dictionary<int, SocketPeer> ();
 
-		public void AddClient(Client_Select client)
+		public void AddClient(SocketPeer client)
 		{
 			mClientPool[client.getId()] = client;
 		}
@@ -44,13 +44,13 @@ namespace xk_System.Net.UDP.Server
 			mClientPool.Remove (clientId);
 		}
 
-		public Client_Select GetClient(int clientId)
+		public SocketPeer GetClient(int clientId)
 		{
 			return mClientPool [clientId];
 		}
 	}
 
-	public class Select_Token
+	public class SocketToken
 	{
 		private int Id;
 		private Socket clientSocekt;
@@ -110,30 +110,12 @@ namespace xk_System.Net.UDP.Server
 			SocketError error;
 			int Length = clientSocekt.Receive (mReceiveStream.Array, mReceiveStream.Offset, mReceiveStream.Count, SocketFlags.None, out error);
 			if (error == SocketError.Success) {
-				((SocketPeer_Select)this).ReceiveSocketStream (mReceiveStream.Array, mReceiveStream.Offset, Length);
+				((SocketPeer)this).ReceiveSocketStream (mReceiveStream.Array, mReceiveStream.Offset, Length);
 			} else {
 				DebugSystem.LogError (error.ToString ());
 			}
 		}
 		
-	}
-
-	public class Client_Select : SocketPeer_Select
-	{
-		public Client_Select()
-		{
-
-		}
-
-		public void Update()
-		{
-			
-		}
-
-		public void closeNet ()
-		{
-
-		}
 	}
 }
 

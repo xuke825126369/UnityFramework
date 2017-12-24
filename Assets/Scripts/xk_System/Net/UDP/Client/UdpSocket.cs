@@ -8,56 +8,49 @@ using System.Text;
 using System;
 using System.Threading;
 
-
 namespace xk_System.Net.UDP.Client
 {
-	public class SocketSystem_Udp:SocketSystem
+	public class SocketSystem_Udp
 	{
 		private EndPoint ep;
 		private Socket mSocket = null;
+		Thread mThread = null;
 
-		public override  void InitNet (string ServerAddr, int ServerPort)
+		public SocketPeer mSocketPeer;
+
+		public SocketSystem_Udp()
+		{
+			mSocketPeer = new SocketPeer (this);
+		}
+
+		public void InitNet (int ServerPort)
 		{
 			mSocket = new Socket (AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);//初始化一个Scoket协议
 
-			IPEndPoint iep = new IPEndPoint (IPAddress.Parse (ServerAddr), ServerPort);//初始化一个侦听局域网内部所有IP和指定端口
+			IPEndPoint iep = new IPEndPoint (IPAddress.Parse ("192.168.122.24"), ServerPort);//初始化一个侦听局域网内部所有IP和指定端口
 			ep = (EndPoint)iep;
 
-			Thread mThread = new Thread (HandData);
+			mThread = new Thread (HandData);
 			mThread.Start ();
 		}
 
+		byte[] data = new byte[ClientConfig.nMaxBufferSize];
 		void HandData()
 		{
-			while (true) 
-			{
-				byte[] data = new byte[1024];
+			while (true) {
 				int length = 0;
-				try
-				{
+				try {
 					length = mSocket.ReceiveFrom (data, ref ep);
-					if (length>0)
-					{
-						mNetReceiveSystem.ReceiveSocketStream(data,0,data.Length);
+					if (length > 0) {
+						mSocketPeer.ReceiveSocketStream (data, 0, data.Length);
 					}
-				}catch(Exception e)
-				{
+				} catch (Exception e) {
 					DebugSystem.LogError ("UDP 客户端 接受 异常： " + length);
 					break;
 				}
+
+				Thread.Sleep (10);
 			}
-		}
-
-		public override void HandleNetPackage ()
-		{
-			
-		}
-
-		public void Send(byte[] msg,int offset,int Length)
-		{
-			mSocket.Connect (ep);
-			SocketError merror;
-			mSocket.Send (msg, offset, Length, SocketFlags.None, out merror);
 		}
 
 		public void SendNetStream (byte[] msg,int offset,int Length)
@@ -65,12 +58,14 @@ namespace xk_System.Net.UDP.Client
 			mSocket.SendTo (msg, offset, Length, SocketFlags.None, ep);
 		}
 
-		public override void CloseNet ()
+		public void CloseNet ()
 		{
 			if (mSocket != null) {
 				mSocket.Close ();
 				mSocket = null;
 			}
+
+			mThread.Abort ();
 		}
 	}
 }

@@ -14,41 +14,44 @@ namespace xk_System.Net.UDP.Server
 	{
 		EndPoint ep = null;
 		private Socket mSocket = null;
-		public void InitNet (string ServerAddr, int ServerPort)
-		{
-			mSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);//初始化一个Scoket实习,采用UDP传输
+		Thread mThread  = null;
+		private int nServerPort = 0;
 
-			IPEndPoint iep = new IPEndPoint(IPAddress.Any, ServerPort);//初始化一个发送广播和指定端口的网络端口实例
+		public void InitNet (int ServerPort)
+		{
+			nServerPort = ServerPort;
+			mSocket = new Socket (AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);//初始化一个Scoket实习,采用UDP传输
+
+			IPEndPoint iep = new IPEndPoint (IPAddress.Any, ServerPort);//初始化一个发送广播和指定端口的网络端口实例
 			ep = (EndPoint)iep;
 
-			mSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Broadcast, 1);//设置该scoket实例的发送形式
+			//mSocket.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.Broadcast, 1);//设置该scoket实例的发送形式
 
-			mSocket.Bind (iep);
-			Thread mThread = new Thread (new ThreadStart(HandData));
+			mSocket.Bind (ep);
+			mThread = new Thread (new ThreadStart (HandData));
 			mThread.Start ();
 		}
 
-		void Send()
-		{
-
-		}
-
+		byte[] data = new byte[ServerConfig.nMaxBufferSize];
 		void HandData()
 		{
 			while (true) {
-				byte[] data = new byte[1024];
 				int length = 0;
 				try {
-					length = mSocket.ReceiveFrom (data, ref ep);
+					
+					IPEndPoint iep = new IPEndPoint (IPAddress.Any, nServerPort);//初始化一个发送广播和指定端口的网络端口实例
+					var client = (EndPoint)iep;
+					length = mSocket.ReceiveFrom (data, 0, data.Length, SocketFlags.None, ref client);
 					DebugSystem.Log ("length:" + length);
 					IPEndPoint remotePoint = ep as IPEndPoint;
-					string remoteIpstr = remotePoint.Address.ToString ();
-					DebugSystem.Log ("远程IP: " + remoteIpstr);
+					string remoteIpstr = remotePoint.ToString ();
+				
+					DebugSystem.Log ("远程IP: " + remoteIpstr + " | " + remotePoint.Port);
 					if (length > 0) {
-						//mNetReceiveSystem.ReceiveSocketStream(data,0,data.Length);
+						
 					}
 				} catch (Exception e) {
-					DebugSystem.LogError ("UDP 服务器 接受 异常： " + length);
+					DebugSystem.LogError ("UDP 服务器 接受 异常： " + length+" | " +e.Message);
 					break;
 				}
 			}
@@ -56,12 +59,13 @@ namespace xk_System.Net.UDP.Server
 
 		public void SendNetStream (int clientId,byte[] msg,int offset, int count)
 		{
-			//mSocket.SendTo (msg, ep);
+			mSocket.SendTo (msg, offset, count, SocketFlags.None, ep);
 		}
 
 		public  void CloseNet ()
 		{
-				
+			mSocket.Close ();
+			mThread.Abort ();
 		}
 	}
 }

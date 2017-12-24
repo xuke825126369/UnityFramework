@@ -105,7 +105,7 @@ namespace xk_System.Net.TCP.Client
 
 		public bool isCanReceiveFromSocketStream()
 		{
-			return mReceiveStreamList.isCanWriteFrom (ServerConfig.nMaxBufferSize);
+			return mReceiveStreamList.isCanWriteFrom (ClientConfig.nMaxBufferSize);
 		}
 
 		public void ReceiveSocketStream (byte[] data, int index, int Length)

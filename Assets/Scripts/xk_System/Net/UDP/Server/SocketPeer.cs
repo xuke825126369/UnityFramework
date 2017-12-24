@@ -8,14 +8,14 @@ using xk_System.Event;
 
 namespace xk_System.Net.UDP.Server
 {
-	public class SocketPeer_Select: Select_Token
+	public class SocketPeer:SocketToken
 	{
 		protected QueueArraySegment<byte> mWaitSendBuffer = null;
 		protected NetPackage mNetPackage = null;
 		protected CircularBuffer<byte> mParseStreamList = null;
 		protected DataBind<NetPackage> mBindReceiveNetPackage = null;
 
-		public SocketPeer_Select ()
+		public SocketPeer ()
 		{
 			mWaitSendBuffer = new QueueArraySegment<byte> (64, ServerConfig.nMaxBufferSize);
 			mNetPackage = new NetPackage ();
@@ -36,7 +36,13 @@ namespace xk_System.Net.UDP.Server
 
 		public void ReceiveSocketStream (byte[] data, int index, int Length)
 		{
-			mParseStreamList.WriteFrom (data, index, Length);
+			lock (mParseStreamList) {
+				mParseStreamList.WriteFrom (data, index, Length);
+			}
+		}
+
+		public void Update()
+		{
 			int PackageCout = 0;
 			while (GetPackage ()) {
 				PackageCout++;
@@ -73,5 +79,4 @@ namespace xk_System.Net.UDP.Server
 			mNetPackage.reset ();
 		}
 	}
-
 }

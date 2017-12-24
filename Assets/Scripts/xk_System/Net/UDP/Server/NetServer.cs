@@ -16,7 +16,7 @@ namespace xk_System.Net.UDP.Server
 		private void Start ()
 		{
 			mNetSystem = new NetSystem ();
-			mNetSystem.initNet (ip, port);
+			mNetSystem.initNet (port);
 			bInitFinish = true;
 		}
 
