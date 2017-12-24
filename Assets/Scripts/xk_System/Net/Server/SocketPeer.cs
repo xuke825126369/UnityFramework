@@ -79,7 +79,6 @@ namespace xk_System.Net.Server
 		protected NetPackage mNetPackage = null;
 		protected CircularBuffer<byte> mParseStreamList = null;
 		protected DataBind<NetPackage> mBindReceiveNetPackage = null;
-		private int clientId;
 
 		public SocketPeer_Select ()
 		{
@@ -100,26 +99,15 @@ namespace xk_System.Net.Server
 			this.SendNetStream (stream.Array, stream.Offset, stream.Count);
 		}
 
-		public bool isCanReceiveFromSocketStream()
-		{
-			return true;
-		}
-
 		public void ReceiveSocketStream (byte[] data, int index, int Length)
 		{
 			mParseStreamList.WriteFrom (data, index, Length);
-		}
-
-		public void HandleNetPackage ()
-		{
 			int PackageCout = 0;
 			while (GetPackage ()) {
 				PackageCout++;
 			}
 
-			if (PackageCout > 5) {
-				DebugSystem.Log ("服务端 ClientPeer 解析包的数量： " + PackageCout);
-			} else if (PackageCout == 0) {
+			if (PackageCout == 0) {
 				if (mParseStreamList.Length > 0) {
 					DebugSystem.LogError ("服务端 ClientPeer 正在解包 ");
 				}
@@ -135,7 +123,10 @@ namespace xk_System.Net.Server
 			bool bSucccess = NetEncryptionStream.DeEncryption (mParseStreamList, mBindReceiveNetPackage.bindData);
 
 			if (bSucccess) {
+				mBindReceiveNetPackage.bindData.clientId = getId ();
 				mBindReceiveNetPackage.DispatchEvent ();
+			} else {
+				DebugSystem.LogError ("服务器端 解码失败");
 			}
 
 			return bSucccess;
@@ -147,4 +138,5 @@ namespace xk_System.Net.Server
 			mNetPackage.reset ();
 		}
 	}
+
 }

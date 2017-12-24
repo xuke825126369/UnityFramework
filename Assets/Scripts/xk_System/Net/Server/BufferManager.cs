@@ -49,7 +49,7 @@ namespace xk_System.Net.Server
 				args = new ArraySegment<byte> (m_buffer, m_freeIndexPool.Pop (), nBufferSize);
 			} else {
 				if (nReadIndex + nBufferSize > Length) {
-					DebugSystem.Log ("分配 内存失败");
+					DebugSystem.LogError ("分配 内存失败");
 					return false;
 				}
 				args = new ArraySegment<byte> (m_buffer, nReadIndex, nBufferSize);

@@ -44,8 +44,8 @@ namespace xk_System.Net.Client
 			data.ClearBuffer (nBodyLength1 + 8);
 
 			byte[] msg = mAES.Decryption (mReceiveBuffer, 0, nBodyLength1);
-			if (msg.Length < 4) {
-				DebugSystem.LogError ("解包失败");
+			if (msg == null) {
+				DebugSystem.LogBitStream ("解包失败： ", mReceiveBuffer);
 				return false;
 			}
 

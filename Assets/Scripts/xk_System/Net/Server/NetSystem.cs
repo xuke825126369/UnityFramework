@@ -28,7 +28,8 @@ namespace xk_System.Net.Server
 
 		public void sendNetData (int clientId,int command, object data)
 		{
-			mEventSystem.sendNetData (clientId, command, data);
+			byte[] stream = mEventSystem.Serialize (data);
+			ClientFactory_Select.Instance.GetClient (clientId).SendNetData (command, stream);
 		}
 
 		public void addNetListenFun (int command, Action<NetPackage> func)
@@ -61,7 +62,8 @@ namespace xk_System.Net.Server
 
 		public void sendNetData (int clientId,int command, object data)
 		{
-			mEventSystem.sendNetData (clientId, command, data);
+			byte[] stream = mEventSystem.Serialize (data);
+			ClientFactory_Select.Instance.GetClient (clientId).SendNetData (command, stream);
 		}
 
 		public void addNetListenFun (int command, Action<NetPackage> func)

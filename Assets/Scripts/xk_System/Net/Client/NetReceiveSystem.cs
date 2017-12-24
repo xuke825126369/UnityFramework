@@ -126,12 +126,10 @@ namespace xk_System.Net.Client
 			while (GetPackage ()) {
 				PackageCout++;
 			}
-
-			if (PackageCout > 5) {
-				DebugSystem.Log ("客户端 解析包的数量： " + PackageCout);
-			} else if (PackageCout == 0) {
+				
+			if (PackageCout == 0) {
 				if (mParseStreamList.Length > 0) {
-					DebugSystem.LogError ("客户端 正在解包 ");
+					DebugSystem.LogError ("客户端 正在解包: " + mParseStreamList.Length + " | " + mParseStreamList.Capacity);
 				}
 			}
 		}

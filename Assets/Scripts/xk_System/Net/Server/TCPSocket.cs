@@ -309,6 +309,8 @@ namespace xk_System.Net.Server
 		{
 			mSocket.Close ();
 			mSocket = null;
+
+			DebugSystem.LogError ("Socket 异常关闭");
 		}
 
 		public void HandleNetPackage ()

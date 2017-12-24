@@ -123,6 +123,7 @@ namespace xk_System.Net.Server
 		{
 			this.Id = IdManager.Instance.allot ();
 			this.clientSocekt = clientSocekt;
+			clientSocekt.Blocking = false;
 			mReceiveStream = mReceiveBuffer;
 			mSendStream = mSendBuffer;
 		}
@@ -207,7 +208,7 @@ namespace xk_System.Net.Server
 
 		public void Update()
 		{
-			HandleNetPackage ();
+			
 		}
 
 		public void closeNet ()

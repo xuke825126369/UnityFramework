@@ -26,10 +26,9 @@ namespace xk_System.Net.Server.Event
 			}
 		}
 
-		public void sendNetData (int clientId,int command, object data)
+		public byte[] Serialize (object data)
 		{
-			byte[] stream = Protocol3Utility.SerializePackage ((IMessage)data);
-			ClientFactory_Select.Instance.GetClient (clientId).SendNetData (command, stream);
+			return Protocol3Utility.SerializePackage ((IMessage)data);
 		}
 
 		public void addNetListenFun(int command,Action<NetPackage> func)
@@ -40,5 +39,7 @@ namespace xk_System.Net.Server.Event
 				mLogicFuncDic [command] += func;
 			}
 		}
+
 	}
 }
+
