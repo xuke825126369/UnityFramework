@@ -1,11 +1,8 @@
 ﻿using System.Collections.Generic;
 using System;
-using xk_System.Net.Client;
-//using game.protobuf.data;
 using XkProtobufData;
 using xk_System.Debug;
 using System.Reflection;
-using xk_System.Net;
 using Google.Protobuf;
 
 namespace xk_System.Model
@@ -150,22 +147,4 @@ namespace xk_System.Model
             }
         }
     }
-
-    public class NetModel : xk_Model
-    {
-		protected void addNetListenFun(ProtoCommand command, Action<NetPackage> mFun)
-        {
-			//NetManager.Instance.addNetListenFun((int)command, mFun);
-        }
-
-		protected void removeNetListenFun(ProtoCommand command, Action<NetPackage> mFun)
-        {
-			//NetManager.Instance.removeNetListenFun((int)command, mFun);
-        }
-
-        protected void sendNetData(ProtoCommand command, object data)
-        {
-			//NetManager.Instance.sendNetData((int)command, data);
-        }    
-	}
 }

@@ -1,9 +1,9 @@
 ﻿using UnityEngine;
 using game.protobuf.data;
 using xk_System.Debug;
-using xk_System.Net.Client;
 using System.Collections;
 using xk_System.Net;
+using xk_System.Net.TCP.Client;
 
 namespace Test
 {

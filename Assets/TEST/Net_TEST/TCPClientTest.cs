@@ -1,15 +1,12 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using xk_System.Net;
-using xk_System.Net.Client.TCP;
 using XkProtobufData;
 using System;
-using xk_System.Net.Client;
 using Google.Protobuf;
-using xk_System.Net.Protocol;
-using xk_System.Net.Client.Event;
 using System.IO;
+using xk_System.Net.TCP.Client;
+using xk_System.Net.TCP.Protocol;
 
 public class TCPClientTest : MonoBehaviour 
 {

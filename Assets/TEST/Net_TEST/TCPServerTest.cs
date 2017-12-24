@@ -1,13 +1,11 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using xk_System.Net.Server;
-using xk_System.Net;
 using XkProtobufData;
 using System;
-using xk_System.Net.Protocol;
-using xk_System.Net.Server.Event;
 using xk_System.Debug;
+using xk_System.Net.TCP.Server;
+using xk_System.Net.TCP.Protocol;
 
 public class TCPServerTest : MonoBehaviour 
 {
