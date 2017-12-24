@@ -5,26 +5,28 @@ using xk_System.DataStructure;
 using System;
 using xk_System.Debug;
 using xk_System.Event;
+using xk_System.Net.Server.Event;
 
 namespace xk_System.Net.Server
 {
-	public class NetSystem_SocketAsyncEventArgs:SocketAsyncEventArgs_Token
+	public class SocketPeer_SocketAsyncEventArgs:SocketAsyncEventArgs_Token
 	{
-		protected NetPackage mPackage = null;
-		protected ListBuffer<byte> mDicWaitSendBuffer = null;
+		private NetPackage mPackage = null;
+		private ListBuffer<byte> mDicWaitSendBuffer = null;
 
-		protected CircularBuffer<byte> mParseStreamList = null;
-		protected NetPackage mReceieNetPackage = null;
+		private CircularBuffer<byte> mParseStreamList = null;
+		private DataBind<NetPackage> mBindReceieNetPackage = null;
 
-		public NetSystem_SocketAsyncEventArgs ()
+		public SocketPeer_SocketAsyncEventArgs ()
 		{
 			mPackage = new NetPackage ();
 			mDicWaitSendBuffer = new ListBuffer<byte>();
-			mReceieNetPackage = new NetPackage ();
+			mBindReceieNetPackage = new DataBind<NetPackage> (new NetPackage());
+			mBindReceieNetPackage.addDataBind (NetSystem.mEventSystem.DeSerialize);
 			mParseStreamList = new CircularBuffer<byte> (ServerConfig.nMaxBufferSize * 2);
 		}
 
-		public void SendNetData (int command, byte[] buffer)
+		public void SendNetData(int command, byte[] buffer)
 		{
 			mPackage.command = command;
 			mPackage.buffer = buffer;
@@ -35,11 +37,13 @@ namespace xk_System.Net.Server
 
 		public void ReceiveSocketStream (byte[] data, int index, int Length)
 		{
-			mParseStreamList.WriteFrom (data, index, Length);
-			HandleNetPackage ();
+			lock(mParseStreamList)
+			{
+				mParseStreamList.WriteFrom (data, index, Length);
+			}
 		}
 
-		private void HandleNetPackage ()
+		public void HandleNetPackage ()
 		{
 			int PackageCout = 0;
 			while (GetPackage ()) {
@@ -48,7 +52,7 @@ namespace xk_System.Net.Server
 
 			if (PackageCout == 0) {
 				if (mParseStreamList.Length > 0) {
-					DebugSystem.LogError ("客户端 正在解包 ");
+					DebugSystem.LogError ("服务端ClientPeer 正在解包 ");
 				}
 			}
 		}
@@ -59,13 +63,88 @@ namespace xk_System.Net.Server
 				return false;
 			}
 
-			bool bSucccess = NetEncryptionStream.DeEncryption (mParseStreamList, mReceieNetPackage);
-
+			bool bSucccess = NetEncryptionStream.DeEncryption (mParseStreamList, mBindReceieNetPackage.bindData);
 			if (bSucccess) {
-
+				mBindReceieNetPackage.bindData.clientId = this.getId ();
+				mBindReceieNetPackage.DispatchEvent ();
 			}
 
 			return bSucccess;
+		}
+	}
+
+	public class SocketPeer_Select: Select_Token
+	{
+		protected QueueArraySegment<byte> mWaitSendBuffer = null;
+		protected NetPackage mNetPackage = null;
+		protected CircularBuffer<byte> mParseStreamList = null;
+		protected DataBind<NetPackage> mBindReceiveNetPackage = null;
+		private int clientId;
+
+		public SocketPeer_Select ()
+		{
+			mWaitSendBuffer = new QueueArraySegment<byte> (64, ClientConfig.nMaxBufferSize);
+			mNetPackage = new NetPackage ();
+
+			mParseStreamList = new CircularBuffer<byte> (2 * ClientConfig.nMaxBufferSize);
+			mBindReceiveNetPackage = new DataBind<NetPackage> (new NetPackage ());
+
+			mBindReceiveNetPackage.addDataBind (NetSystem_Select.mEventSystem.DeSerialize);
+		}
+
+		public void SendNetData (int id, byte[] buffer)
+		{
+			mNetPackage.command = id;
+			mNetPackage.buffer = buffer;
+			ArraySegment<byte> stream = NetEncryptionStream.Encryption (mNetPackage);
+			this.SendNetStream (stream.Array, stream.Offset, stream.Count);
+		}
+
+		public bool isCanReceiveFromSocketStream()
+		{
+			return true;
+		}
+
+		public void ReceiveSocketStream (byte[] data, int index, int Length)
+		{
+			mParseStreamList.WriteFrom (data, index, Length);
+		}
+
+		public void HandleNetPackage ()
+		{
+			int PackageCout = 0;
+			while (GetPackage ()) {
+				PackageCout++;
+			}
+
+			if (PackageCout > 5) {
+				DebugSystem.Log ("服务端 ClientPeer 解析包的数量： " + PackageCout);
+			} else if (PackageCout == 0) {
+				if (mParseStreamList.Length > 0) {
+					DebugSystem.LogError ("服务端 ClientPeer 正在解包 ");
+				}
+			}
+		}
+
+		private bool GetPackage ()
+		{
+			if (mParseStreamList.Length <= 0) {
+				return false;
+			}
+
+			bool bSucccess = NetEncryptionStream.DeEncryption (mParseStreamList, mBindReceiveNetPackage.bindData);
+
+			if (bSucccess) {
+				mBindReceiveNetPackage.DispatchEvent ();
+			}
+
+			return bSucccess;
+		}
+
+		public void release ()
+		{
+			mWaitSendBuffer.release ();
+			mNetPackage.reset ();
 		}
 	}
 }

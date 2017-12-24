@@ -17,10 +17,10 @@ namespace xk_System.Net.Server
 
 		private ObjectPool<SocketAsyncEventArgs> ioContextPool;
 		private List<SocketAsyncEventArgs> mUsedContextPool;
-		BufferManager mBufferManager;
-
+		private BufferManager mBufferManager;
 		private Socket mListenSocket = null;
-		internal SocketSystem_SocketAsyncEventArgs()
+
+		internal SocketSystem_SocketAsyncEventArgs ()
 		{
 			mUsedContextPool = new List<SocketAsyncEventArgs> ();
 			ioContextPool = new ObjectPool<SocketAsyncEventArgs> ();
@@ -48,7 +48,7 @@ namespace xk_System.Net.Server
 			this.StartAccept (null);
 		}
 
-		private void OnIOCompleted(object sender, SocketAsyncEventArgs e)
+		private void OnIOCompleted (object sender, SocketAsyncEventArgs e)
 		{
 			switch (e.LastOperation) {
 			case SocketAsyncOperation.Receive:
@@ -61,8 +61,8 @@ namespace xk_System.Net.Server
 				throw new ArgumentException ("The last operation completed on the socket was not a receive or send");
 			}
 		}
-			
-		private void StartAccept(SocketAsyncEventArgs acceptEventArg)
+
+		private void StartAccept (SocketAsyncEventArgs acceptEventArg)
 		{
 			if (acceptEventArg == null) {
 				acceptEventArg = new SocketAsyncEventArgs ();
@@ -76,20 +76,22 @@ namespace xk_System.Net.Server
 			}
 		}
 
-		private void OnAcceptCompleted(object sender,SocketAsyncEventArgs args)
+		private void OnAcceptCompleted (object sender, SocketAsyncEventArgs args)
 		{
 			this.ProcessAccept (args);
 		}
 
-		private void ProcessAccept(SocketAsyncEventArgs e)
+		private void ProcessAccept (SocketAsyncEventArgs e)
 		{
 			Socket s = e.AcceptSocket;
-			SocketAsyncEventArgs ioContext = ioContextPool.Pop ();
-			mUsedContextPool.Add (ioContext);
-			if (ioContext != null) {
+			SocketAsyncEventArgs ioReadContext = ioContextPool.Pop ();
+			SocketAsyncEventArgs ioWriteContext = ioContextPool.Pop ();
+
+			mUsedContextPool.Add (ioReadContext);
+			if (ioReadContext != null) {
 				SocketAsyncEventArgs_Token mClient = new Client ();
-				mClient.init (s, ioContextPool.Pop());
-				ioContext.UserToken = mClient;
+				mClient.init (s, ioWriteContext);
+				ioReadContext.UserToken = mClient;
 
 				m_numConnectedSockets++;
 				string outStr = String.Format ("客户 {0} 连入, 共有 {1} 个连接。", s.RemoteEndPoint.ToString (), this.m_numConnectedSockets);
@@ -97,8 +99,8 @@ namespace xk_System.Net.Server
 
 				ClientFactory.Instance.AddClient ((Client)mClient);
 
-				if (!s.ReceiveAsync (ioContext)) {
-					this.ProcessReceive (ioContext);
+				if (!s.ReceiveAsync (ioReadContext)) {
+					this.ProcessReceive (ioReadContext);
 				}
 			} else {
 				s.Send (Encoding.Default.GetBytes ("连接已经达到最大数!"));
@@ -110,7 +112,7 @@ namespace xk_System.Net.Server
 			this.StartAccept (e);
 		}
 
-		private void ProcessReceive(SocketAsyncEventArgs e)
+		private void ProcessReceive (SocketAsyncEventArgs e)
 		{
 			if (e.SocketError == SocketError.Success && e.BytesTransferred > 0) {
 				var client = e.UserToken as Client;
@@ -125,16 +127,16 @@ namespace xk_System.Net.Server
 			}
 		}
 
-		private void ProcessSend(SocketAsyncEventArgs e)
+		private void ProcessSend (SocketAsyncEventArgs e)
 		{
-			if (e.SocketError == SocketError.Success && e.BytesTransferred > 0) {
-				
+			if (e.SocketError == SocketError.Success) {
+				//DebugSystem.Log ("发送成功");
 			} else {
 				this.CloseClientSocket (e);
 			}
 		}
 
-		private void CloseClientSocket(SocketAsyncEventArgs e)
+		private void CloseClientSocket (SocketAsyncEventArgs e)
 		{
 			Interlocked.Decrement (ref this.m_numConnectedSockets);
 			Client client = e.UserToken as Client;
@@ -184,27 +186,34 @@ namespace xk_System.Net.Server
 	//Select
 	public class SocketSystem_Select
 	{
-		private Socket mSocket;
-		private ArrayList m_ReadFD = null;
-		private ArrayList m_WriteFD = null;
-		private ArrayList m_ExceptFD = null;
-		byte[] mReceiveStream = null;
-
+		private Socket mListenSocket;
+		private List<Socket> m_ReadFD = null;
+		private List<Socket> m_WriteFD = null;
+		private List<Socket> m_ExceptFD = null;
+		private List<Socket> mClientSocketsPool = null;
+		private BufferManager mBufferManager = null;
+		int m_numConnectedSockets = 0;
+		private Dictionary<Socket, Client_Select> mDicToken = null; 
 		public SocketSystem_Select ()
 		{
-			mReceiveStream = new byte[ClientConfig.nMaxBufferSize];
-			m_ReadFD = new ArrayList ();
-			m_WriteFD = new ArrayList ();
-			m_ExceptFD = new ArrayList ();
+			m_ReadFD = new List<Socket> (ServerConfig.numConnections);
+			m_WriteFD = new List<Socket> (ServerConfig.numConnections);
+			m_ExceptFD = new List<Socket> (ServerConfig.numConnections);
+			mClientSocketsPool = new List<Socket> (ServerConfig.numConnections);
+			mDicToken = new Dictionary<Socket, Client_Select> (ServerConfig.numConnections);
+
+			mBufferManager = new BufferManager (ServerConfig.nMaxBufferSize * ServerConfig.numConnections, ServerConfig.nMaxBufferSize);
 		}
 
 		public void InitNet (string ServerAddr, int ServerPort)
 		{
 			try {
 				IPEndPoint mIPEndPoint = new IPEndPoint (IPAddress.Parse (ServerAddr), ServerPort);
-				mSocket = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-				mSocket.Connect (mIPEndPoint);
-				ConfigureSocket (mSocket);
+				mListenSocket = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+				mListenSocket.Bind (mIPEndPoint);
+				mListenSocket.Listen (0);
+
+				StartAccept (null);
 				DebugSystem.Log ("Client Net InitNet Success： IP: " + ServerAddr + " | Port: " + ServerPort);
 			} catch (SocketException e) {
 				DebugSystem.LogError (e.SocketErrorCode + " | " + e.Message);
@@ -213,14 +222,44 @@ namespace xk_System.Net.Server
 			}
 		}
 
-		public void ConfigureSocket (Socket mSocket)
+		private void StartAccept (SocketAsyncEventArgs acceptEventArg)
 		{
-			mSocket.Blocking = false;
+			if (acceptEventArg == null) {
+				acceptEventArg = new SocketAsyncEventArgs ();
+				acceptEventArg.Completed += new EventHandler<SocketAsyncEventArgs> (ProcessAccept);
+			} else {
+				acceptEventArg.AcceptSocket = null;
+			}
+
+			if (!this.mListenSocket.AcceptAsync (acceptEventArg)) {
+				this.ProcessAccept (null, acceptEventArg);
+			}
 		}
 
-		private bool CheckSocketState()
+		private void ProcessAccept (object sender, SocketAsyncEventArgs e)
 		{
-			if (mSocket == null) {
+			Socket s = e.AcceptSocket;
+			mClientSocketsPool.Add (s);
+
+			Select_Token mClient = new Client_Select ();
+			ArraySegment<byte> mSendBuffer = new ArraySegment<byte> ();
+			ArraySegment<byte> mReceieBuffer = new ArraySegment<byte> ();
+			mBufferManager.SetBuffer (ref mSendBuffer);
+			mBufferManager.SetBuffer (ref mReceieBuffer);
+			mClient.init (s, mSendBuffer, mReceieBuffer);
+			mDicToken [s] = (Client_Select)mClient;
+
+			string outStr = String.Format ("客户 {0} 连入, 共有 {1} 个连接。", s.RemoteEndPoint.ToString (), this.m_numConnectedSockets);
+			DebugSystem.Log (outStr);
+
+			ClientFactory_Select.Instance.AddClient ((Client_Select)mClient);
+
+			this.StartAccept (e);
+		}
+
+		private bool CheckSocketState ()
+		{
+			if (mListenSocket == null) {
 				return false;
 			}
 
@@ -230,83 +269,28 @@ namespace xk_System.Net.Server
 
 		private void Select ()
 		{
+			if (mClientSocketsPool.Count == 0) {
+				return;
+			}
+
 			try {
 				this.m_ReadFD.Clear ();
 				this.m_WriteFD.Clear ();
 				this.m_ExceptFD.Clear ();
 
-				this.m_ReadFD.Add (this.mSocket);
-				this.m_WriteFD.Add (this.mSocket);
-				this.m_ExceptFD.Add (this.mSocket);
+				this.m_ReadFD.AddRange (this.mClientSocketsPool);
+				this.m_WriteFD.AddRange (this.mClientSocketsPool);
+				this.m_ExceptFD.AddRange (this.mClientSocketsPool);
 				Socket.Select (this.m_ReadFD, this.m_WriteFD, this.m_ExceptFD, 0);
 
-				if (this.m_ExceptFD.Contains (this.mSocket)) {
-					ProcessExcept ();
-				}
+				for (int i = 0; i < this.mClientSocketsPool.Count; i++) {
+					Socket mSocket = this.mClientSocketsPool [i];
+					if (this.m_ExceptFD.Contains (mSocket)) {
+						ProcessExcept (mSocket);
+					}
 
-				if (this.m_WriteFD.Contains (this.mSocket)) {
-					ProcessOutput ();
-				}
-
-				if (this.m_ReadFD.Contains (this.mSocket)) {
-					ProcessInput ();
-				}
-			} catch (SocketException e) {
-				DebugSystem.LogError (e.SocketErrorCode + " | " + e.Message);
-			} catch (Exception e) {
-				DebugSystem.LogError (e.Message);
-			}
-		}
-
-		private void ProcessOutput ()
-		{
-			//DebugSystem.Log ("Client Can Write ...");
-		}
-
-		private void ProcessInput ()
-		{
-			//DebugSystem.Log ("Client Can Read ...");
-			SocketError error;
-			int Length = mSocket.Receive (mReceiveStream, 0, mReceiveStream.Length, SocketFlags.None, out error);
-			if (error == SocketError.Success) {
-				//mNetReceiveSystem.ReceiveSocketStream (mReceiveStream, 0, Length);
-				if (mSocket.Available > 0) {
-					DebugSystem.LogError ("Available > 0： " + mSocket.Available +" | "+ Length + " | " + mReceiveStream.Length);
-					//ProcessInput ();
-				}
-			} else {
-				DebugSystem.LogError (error.ToString ());
-			}
-		}
-
-		private void ProcessExcept ()
-		{
-			//DebugSystem.LogError ("Client SocketExcept");
-			this.mSocket.Close ();
-			this.mSocket = null;
-		}
-
-
-		public void HandleNetPackage ()
-		{
-			if (this.CheckSocketState ()) {
-				this.Select ();
-			}
-		}
-
-		public void SendNetStream (int clientId,byte[] msg, int index, int Length)
-		{
-			try {
-				SocketError merror;
-				int sendLength = mSocket.Send (msg, index, Length, SocketFlags.None, out merror);
-				if (sendLength != Length) {
-					DebugSystem.LogError ("Client:SendLength:  " + sendLength + " | " + Length);
-				}
-				if (merror != SocketError.Success) {
-					if (mSocket.Blocking == false && merror == SocketError.WouldBlock) {
-						SendNetStream (clientId, msg, index, Length);
-					} else {
-						DebugSystem.LogError ("发送失败: " + merror);
+					if (this.m_ReadFD.Contains (mSocket)) {
+						ProcessInput (mSocket);
 					}
 				}
 			} catch (SocketException e) {
@@ -316,14 +300,32 @@ namespace xk_System.Net.Server
 			}
 		}
 
+		private void ProcessInput (Socket mSocket)
+		{
+			mDicToken [mSocket].ProcessInput ();
+		}
+
+		private void ProcessExcept (Socket mSocket)
+		{
+			mSocket.Close ();
+			mSocket = null;
+		}
+
+		public void HandleNetPackage ()
+		{
+			if (this.CheckSocketState ()) {
+				this.Select ();
+			}
+		}
+
 		public void CloseNet ()
 		{
-			if (mSocket != null) {
-				mSocket.Close ();
-				mSocket = null;
+			if (mListenSocket != null) {
+				mListenSocket.Close ();
+				mListenSocket = null;
 			}
 
-			DebugSystem.Log ("关闭 Socket TCP 客户端");
+			DebugSystem.Log ("关闭 Socket TCP 服务器");
 		}
 	}
 }

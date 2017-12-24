@@ -257,11 +257,9 @@ namespace xk_System.Net.Client.TCP
 
 		private void Receive_Fun (object sender, SocketAsyncEventArgs e)
 		{
-			if (e.SocketError == SocketError.Success) {
-				if (e.BytesTransferred > 0) {
-					mNetReceiveSystem.ReceiveSocketStream (e.Buffer, 0, e.BytesTransferred);
-					mSocket.ReceiveAsync (e);
-				}
+			if (e.SocketError == SocketError.Success && e.BytesTransferred > 0) {
+				mNetReceiveSystem.ReceiveSocketStream (e.Buffer, 0, e.BytesTransferred);
+				mSocket.ReceiveAsync (e);
 			} else {
 				DebugSystem.Log ("接收数据失败： " + e.SocketError.ToString ());
 				CloseNet ();

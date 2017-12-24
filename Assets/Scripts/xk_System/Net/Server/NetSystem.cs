@@ -10,31 +10,63 @@ using xk_System.DataStructure;
 
 namespace xk_System.Net.Server
 {
-	public class NetSystem :SocketSystem_SocketAsyncEventArgs, NetEventInterface
+	public class NetSystem :SocketSystem_SocketAsyncEventArgs
 	{
+		public static Protobuf3Event mEventSystem = new Protobuf3Event ();
+
 		public void initNet (string ServerAddr, int ServerPort)
 		{
 			base.InitNet (ServerAddr, ServerPort);
 		}
 
-		public void sendNetData (int clientId, int command, byte[] buffer)
+		public void Update ()
 		{
-			//base.mNetSendSystem.SendNetData (clientId, command, buffer);  
+			foreach (var v in  ClientFactory.Instance.mClientPool) {
+				v.Value.Update ();
+			}
 		}
 
-		public void handleNetData ()
+		public void sendNetData (int clientId,int command, object data)
 		{
-			//base.HandleNetPackage ();
+			mEventSystem.sendNetData (clientId, command, data);
 		}
 
-		public void addNetListenFun (Action<NetPackage> fun)
+		public void addNetListenFun (int command, Action<NetPackage> func)
 		{
-			//base.mNetReceiveSystem.addListenFun (fun);
+			mEventSystem.addNetListenFun (command, func);
 		}
 
-		public void removeNetListenFun (Action<NetPackage> fun)
+		public void closeNet ()
 		{
-			//base.mNetReceiveSystem.removeListenFun (fun);
+			base.CloseNet ();
+		}
+	}
+
+	public class NetSystem_Select :SocketSystem_Select
+	{
+		public static Protobuf3Event mEventSystem = new Protobuf3Event ();
+
+		public void initNet (string ServerAddr, int ServerPort)
+		{
+			base.InitNet (ServerAddr, ServerPort);
+		}
+
+		public void Update ()
+		{
+			HandleNetPackage ();
+			foreach (var v in  ClientFactory_Select.Instance.mClientPool) {
+				v.Value.Update ();
+			}
+		}
+
+		public void sendNetData (int clientId,int command, object data)
+		{
+			mEventSystem.sendNetData (clientId, command, data);
+		}
+
+		public void addNetListenFun (int command, Action<NetPackage> func)
+		{
+			mEventSystem.addNetListenFun (command, func);
 		}
 
 		public void closeNet ()

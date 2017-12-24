@@ -5,6 +5,7 @@ using Google.Protobuf;
 using xk_System.Net.Client;
 using System;
 using xk_System.Net.Protocol;
+using xk_System.Debug;
 
 namespace xk_System.Net.Client.Event
 {
@@ -26,7 +27,11 @@ namespace xk_System.Net.Client.Event
 
 		public void DeSerialize (NetPackage mPackage)
 		{
-			mLogicFuncDic [mPackage.command] (mPackage);
+			if (mLogicFuncDic.ContainsKey (mPackage.command)) {
+				mLogicFuncDic [mPackage.command] (mPackage);
+			} else {
+				DebugSystem.LogError ("不存在的 协议ID: " + mPackage.command);
+			}
 		}
 
 		public void addNetListenFun(int command,Action<NetPackage> func)

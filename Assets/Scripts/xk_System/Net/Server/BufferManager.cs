@@ -1,5 +1,7 @@
 ﻿using System.Net.Sockets;
 using System.Collections.Generic;
+using System;
+using xk_System.Debug;
 
 namespace xk_System.Net.Server
 {
@@ -38,6 +40,27 @@ namespace xk_System.Net.Server
 		{
 			m_freeIndexPool.Push (args.Offset);
 			args.SetBuffer (null, 0, 0);
+		}
+
+
+		public bool SetBuffer (ref ArraySegment<byte> args)
+		{
+			if (m_freeIndexPool.Count > 0) {
+				args = new ArraySegment<byte> (m_buffer, m_freeIndexPool.Pop (), nBufferSize);
+			} else {
+				if (nReadIndex + nBufferSize > Length) {
+					DebugSystem.Log ("分配 内存失败");
+					return false;
+				}
+				args = new ArraySegment<byte> (m_buffer, nReadIndex, nBufferSize);
+				nReadIndex += nBufferSize;
+			}
+			return true;
+		}
+
+		public void FreeBuffer (ArraySegment<byte> args)
+		{
+			m_freeIndexPool.Push (args.Offset);
 		}
 	}
 }
