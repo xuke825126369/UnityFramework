@@ -1,7 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using XkProtobufData;
 using System;
 using Google.Protobuf;
 using System.IO;

@@ -43,9 +43,9 @@ namespace xk_System.Net.UDP.Server
 					var client = (EndPoint)iep;
 					length = mSocket.ReceiveFrom (data, 0, data.Length, SocketFlags.None, ref client);
 					DebugSystem.Log ("length:" + length);
-					IPEndPoint remotePoint = ep as IPEndPoint;
+					IPEndPoint remotePoint = client as IPEndPoint;
 					string remoteIpstr = remotePoint.ToString ();
-				
+					
 					DebugSystem.Log ("远程IP: " + remoteIpstr + " | " + remotePoint.Port);
 					if (length > 0) {
 						

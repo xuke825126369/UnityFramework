@@ -1,0 +1,28 @@
+﻿syntax = "proto3";
+package udp_protocols;
+
+//UDP 模仿TCP 的连接过程
+message udpState
+{
+	//1:Accept ,2: Connect, 3： DisConnect
+	int32 state = 1;
+}
+
+//UDP 服务器广播 IP 地址，让客户端都连进来
+message scBroadcastIP
+{
+	string ip = 1 ;
+}
+
+//检查 包的序列，以及是否丢包
+message PackageCheckResult
+{
+	fixed32 nOrderId = 2; //包的序号ID
+}
+
+//心跳
+message HeartBeat
+{
+	fixed32 nServerTime = 1; //心跳包，每次发送服务器时间
+}
+

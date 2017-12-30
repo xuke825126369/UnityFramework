@@ -7,6 +7,6 @@ namespace xk_System.Net.UDP.Server
 	public class ServerConfig
 	{
 		public const int numConnections = 1024;
-		public const int nMaxBufferSize = 1024 * 8;
+		public const int nMaxBufferSize = 1024 * 64;
 	}
 }

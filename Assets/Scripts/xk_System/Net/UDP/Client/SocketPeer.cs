@@ -5,90 +5,92 @@ using xk_System.DataStructure;
 using System;
 using xk_System.Event;
 using xk_System.Debug;
+using System.Net.Sockets;
+using Google.Protobuf;
+using xk_System.Net.UDP.Protocol;
 
 namespace xk_System.Net.UDP.Client
 {
-	public class SocketPeer
+	public abstract class SocketPeer: SocketUdp_Basic
 	{
-		protected QueueArraySegment<byte> mWaitSendBuffer = null;
-		protected NetPackage mNetPackage = null;
-		protected SocketSystem_Udp mSocketSystem;
-
-		protected CircularBuffer<byte> mReceiveStreamList= null;
 		protected CircularBuffer<byte> mParseStreamList = null;
-		protected DataBind<NetPackage> mBindReceiveNetPackage = null;
+		protected Dictionary<int, Action<NetPackage>> mLogicFuncDic = null;
+		protected Queue<NetPackage> mNeedHandleQueue = null;
+		protected UdpCheck mUdpCheckPool = null;
+		private UInt32 nPackageOrderId;
 
-		public SocketPeer (SocketSystem_Udp socketSys)
+		public SocketPeer()
 		{
-			this.mSocketSystem = socketSys;
-			mWaitSendBuffer = new QueueArraySegment<byte> (64, ClientConfig.nMaxBufferSize);
-			mNetPackage = new NetPackage ();
-
-			mReceiveStreamList = new CircularBuffer<byte> (ClientConfig.nMaxBufferSize);
+			m_state = NetState.disconnected;
 			mParseStreamList = new CircularBuffer<byte> (2 * ClientConfig.nMaxBufferSize);
-			mBindReceiveNetPackage = new DataBind<NetPackage> (new NetPackage ());
+			mLogicFuncDic = new Dictionary<int, Action<NetPackage>> ();
+			mNeedHandleQueue = new Queue<NetPackage> ();
+			mUdpCheckPool = new UdpCheck ();
+			nPackageOrderId = 1;
 		}
 
 		public void SendNetData (int id, byte[] buffer)
 		{
+			NetPackage mNetPackage = new NetPackage ();
 			mNetPackage.command = id;
 			mNetPackage.buffer = buffer;
+			mNetPackage.orderId = nPackageOrderId;
 			ArraySegment<byte> stream = NetEncryptionStream.Encryption (mNetPackage);
-			mWaitSendBuffer.WriteFrom (stream.Array, stream.Offset, stream.Count);
+			SendNetStream (stream.Array, 0, stream.Count);
+			nPackageOrderId++;
 		}
 
-		private void HandleSendPackage ()
+		public void SendNetData(int id, object data)
 		{
-			if (mWaitSendBuffer.Length > 0) {
-				byte[] tempBuffer = mWaitSendBuffer.ToArray ();
-				if (tempBuffer != null) {
-					mSocketSystem.SendNetStream (tempBuffer, 0, tempBuffer.Length);
-				}
+			IMessage data1 = data as IMessage;
+			byte[] stream = Protocol3Utility.SerializePackage (data1);
+			SendNetData (id, stream);
+		}
 
-				mWaitSendBuffer.reset ();
-
-				if (tempBuffer.Length > ClientConfig.nMaxBufferSize) {
-					//DebugSystem.LogError ("客户端 发送字节数： " + tempBuffer.Length);
-				}
+		protected override void DeSerialize (NetPackage mPackage)
+		{
+			if (mLogicFuncDic.ContainsKey (mPackage.command)) {
+				mNeedHandleQueue.Enqueue (mPackage);
+			} else {
+				DebugSystem.LogError ("不存在的 协议ID: " + mPackage.command);
 			}
 		}
 
-		//Add More Protocol Interface
-		public void addListenFun (Action<NetPackage> fun)
+		public void addNetListenFun(int command, Action<NetPackage> func)
 		{
-			mBindReceiveNetPackage.addDataBind (fun);
+			if (!mLogicFuncDic.ContainsKey (command)) {
+				mLogicFuncDic [command] = func;
+			} else {
+				mLogicFuncDic [command] += func;
+			}
 		}
 
-		public void removeListenFun (Action<NetPackage> fun)
+		public void removeNetListenFun(int command,Action<NetPackage> func)
 		{
-			mBindReceiveNetPackage.removeDataBind (fun);
+			if (mLogicFuncDic.ContainsKey (command)) {
+				mLogicFuncDic [command] -= func;
+			}
 		}
 
-		public bool isCanReceiveFromSocketStream()
-		{
-			return mReceiveStreamList.isCanWriteFrom (ClientConfig.nMaxBufferSize);
-		}
-
-		public void ReceiveSocketStream (byte[] data, int index, int Length)
+		public override void ReceiveSocketStream (byte[] data, int index, int Length)
 		{
 			lock (mParseStreamList) {
-				mReceiveStreamList.WriteFrom (data, index, Length);
+				mParseStreamList.WriteFrom (data, index, Length);
 			}
 		}
 
-		public void HandleNetPackage()
+		public virtual void Update()
 		{
-			HandleSendPackage ();
-			HandleReceievPackage ();
+			HandleReceivePackage ();
+			while (mNeedHandleQueue.Count > 0) {
+				NetPackage mNetPackage = mNeedHandleQueue.Dequeue ();
+				mLogicFuncDic [mNetPackage.command] (mNetPackage);
+			}
 		}
 
-		private void HandleReceievPackage ()
+		private void HandleReceivePackage ()
 		{
 			int PackageCout = 0;
-
-			lock (mReceiveStreamList) {
-				int readBytes = mParseStreamList.WriteFrom (mReceiveStreamList, ClientConfig.nMaxBufferSize);
-			}
 
 			while (GetPackage ()) {
 				PackageCout++;
@@ -107,19 +109,51 @@ namespace xk_System.Net.UDP.Client
 				return false;
 			}
 
-			bool bSucccess = NetEncryptionStream.DeEncryption (mParseStreamList, mBindReceiveNetPackage.bindData);
+			NetPackage mNetPackage = new NetPackage ();
+			bool bSucccess = NetEncryptionStream.DeEncryption (mParseStreamList, mNetPackage);
 
 			if (bSucccess) {
-				mBindReceiveNetPackage.DispatchEvent ();
+				this.DeSerialize ();
 			}
 
 			return bSucccess;
 		}
+			
+		private void HandleFindedServer(NetPackage mPackage)
+		{
+			if (m_state != NetState.disconnected) {
+				return;
+			}
+
+			if (mPackage.command != 1) {
+				return;
+			}
+
+			ip = BitConverter.ToString (mPackage.buffer);
+			connectServer ();
+		}
+
+		private void HandleConnect(NetPackage mPackage)
+		{
+			if (m_state == NetState.connected) {
+				return;
+			}
+			
+			if (mPackage.command != 2) {
+				return;
+			}
+
+			System.Timers.Timer tm = new System.Timers.Timer ();
+			tm.Interval = 3.0;
+			tm.AutoReset = false;
+			tm.Elapsed += (object sender, System.Timers.ElapsedEventArgs args) => {
+
+			};
+		}
 
 		public void release ()
 		{
-			mWaitSendBuffer.release ();
-			mNetPackage.reset ();
+			
 		}
 	}
 }

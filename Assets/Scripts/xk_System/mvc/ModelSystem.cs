@@ -1,9 +1,7 @@
 ﻿using System.Collections.Generic;
 using System;
-using XkProtobufData;
 using xk_System.Debug;
 using System.Reflection;
-using Google.Protobuf;
 
 namespace xk_System.Model
 {

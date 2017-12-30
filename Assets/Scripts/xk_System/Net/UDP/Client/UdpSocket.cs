@@ -1,6 +1,5 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 using System.Net.Sockets;
 using System.Net;
 using xk_System.Debug;
@@ -10,52 +9,75 @@ using System.Threading;
 
 namespace xk_System.Net.UDP.Client
 {
-	public class SocketSystem_Udp
+	public abstract class SocketUdp_Basic
 	{
-		private EndPoint ep;
-		private Socket mSocket = null;
-		Thread mThread = null;
+		protected NetState m_state;
+		protected EndPoint ep;
+		protected Socket mSocket = null;
+		private Thread mThread = null;
 
-		public SocketPeer mSocketPeer;
+		protected string ip;
+		private UInt16 port;
+		protected bool bHaveServerIp =false;
 
-		public SocketSystem_Udp()
+		public void InitNet (UInt16 ServerPort)
 		{
-			mSocketPeer = new SocketPeer (this);
-		}
-
-		public void InitNet (int ServerPort)
-		{
-			mSocket = new Socket (AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);//初始化一个Scoket协议
-
-			IPEndPoint iep = new IPEndPoint (IPAddress.Parse ("192.168.122.24"), ServerPort);//初始化一个侦听局域网内部所有IP和指定端口
-			ep = (EndPoint)iep;
+			port = ServerPort;
+			bHaveServerIp = false;
+			connectServer ();
 
 			mThread = new Thread (HandData);
 			mThread.Start ();
 		}
 
 		byte[] data = new byte[ClientConfig.nMaxBufferSize];
-		void HandData()
+
+		private void HandData()
 		{
 			while (true) {
 				int length = 0;
 				try {
 					length = mSocket.ReceiveFrom (data, ref ep);
 					if (length > 0) {
-						mSocketPeer.ReceiveSocketStream (data, 0, data.Length);
+						ReceiveSocketStream (data, 0, data.Length);
 					}
 				} catch (Exception e) {
-					DebugSystem.LogError ("UDP 客户端 接受 异常： " + length);
+					DebugSystem.Log (e.Message);
+					this.CloseNet ();
 					break;
 				}
-
-				Thread.Sleep (10);
 			}
 		}
+
+		public abstract void ReceiveSocketStream (byte[] stream, int offset, int length);
 
 		public void SendNetStream (byte[] msg,int offset,int Length)
 		{
 			mSocket.SendTo (msg, offset, Length, SocketFlags.None, ep);
+		}
+
+		protected void connectServer()
+		{
+			if (m_state == NetState.connected) {
+				return;
+			}
+
+			mSocket = new Socket (AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+			IPEndPoint iep = new IPEndPoint (IPAddress.Parse (ip), port);
+			ep = (EndPoint)iep;
+
+			DebugSystem.Log ("当前连接的服务器地址： " + ep.ToString ());
+			SendNetStream ();
+		}
+
+		protected void reConnectServer()
+		{
+			if (m_state == NetState.connected_success) {
+				return;
+			}
+
+			this.CloseNet ();
+			connectServer ();
 		}
 
 		public void CloseNet ()
@@ -64,7 +86,6 @@ namespace xk_System.Net.UDP.Client
 				mSocket.Close ();
 				mSocket = null;
 			}
-
 			mThread.Abort ();
 		}
 	}
