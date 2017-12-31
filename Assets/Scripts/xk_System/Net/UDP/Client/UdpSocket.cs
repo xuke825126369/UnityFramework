@@ -67,12 +67,11 @@ namespace xk_System.Net.UDP.Client
 			ep = (EndPoint)iep;
 
 			DebugSystem.Log ("当前连接的服务器地址： " + ep.ToString ());
-			SendNetStream ();
 		}
 
 		protected void reConnectServer()
 		{
-			if (m_state == NetState.connected_success) {
+			if (m_state == NetState.connected) {
 				return;
 			}
 

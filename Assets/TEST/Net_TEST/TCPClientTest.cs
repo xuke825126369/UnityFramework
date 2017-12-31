@@ -21,7 +21,7 @@ public class TCPClientTest : MonoBehaviour
 		while (!mNetSystem.bInitFinish) {
 			yield return 0;
 		}
-		mNetSystem.addNetListenFun ((int)ProtoCommand.ProtoChat, Receive_ServerSenddata);
+		//mNetSystem.addNetListenFun (UdpNetCommand., Receive_ServerSenddata);
 		yield return Run ();
 	}
 
@@ -60,17 +60,17 @@ public class TCPClientTest : MonoBehaviour
 
 	public void request_ClientSendData(uint channelId, string sendName, string content)
 	{
-		csChatData mClientSendData = new csChatData ();
-		mClientSendData.ChannelId = channelId;
-		mClientSendData.TalkMsg = content;
-		mNetSystem.sendNetData ((int)ProtoCommand.ProtoChat, mClientSendData);
+		//csChatData mClientSendData = new csChatData ();
+		//mClientSendData.ChannelId = channelId;
+		//mClientSendData.TalkMsg = content;
+		//mNetSystem.sendNetData ((int)ProtoCommand.ProtoChat, mClientSendData);
 
-		nSendCount++;
+		//nSendCount++;
 	}
 
 	private void Receive_ServerSenddata(NetPackage package)
 	{
-		scChatData mServerSendData = Protocol3Utility.getData<scChatData> (package.buffer, 0, package.buffer.Length);
+		//scChatData mServerSendData = Protocol3Utility.getData<scChatData> (package.buffer, 0, package.buffer.Length);
 		//Debug.Log ("Client 接受 渠道ID " + mServerSendData.ChatInfo.ChannelId);
 		nReceiveCount++;
 	}

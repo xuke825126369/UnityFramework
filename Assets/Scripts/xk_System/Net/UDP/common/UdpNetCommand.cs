@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System;
 
-namespace xk_System.Net.UDP
+namespace xk_System.Net.UDP.Protocol
 {
 	public static class UdpNetCommand
 	{
@@ -10,5 +10,7 @@ namespace xk_System.Net.UDP
 		public const UInt16 COMMAND_PACKAGECHECK = 2;
 		public const UInt16 COMMAND_SCBROADCASTIP = 3;
 		public const UInt16 COMMAND_HEARTBEAT = 4;
+
+		public const UInt16 COMMAND_TESTCHAT = 5;
 	}
 }

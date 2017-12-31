@@ -6,6 +6,7 @@ using Google.Protobuf;
 using System.IO;
 using xk_System.Net.UDP.Client;
 using xk_System.Net.UDP.Protocol;
+using xk_System.Net.UDP;
 
 public class UDPClientTest : MonoBehaviour 
 {
@@ -21,7 +22,7 @@ public class UDPClientTest : MonoBehaviour
 		while (!mNetSystem.bInitFinish) {
 			yield return 0;
 		}
-		mNetSystem.addNetListenFun ((int)ProtoCommand.ProtoChat, Receive_ServerSenddata);
+		mNetSystem.addNetListenFun (UdpNetCommand.COMMAND_TESTCHAT, Receive_ServerSenddata);
 		yield return Run ();
 	}
 
@@ -60,17 +61,17 @@ public class UDPClientTest : MonoBehaviour
 
 	public void request_ClientSendData(uint channelId, string sendName, string content)
 	{
-		csChatData mClientSendData = new csChatData ();
-		mClientSendData.ChannelId = channelId;
+		TestProtocols.csChatData mClientSendData = new TestProtocols.csChatData ();
+		mClientSendData.Id = channelId;
 		mClientSendData.TalkMsg = content;
-		mNetSystem.sendNetData ((int)ProtoCommand.ProtoChat, mClientSendData);
+		mNetSystem.sendNetData (UdpNetCommand.COMMAND_TESTCHAT, mClientSendData);
 
 		nSendCount++;
 	}
 
-	private void Receive_ServerSenddata(NetPackage package)
+	private void Receive_ServerSenddata(NetReceivePackage package)
 	{
-		scChatData mServerSendData = Protocol3Utility.getData<scChatData> (package.buffer, 0, package.buffer.Length);
+		TestProtocols.csChatData mServerSendData = Protocol3Utility.getData<TestProtocols.csChatData> (package.buffer.Array, package.buffer.Offset, package.buffer.Count);
 		//Debug.Log ("Client 接受 渠道ID " + mServerSendData.ChatInfo.ChannelId);
 		nReceiveCount++;
 	}

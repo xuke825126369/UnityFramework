@@ -13,35 +13,38 @@ namespace xk_System.Net.UDP.Client
 	public abstract class SocketPeer: SocketUdp_Basic
 	{
 		protected CircularBuffer<byte> mParseStreamList = null;
-		protected Dictionary<int, Action<NetReceivePackage>> mLogicFuncDic = null;
-		protected Queue<NetReceivePackage> mNeedHandleQueue = null;
-		protected UdpCheck mUdpCheckPool = null;
+		protected Dictionary<UInt16, Action<NetReceivePackage>> mLogicFuncDic = null;
 
+
+		protected ObjectPool<NetReceivePackage> mReceivePackagePool = null;
+		protected Queue<NetReceivePackage> mReceivePackageQueue = null;
+
+		protected UdpCheckPool mUdpCheckPool = null;
 		private UInt16 nPackageOrderId;
-		private UInt16 nPackageGroupId;
 
 		public SocketPeer ()
 		{
 			m_state = NetState.disconnected;
 			mParseStreamList = new CircularBuffer<byte> (2 * ClientConfig.nMaxBufferSize);
-			mLogicFuncDic = new Dictionary<int, Action<NetReceivePackage>> ();
-			mNeedHandleQueue = new Queue<NetReceivePackage> ();
-			mUdpCheckPool = new UdpCheck ();
+			mLogicFuncDic = new Dictionary<UInt16, Action<NetReceivePackage>> ();
+
+			mReceivePackagePool = new ObjectPool<NetReceivePackage> ();
+			mReceivePackageQueue = new Queue<NetReceivePackage> ();
+			mUdpCheckPool = new UdpCheckPool (this);
 
 			nPackageOrderId = 1;
-			nPackageGroupId = 1;
 		}
 
-		public void SendNetData (int id, byte[] buffer)
+		public void SendNetData (UInt16 id, byte[] buffer)
 		{
 			int readBytes = 0;
 			int nBeginIndex = 0;
 			UInt16 groupCount = (UInt16)(buffer.Length / ClientConfig.nMaxBufferSize + 1);
 			while (nBeginIndex < buffer.Length) {
-				if (nBeginIndex + ClientConfig.nMaxBufferSize > buffer.Length) {
+				if (nBeginIndex + ClientConfig.nMaxBufferSize - 12 > buffer.Length) {
 					readBytes = buffer.Length - nBeginIndex;
 				} else {
-					readBytes = ClientConfig.nMaxBufferSize;
+					readBytes = ClientConfig.nMaxBufferSize - 12;
 				}
 
 				UInt16 nPackageId = id;
@@ -51,30 +54,30 @@ namespace xk_System.Net.UDP.Client
 
 				ArraySegment<byte> stream = NetEncryptionStream.EncryptionGroup (uniqueId, buffer, nBeginIndex, readBytes);
 				SendNetStream (stream.Array, stream.Offset, stream.Count);
-				mUdpCheckPool.AddCheck (nOrderId,);
+				mUdpCheckPool.AddSendCheck (nOrderId, stream);
 
 				nBeginIndex += readBytes;
 				this.nPackageOrderId++;
 			}
 		}
 
-		public void SendNetData (int id, object data)
+		public void SendNetData (UInt16 id, object data)
 		{
 			IMessage data1 = data as IMessage;
 			byte[] stream = Protocol3Utility.SerializePackage (data1);
 			SendNetData (id, stream);
 		}
-
-		protected void DeSerialize (NetReceivePackage mPackage)
+			
+		public void AddLogicHandleQueue (NetReceivePackage mPackage)
 		{
-			if (mLogicFuncDic.ContainsKey (mPackage.nUniqueId)) {
-				mNeedHandleQueue.Enqueue (mPackage);
+			if (mLogicFuncDic.ContainsKey (mPackage.nPackageId)) {
+				mReceivePackageQueue.Enqueue (mPackage);
 			} else {
-				DebugSystem.LogError ("不存在的 协议ID: " + mPackage.command);
+				DebugSystem.LogError ("不存在的 协议ID: " + mPackage.nPackageId);
 			}
 		}
 
-		public void addNetListenFun (int command, Action<NetReceivePackage> func)
+		public void addNetListenFun (UInt16 command, Action<NetReceivePackage> func)
 		{
 			if (!mLogicFuncDic.ContainsKey (command)) {
 				mLogicFuncDic [command] = func;
@@ -83,7 +86,7 @@ namespace xk_System.Net.UDP.Client
 			}
 		}
 
-		public void removeNetListenFun (int command, Action<NetReceivePackage> func)
+		public void removeNetListenFun (UInt16 command, Action<NetReceivePackage> func)
 		{
 			if (mLogicFuncDic.ContainsKey (command)) {
 				mLogicFuncDic [command] -= func;
@@ -100,9 +103,9 @@ namespace xk_System.Net.UDP.Client
 		public virtual void Update ()
 		{
 			HandleReceivePackage ();
-			while (mNeedHandleQueue.Count > 0) {
-				NetReceivePackage mNetReceivePackage = mNeedHandleQueue.Dequeue ();
-				mLogicFuncDic [mNetReceivePackage.c] (mNetReceivePackage);
+			while (mReceivePackageQueue.Count > 0) {
+				NetReceivePackage mNetReceivePackage = mReceivePackageQueue.Dequeue ();
+				mLogicFuncDic [mNetReceivePackage.nPackageId] (mNetReceivePackage);
 			}
 		}
 
@@ -127,13 +130,18 @@ namespace xk_System.Net.UDP.Client
 				return false;
 			}
 
-			NetReceivePackage mNetReceivePackage = new NetReceivePackage ();
-			bool bSucccess = NetEncryptionStream.DeEncryption (mParseStreamList, mNetReceivePackage);
+			NetReceivePackage mNetReceivePackage = mReceivePackagePool.Pop ();
+			bool bSucccess = false;
+			lock (mParseStreamList) {
+				bSucccess = NetEncryptionStream.DeEncryption (mParseStreamList, mNetReceivePackage);
+			}
 
 			if (bSucccess) {
-				mNetReceivePackage.nPackageId = NetPackageUtility.getPackageId ();
+				mNetReceivePackage.nPackageId = NetPackageUtility.getPackageId (mNetReceivePackage.nUniqueId);
+				mNetReceivePackage.nOrderId = NetPackageUtility.getOrderId (mNetReceivePackage.nUniqueId);
+				mNetReceivePackage.nGroupCount = NetPackageUtility.getGroupCount (mNetReceivePackage.nUniqueId);
 
-				this.DeSerialize ();
+				mUdpCheckPool.AddReceiveCheck (mNetReceivePackage);
 			}
 
 			return bSucccess;
@@ -145,11 +153,10 @@ namespace xk_System.Net.UDP.Client
 				return;
 			}
 
-			if (mPackage.getCommand () != 1) {
+			if (mPackage.nPackageId != 1) {
 				return;
 			}
 
-			ip = BitConverter.ToString (mPackage.buffer);
 			connectServer ();
 		}
 
@@ -159,7 +166,7 @@ namespace xk_System.Net.UDP.Client
 				return;
 			}
 			
-			if (mPackage.getCommand () != 2) {
+			if (mPackage.nPackageId != 2) {
 				return;
 			}
 

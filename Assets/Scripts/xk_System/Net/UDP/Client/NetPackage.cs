@@ -9,22 +9,22 @@ namespace xk_System.Net.UDP.Client
 	{
 		public static UInt16 getPackageId(UInt32 uniqueId)
 		{
-			return uniqueId / 10 / 10;
+			return (UInt16)(uniqueId / 10 / 10);
 		}
 
 		public static UInt16 getOrderId(UInt32 uniqueId)
 		{
-			return uniqueId / 10 % 10;
+			return (UInt16)(uniqueId / 10 % 10);
 		}
 
 		public static UInt16 getGroupCount(UInt32 uniqueId)
 		{
-			return uniqueId % 10;
+			return (UInt16)(uniqueId % 10);
 		}
 
 		public static UInt32 getUniqueId(UInt16 nPackageId, UInt16 orderId, UInt16 groupCount)
 		{
-			return (nPackageId * 10 + orderId) * 10 + groupCount;
+			return ((UInt32)nPackageId * 10 + orderId) * 10 + groupCount;
 		}
 	}
 
@@ -46,16 +46,21 @@ namespace xk_System.Net.UDP.Client
 		public UInt16 nGroupCount;
 
 		public ArraySegment<byte> buffer;
+		private static BufferManager mBufferManager = null;
 
-		public void InitData()
+		public NetReceivePackage()
 		{
-
-		}
-
-		public virtual void reset()
-		{
-			nUniqueId = -1;
-			buffer = null;
+			if (mBufferManager == null) {
+				mBufferManager = new BufferManager (ClientConfig.nMaxBufferSize * 1024, ClientConfig.nMaxBufferSize);
+			}
+			mBufferManager.SetBuffer (out buffer);
 		}
 	}
+
+	public class NetSendPackage
+	{
+		public UInt16 nPackageId;
+		public object message;
+	}
+
 }

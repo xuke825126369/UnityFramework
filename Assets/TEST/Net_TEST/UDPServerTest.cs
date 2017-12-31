@@ -21,7 +21,7 @@ public class UDPServerTest : MonoBehaviour
 		while (!mNetSystem.bInitFinish) {
 			yield return 0;
 		}
-		mNetSystem.addNetListenFun ((int)ProtoCommand.ProtoChat, Receive_ServerSenddata);
+		mNetSystem.addNetListenFun (UdpNetCommand.COMMAND_TESTCHAT, Receive_ServerSenddata);
 		yield return Run ();
 	}
 
@@ -38,13 +38,9 @@ public class UDPServerTest : MonoBehaviour
 
 	private void Receive_ServerSenddata(NetPackage package)
 	{
-		csChatData mServerSendData = Protocol3Utility.getData<csChatData> (package.buffer, 0, package.buffer.Length);
+		TestProtocols.csChatData mServerSendData = Protocol3Utility.getData<TestProtocols.csChatData> (package.buffer, 0, package.buffer.Length);
 
-		scChatData mSenddata = new scChatData ();
-		mSenddata.ChatInfo = new struct_ChatInfo ();
-		mSenddata.ChatInfo.ChannelId = mServerSendData.ChannelId;
-		mSenddata.ChatInfo.TalkMsg = mServerSendData.TalkMsg;
-		mNetSystem.sendNetData (package.clientId, (int)ProtoCommand.ProtoChat, mSenddata);
+		mNetSystem.sendNetData (package.clientId, UdpNetCommand.COMMAND_TESTCHAT, mServerSendData);
 
 		nReceiveCount++;
 		//Debug.Log ("Server接受数量: " + mServerSendData.ChannelId + "| " + ++nReceiveCount);

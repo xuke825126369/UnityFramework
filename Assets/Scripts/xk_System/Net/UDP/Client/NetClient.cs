@@ -30,19 +30,19 @@ namespace xk_System.Net.UDP.Client
 			mNetSystem.CloseNet();
 		}
 
-		public void sendNetData (int command, object data)
+		public void sendNetData (UInt16 nPackageId, object data)
 		{
-			mNetSystem.sendNetData (command, data);
+			mNetSystem.SendNetData (nPackageId, data);
 		}
 
-		public void addNetListenFun (int command, Action<NetPackage> func)
+		public void addNetListenFun (UInt16 nPackageId, Action<NetReceivePackage> func)
 		{
-			mNetSystem.addNetListenFun (command, func);
+			mNetSystem.addNetListenFun (nPackageId, func);
 		}
 
-		public void removeNetListenFun (int command, Action<NetPackage> func)
+		public void removeNetListenFun (UInt16 nPackageId, Action<NetReceivePackage> func)
 		{
-			mNetSystem.removeNetListenFun (command, func);
+			mNetSystem.removeNetListenFun (nPackageId, func);
 		}
 	}
 }

@@ -1,0 +1,10 @@
+﻿syntax = "proto3";
+package test_protocols;
+
+//客户端 发送聊天
+message csChatData
+{
+	fixed32 id = 1;
+	string talkMsg = 2;
+}
+
