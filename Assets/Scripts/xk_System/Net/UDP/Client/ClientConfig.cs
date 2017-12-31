@@ -6,8 +6,7 @@ namespace xk_System.Net.UDP.Client
 {
 	public class ClientConfig
 	{
-		public const int nMaxBufferSize = 1024 * 64;
-		public bool IsLittleEndian = false; 
-
+		public const int nMaxBufferSize = 1024;
+		public bool IsLittleEndian = false;
 	}
 }

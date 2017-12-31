@@ -14,9 +14,8 @@ namespace xk_System.Net.UDP.Client
 	public static class NetEncryptionStream
 	{
 		private static byte[] mCheck = new byte[4] { (byte)'A', (byte)'B', (byte)'C', (byte)'D' };
-		private static Encryption_AES mAES = new Encryption_AES ("1234567891234567", "1234567891234567");
-		private static byte[] mReceiveBuffer = new byte[1024];
-		private static byte[] mSendBuffer = new byte[1024];
+		private static byte[] mReceiveBuffer = new byte[ClientConfig.nMaxBufferSize];
+		private static byte[] mSendBuffer = new byte[ClientConfig.nMaxBufferSize];
 
 		public static bool DeEncryption (CircularBuffer<byte> data, NetPackage mPackage)
 		{
@@ -42,48 +41,38 @@ namespace xk_System.Net.UDP.Client
 			data.CopyTo (8, mReceiveBuffer, 0, nBodyLength1);
 			data.ClearBuffer (nBodyLength1 + 8);
 
-			byte[] msg = mAES.Decryption (mReceiveBuffer, 0, nBodyLength1);
-			if (msg == null) {
-				DebugSystem.LogBitStream ("解包失败： ", mReceiveBuffer);
-				return false;
-			}
-
-			int command = msg [0] | msg [1] << 8 | msg [2] << 16 | msg [3] << 24;
+			UInt32 command = BitConverter.ToUInt32 (mReceiveBuffer, 8);
 			int nBodyLength2 = msg.Length - 4;
 
 			byte[] buffer = new byte[nBodyLength2];
 			Array.Copy (msg, 4, buffer, 0, nBodyLength2);
 
-			mPackage.command = command;
+			mPackage.uniqueId = command;
 			mPackage.buffer = buffer;
 			return true;
 		}
 
-		public static ArraySegment<byte> Encryption (NetPackage mPackage)
+		public static byte[] EncryptionGroup (UInt32 uniqueId, byte[] msg,int offset, int Length)
 		{
-			int command = mPackage.command;
-			byte[] msg = mPackage.buffer;
+			if (mSendBuffer.Length < 12 + Length) {
+				mSendBuffer = new byte[12 + Length];
+			}
 
-			int buffer_Length = mPackage.buffer.Length;
-			int sum_Length = 4 + buffer_Length;
-
-			mSendBuffer [0] = (byte)command;
-			mSendBuffer [1] = (byte)(command >> 8);
-			mSendBuffer [2] = (byte)(command >> 16);
-			mSendBuffer [3] = (byte)(command >> 24);
-
-			Array.Copy (msg, 0, mSendBuffer, 4, buffer_Length);
-			byte[] data = mAES.Encryption (mSendBuffer, 0, sum_Length);
-			Array.Copy (data, 0, mSendBuffer, 8, data.Length);
+			UInt32 command = uniqueId;
+			UInt32 sum_Length = 4 + msg.Length;
 
 			Array.Copy (mCheck, mSendBuffer, 4);
-			buffer_Length = data.Length;
-			mSendBuffer [4] = (byte)buffer_Length;
-			mSendBuffer [5] = (byte)(buffer_Length >> 8);
-			mSendBuffer [6] = (byte)(buffer_Length >> 16);
-			mSendBuffer [7] = (byte)(buffer_Length >> 24);
 
-			return new ArraySegment<byte> (mSendBuffer, 0, buffer_Length + 8);
+			byte[] byCom = BitConverter.GetBytes (command);
+			Array.Copy (byCom, 0, mSendBuffer, 4, byCom.Length);
+
+			UInt32 buffer_Length = Length;
+			byte[] byBuLen = BitConverter.GetBytes (buffer_Length);
+			Array.Copy (byBuLen, 0, mSendBuffer, 8, byBuLen.Length);
+
+			Array.Copy (msg, offset, mSendBuffer, 12, Length);
+
+			return new ArraySegment<byte> (mSendBuffer, 0, buffer_Length + 12);
 		}
 	}
 }

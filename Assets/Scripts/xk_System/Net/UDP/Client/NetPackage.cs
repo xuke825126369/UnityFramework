@@ -1,30 +1,61 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 using System;
 using Google.Protobuf;
 
 namespace xk_System.Net.UDP.Client
 {
-	public class NetPackage:ObjectPoolInterface
+	public class NetPackageUtility
 	{
-		public ulong orderId;
-		public int command;
-		public byte[] buffer = null;
-		public virtual void reset()
+		public static UInt16 getPackageId(UInt32 uniqueId)
 		{
-			command = -1;
-			buffer = null;
+			return uniqueId / 10 / 10;
+		}
+
+		public static UInt16 getOrderId(UInt32 uniqueId)
+		{
+			return uniqueId / 10 % 10;
+		}
+
+		public static UInt16 getGroupCount(UInt32 uniqueId)
+		{
+			return uniqueId % 10;
+		}
+
+		public static UInt32 getUniqueId(UInt16 nPackageId, UInt16 orderId, UInt16 groupCount)
+		{
+			return (nPackageId * 10 + orderId) * 10 + groupCount;
 		}
 	}
 
-	public class NetProtobufPackage : NetPackage
+	public class NetPackageGroup
 	{
-		public IMessage msg;
+		List<NetReceivePackage> mGroupNetPackageQueue = new List<NetReceivePackage> ();
 
-		public override void reset()
+		public void AddToGroup(NetReceivePackage mNetPackage)
 		{
-			msg = null;
+			mGroupNetPackageQueue.Add (mNetPackage);
+		}
+	}
+
+	public class NetReceivePackage
+	{
+		public UInt32 nUniqueId;
+		public UInt16 nPackageId;
+		public UInt16 nOrderId;
+		public UInt16 nGroupCount;
+
+		public ArraySegment<byte> buffer;
+
+		public void InitData()
+		{
+
+		}
+
+		public virtual void reset()
+		{
+			nUniqueId = -1;
+			buffer = null;
 		}
 	}
 }

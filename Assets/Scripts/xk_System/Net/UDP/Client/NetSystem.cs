@@ -9,7 +9,7 @@ using xk_System.Event;
 
 namespace xk_System.Net.UDP.Client
 {
-	public class NetSystem:Protobuf3Peer
+	public class NetSystem:ClientPeer
 	{
 		
 	}
