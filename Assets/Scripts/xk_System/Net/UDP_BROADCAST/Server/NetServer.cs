@@ -8,14 +8,14 @@ namespace xk_System.Net.UDP.BROADCAST.Server
 	public class NetServer : MonoBehaviour
 	{
 		public string ip = "192.168.122.24";
-		public int port = 7878;
+		public UInt16 port = 7878;
 
-		NetSystem mNetSystem = null;
+		ClientPeer mNetSystem = null;
 		public bool bInitFinish = false;
 		private void Start ()
 		{
-			mNetSystem = new NetSystem ();
-			mNetSystem.initNet (port);
+			mNetSystem = new ClientPeer ();
+			mNetSystem.InitNet (ip, port);
 			bInitFinish = true;
 		}
 
@@ -26,15 +26,15 @@ namespace xk_System.Net.UDP.BROADCAST.Server
 
 		private void OnDestroy ()
 		{
-			mNetSystem.closeNet ();
+			mNetSystem.CloseNet ();
 		}
 
-		public void sendNetData (int clientId,int command, object data)
+		public void sendNetData (UInt16 command, object data)
 		{
-			mNetSystem.sendNetData (clientId, command, data);
+			mNetSystem.SendNetData (command, data);
 		}
 
-		public void addNetListenFun (int command, Action<NetPackage> func)
+		public void addNetListenFun (UInt16 command, Action<NetPackage> func)
 		{
 			mNetSystem.addNetListenFun (command, func);
 		}

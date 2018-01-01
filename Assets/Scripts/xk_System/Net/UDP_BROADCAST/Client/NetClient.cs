@@ -1,7 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using xk_System.Net;
 using System;
 
 namespace xk_System.Net.UDP.BROADCAST.Client
@@ -9,20 +8,20 @@ namespace xk_System.Net.UDP.BROADCAST.Client
 	public class NetClient: MonoBehaviour
 	{
 		public UInt16 port = 7878;
-		public string ip = "127.0.0.1";
+		public string ip = "192.168.122.24";
 
-		NetSystem mNetSystem = null;
+		ClientPeer mNetSystem = null;
 
-		private void InitNet()
+		public void InitNet()
 		{
-			mNetSystem = new NetSystem ();
+			mNetSystem = new ClientPeer ();
 			mNetSystem.InitNet (ip, port);
 		}
 
-		private void Update(double elapsed)
+		void Update()
 		{
 			if (mNetSystem != null) {
-				mNetSystem.Update (elapsed);
+				mNetSystem.Update (Time.deltaTime);
 			}
 		}
 

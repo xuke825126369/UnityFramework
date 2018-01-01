@@ -1,14 +1,5 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-
-namespace xk_System.Net.UDP.BROADCAST.Client
+﻿namespace xk_System.Net.UDP.BROADCAST.Client
 {
-	public enum UDPTYPE
-	{
-		POINTTOPOINT = 1,
-		BROADCAST = 2,
-	}
-
 	public enum NETSTATE
 	{
 		CONNECTING = 1,
@@ -36,8 +27,4 @@ namespace xk_System.Net.UDP.BROADCAST.Client
 		public NETEVENT mNetEventType;
 		public string msg;
 	}
-
-
-
-
 }

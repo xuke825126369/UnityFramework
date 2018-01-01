@@ -45,23 +45,18 @@ namespace xk_System.Net.UDP.BROADCAST.Client
 
 		public bool SetBuffer (out ArraySegment<byte> args)
 		{
-			if (m_freeIndexPool.Count > 0) 
-			{
+			if (m_freeIndexPool.Count > 0) {
 				args = new ArraySegment<byte> (m_buffer, m_freeIndexPool.Pop (), nBufferSize);
 				return true;
-			}
-			else 
-			{
+			} else {
 				if (nReadIndex + nBufferSize > Length) {
 					return false;
 				}
-				var result = new ArraySegment<byte> (m_buffer, nReadIndex, nBufferSize);
+				args = new ArraySegment<byte> (m_buffer, nReadIndex, nBufferSize);
 				nReadIndex += nBufferSize;
 
 				return  true;
 			}
-
-			return false;
 		}
 
 		public void FreeBuffer (ArraySegment<byte> args)

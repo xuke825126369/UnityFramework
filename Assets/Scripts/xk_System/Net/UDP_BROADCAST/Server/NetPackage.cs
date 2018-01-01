@@ -8,12 +8,12 @@ namespace xk_System.Net.UDP.BROADCAST.Server
 	public class NetPackage:ObjectPoolInterface
 	{
 		public int clientId;
-		public int command;
+		public UInt16 command;
 		public byte[] buffer = null;
 
 		public void reset()
 		{
-			command = -1;
+			command = 0;
 			buffer = null;
 		}
 	}

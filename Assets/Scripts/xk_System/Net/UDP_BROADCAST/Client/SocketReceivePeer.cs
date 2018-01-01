@@ -10,7 +10,7 @@ using xk_System.Net.UDP.BROADCAST.Protocol;
 
 namespace xk_System.Net.UDP.BROADCAST.Client
 {
-	public abstract class SocketPeer: SocketUdp_Basic
+	public class SocketReceivePeer
 	{
 		protected CircularBuffer<byte> mParseStreamList = null;
 		protected Dictionary<UInt16, Action<NetReceivePackage>> mLogicFuncDic = null;
@@ -20,7 +20,7 @@ namespace xk_System.Net.UDP.BROADCAST.Client
 
 		private UInt16 nPackageOrderId;
 
-		public SocketPeer ()
+		public SocketReceivePeer ()
 		{
 			mParseStreamList = new CircularBuffer<byte> (2 * ClientConfig.nMaxBufferSize);
 			mLogicFuncDic = new Dictionary<UInt16, Action<NetReceivePackage>> ();
@@ -31,44 +31,12 @@ namespace xk_System.Net.UDP.BROADCAST.Client
 			nPackageOrderId = 1;
 		}
 
-		public void SendNetData (UInt16 id, byte[] buffer)
+		private void AddLogicHandleQueue (NetReceivePackage mPackage)
 		{
-			int readBytes = 0;
-			int nBeginIndex = 0;
-			UInt16 groupCount = (UInt16)(buffer.Length / ClientConfig.nMaxBufferSize + 1);
-			while (nBeginIndex < buffer.Length) {
-				if (nBeginIndex + ClientConfig.nMaxBufferSize - 12 > buffer.Length) {
-					readBytes = buffer.Length - nBeginIndex;
-				} else {
-					readBytes = ClientConfig.nMaxBufferSize - 12;
-				}
-
-				UInt16 nPackageId = id;
-				UInt16 nOrderId = this.nPackageOrderId;
-				UInt32 uniqueId = NetPackageUtility.getUniqueId (nPackageId, nOrderId, groupCount);
-				groupCount = 1;
-
-				ArraySegment<byte> stream = NetEncryptionStream.EncryptionGroup (uniqueId, buffer, nBeginIndex, readBytes);
-				SendNetStream (stream.Array, stream.Offset, stream.Count);
-
-				nBeginIndex += readBytes;
-				this.nPackageOrderId++;
-			}
-		}
-
-		public void SendNetData (UInt16 id, object data)
-		{
-			IMessage data1 = data as IMessage;
-			byte[] stream = Protocol3Utility.SerializePackage (data1);
-			SendNetData (id, stream);
-		}
-			
-		public void AddLogicHandleQueue (NetReceivePackage mPackage)
-		{
-			if (mLogicFuncDic.ContainsKey (mPackage.nPackageId)) {
+			if (mLogicFuncDic.ContainsKey (mPackage.nUniqueId)) {
 				mReceivePackageQueue.Enqueue (mPackage);
 			} else {
-				DebugSystem.LogError ("不存在的 协议ID: " + mPackage.nPackageId);
+				DebugSystem.LogError ("不存在的 协议ID: " + mPackage.nUniqueId);
 			}
 		}
 
@@ -88,7 +56,7 @@ namespace xk_System.Net.UDP.BROADCAST.Client
 			}
 		}
 
-		public override void ReceiveSocketStream (byte[] data, int index, int Length)
+		public void ReceiveSocketStream (byte[] data, int index, int Length)
 		{
 			lock (mParseStreamList) {
 				mParseStreamList.WriteFrom (data, index, Length);
@@ -100,7 +68,7 @@ namespace xk_System.Net.UDP.BROADCAST.Client
 			HandleReceivePackage ();
 			while (mReceivePackageQueue.Count > 0) {
 				NetReceivePackage mNetReceivePackage = mReceivePackageQueue.Dequeue ();
-				mLogicFuncDic [mNetReceivePackage.nPackageId] (mNetReceivePackage);
+				mLogicFuncDic [mNetReceivePackage.nUniqueId] (mNetReceivePackage);
 				mReceivePackagePool.recycle (mNetReceivePackage);
 			}
 		}
@@ -133,9 +101,7 @@ namespace xk_System.Net.UDP.BROADCAST.Client
 			}
 
 			if (bSucccess) {
-				mNetReceivePackage.nPackageId = NetPackageUtility.getPackageId (mNetReceivePackage.nUniqueId);
-				mNetReceivePackage.nOrderId = NetPackageUtility.getOrderId (mNetReceivePackage.nUniqueId);
-				mNetReceivePackage.nGroupCount = NetPackageUtility.getGroupCount (mNetReceivePackage.nUniqueId);
+				AddLogicHandleQueue (mNetReceivePackage);
 			}
 
 			return bSucccess;
@@ -143,7 +109,7 @@ namespace xk_System.Net.UDP.BROADCAST.Client
 			
 		public void release ()
 		{
-			
+				
 		}
 	}
 }

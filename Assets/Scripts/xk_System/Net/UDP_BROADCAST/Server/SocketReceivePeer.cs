@@ -8,31 +8,41 @@ using xk_System.Event;
 
 namespace xk_System.Net.UDP.BROADCAST.Server
 {
-	public class SocketPeer:SocketToken
+	public class SocketReceivePeer
 	{
 		protected QueueArraySegment<byte> mWaitSendBuffer = null;
 		protected NetPackage mNetPackage = null;
 		protected CircularBuffer<byte> mParseStreamList = null;
-		protected DataBind<NetPackage> mBindReceiveNetPackage = null;
 
-		public SocketPeer ()
+		protected Dictionary<UInt16, Action<NetPackage>> mLogicFuncDic = null;
+
+		public SocketReceivePeer ()
 		{
 			mWaitSendBuffer = new QueueArraySegment<byte> (64, ServerConfig.nMaxBufferSize);
 			mNetPackage = new NetPackage ();
 
 			mParseStreamList = new CircularBuffer<byte> (2 * ServerConfig.nMaxBufferSize);
-			mBindReceiveNetPackage = new DataBind<NetPackage> (new NetPackage ());
 
-			//mBindReceiveNetPackage.addDataBind (NetSystem.mEventSystem.DeSerialize);
+			mLogicFuncDic = new Dictionary<ushort, Action<NetPackage>> ();
+
 		}
 
-		public void SendNetData (int id, byte[] buffer)
+		public void addNetListenFun (UInt16 command, Action<NetPackage> func)
 		{
-			mNetPackage.command = id;
-			mNetPackage.buffer = buffer;
-			ArraySegment<byte> stream = NetEncryptionStream.Encryption (mNetPackage);
-			this.SendNetStream (stream.Array, stream.Offset, stream.Count);
+			if (!mLogicFuncDic.ContainsKey (command)) {
+				mLogicFuncDic [command] = func;
+			} else {
+				mLogicFuncDic [command] += func;
+			}
 		}
+
+		public void removeNetListenFun (UInt16 command, Action<NetPackage> func)
+		{
+			if (mLogicFuncDic.ContainsKey (command)) {
+				mLogicFuncDic [command] -= func;
+			}
+		}
+
 
 		public void ReceiveSocketStream (byte[] data, int index, int Length)
 		{
@@ -61,11 +71,15 @@ namespace xk_System.Net.UDP.BROADCAST.Server
 				return false;
 			}
 
-			bool bSucccess = NetEncryptionStream.DeEncryption (mParseStreamList, mBindReceiveNetPackage.bindData);
+			NetPackage mNetPackage = new NetPackage ();
+
+			bool bSucccess = false;
+			lock (mParseStreamList) {
+				bSucccess = NetEncryptionStream.DeEncryption (mParseStreamList, mNetPackage);
+			}
 
 			if (bSucccess) {
-				mBindReceiveNetPackage.bindData.clientId = getId ();
-				mBindReceiveNetPackage.DispatchEvent ();
+				mLogicFuncDic [(UInt16)mNetPackage.command] (mNetPackage);
 			} else {
 				DebugSystem.LogError ("服务器端 解码失败");
 			}

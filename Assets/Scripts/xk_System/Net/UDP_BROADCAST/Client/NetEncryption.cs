@@ -19,7 +19,7 @@ namespace xk_System.Net.UDP.BROADCAST.Client
 
 		public static bool DeEncryption (CircularBuffer<byte> data, NetReceivePackage mPackage)
 		{
-			if (data.Length <= 12) {
+			if (data.Length <= 8) {
 				return false;
 			}
 
@@ -29,42 +29,45 @@ namespace xk_System.Net.UDP.BROADCAST.Client
 				}
 			}
 
-			int UnqiueId = data [4] | data [5] << 8 | data [6] << 16 | data [7] << 24;
-			mPackage.nUniqueId = (UInt32)UnqiueId;
+			byte[] commandBytes = new byte[2];
+			data.CopyTo (4, commandBytes, 0, 2);
+			mPackage.nUniqueId = BitConverter.ToUInt16 (commandBytes, 0);
 
-			int nBodyLength1 = data [8] | data [9] << 8 | data [10] << 16 | data [11] << 24;
-			if (nBodyLength1 <= 0 || nBodyLength1 + 8 > data.Length) {
+			byte[] bodyLengthBytes = new byte[2];
+			data.CopyTo (6, bodyLengthBytes, 0, 2);
+			UInt16 nBodyLength1 = BitConverter.ToUInt16 (bodyLengthBytes, 0);
+
+			if (nBodyLength1 < 0 || nBodyLength1 + 8 > data.Length) {
 				return false;
 			}
 
-			data.CopyTo (12, mPackage.buffer.Array, mPackage.buffer.Offset, nBodyLength1);
-			data.ClearBuffer (nBodyLength1 + 12);
+			data.CopyTo (8, mPackage.buffer.Array, mPackage.buffer.Offset, nBodyLength1);
+			data.ClearBuffer (nBodyLength1 + 8);
 
 			ArraySegment<byte> mChe = new ArraySegment<byte> (mPackage.buffer.Array, mPackage.buffer.Offset, nBodyLength1);
 			mPackage.buffer = mChe;
 			return true;
 		}
 
-		public static ArraySegment<byte> EncryptionGroup (UInt32 uniqueId, byte[] msg,int offset, int Length)
+		public static ArraySegment<byte> EncryptionGroup (UInt16 uniqueId, byte[] msg,int offset, int Length)
 		{
-			if (mSendBuffer.Length < 12 + Length) {
-				mSendBuffer = new byte[12 + Length];
+			if (mSendBuffer.Length < 8 + Length) {
+				mSendBuffer = new byte[8 + Length];
 			}
 
-			UInt32 command = uniqueId;
-
-			Array.Copy (mCheck, mSendBuffer, 4);
+			UInt16 command = uniqueId;
+			Array.Copy (mCheck, 0, mSendBuffer, 0, 4);
 
 			byte[] byCom = BitConverter.GetBytes (command);
 			Array.Copy (byCom, 0, mSendBuffer, 4, byCom.Length);
 
-			int buffer_Length = Length;
+			UInt16 buffer_Length = (UInt16)Length;
 			byte[] byBuLen = BitConverter.GetBytes (buffer_Length);
-			Array.Copy (byBuLen, 0, mSendBuffer, 8, byBuLen.Length);
+			Array.Copy (byBuLen, 0, mSendBuffer, 6, byBuLen.Length);
 
-			Array.Copy (msg, offset, mSendBuffer, 12, Length);
+			Array.Copy (msg, offset, mSendBuffer, 8, Length);
 
-			return new ArraySegment<byte> (mSendBuffer, 0, buffer_Length + 12);
+			return new ArraySegment<byte> (mSendBuffer, 0, buffer_Length + 8);
 		}
 	}
 }
