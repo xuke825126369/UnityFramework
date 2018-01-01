@@ -1,0 +1,10 @@
+﻿syntax = "proto3";
+
+package udp_broadcast_protocols;
+
+//UDP 服务器广播 IP 地址，让客户端都连进来
+message scBroadcastIP
+{
+	string ip = 1 ;
+}
+

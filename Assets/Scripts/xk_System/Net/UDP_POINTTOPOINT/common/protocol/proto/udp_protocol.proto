@@ -1,0 +1,22 @@
+﻿syntax = "proto3";
+package udp_pointtopoint_protocols;
+
+//检查 包的序列，以及是否丢包
+message PackageCheckResult
+{
+	fixed32 nOrderId = 2; //包的序号ID
+}
+
+// 一切以心跳为准，有心跳就加进来，心跳超时就断开
+message HeartBeat
+{
+	fixed32 nServerTime = 1; //心跳包，每次发送服务器时间
+}
+
+//TEST 客户端 发送聊天
+message csChatData
+{
+	fixed32 id = 1;
+	string talkMsg = 2;
+}
+

@@ -4,7 +4,7 @@ using UnityEngine;
 using Google.Protobuf;
 using System;
 using xk_System.Debug;
-using xk_System.Net.UDP.Protocol;
+using xk_System.Net.TCP.Protocol;
 
 namespace xk_System.Net.TCP.Client.Event
 {

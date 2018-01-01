@@ -4,10 +4,8 @@ using UnityEngine;
 using Google.Protobuf;
 using System.IO;
 
-namespace xk_System.Net.TCP.Protocol
+namespace xk_System.Net.UDP.POINTTOPOINT.Protocol
 {
-
-
 	public class Protocol3Utility
 	{
 		public static byte[] SerializePackage (IMessage data)
@@ -32,6 +30,4 @@ namespace xk_System.Net.TCP.Protocol
 			return t;
 		}
 	}
-
-
 }
