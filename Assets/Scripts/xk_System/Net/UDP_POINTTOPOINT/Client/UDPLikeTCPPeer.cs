@@ -5,7 +5,7 @@ using UdpPointtopointProtocols;
 
 namespace xk_System.Net.UDP.POINTTOPOINT.Client
 {
-	public class UDPLikeTCPPeer : SocketPeer
+	public class UDPLikeTCPPeer : SocketSendPeer
 	{
 		private double fHeartBeatTime = 0.0;
 
@@ -47,5 +47,4 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 		}
 	}
-
 }

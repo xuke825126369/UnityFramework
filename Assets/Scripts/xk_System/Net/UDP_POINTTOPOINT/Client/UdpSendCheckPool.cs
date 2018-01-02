@@ -7,15 +7,15 @@ using UdpPointtopointProtocols;
 
 namespace xk_System.Net.UDP.POINTTOPOINT.Client
 {
-	public class UdpCheckPool
+	public class UdpSendCheckPool
 	{
-		private Dictionary<UInt32, ArraySegment<byte>> mWaitCheckQueue = null;
-		private Dictionary<UInt32, PackageCheckResult> mCheckResultDic = new Dictionary<uint, PackageCheckResult>();
-		private SocketPeer mUdpPeer;
+		private Dictionary<UInt16, ArraySegment<byte>> mWaitCheckQueue = null;
+		private Dictionary<UInt16, PackageCheckResult> mCheckResultDic = new Dictionary<UInt16, PackageCheckResult>();
+		private ClientPeer mUdpPeer;
 
-		public UdpCheckPool(SocketPeer mUdpPeer)
+		public UdpSendCheckPool(ClientPeer mUdpPeer)
 		{
-			mWaitCheckQueue = new Dictionary<uint, ArraySegment<byte>> ();
+			mWaitCheckQueue = new Dictionary<UInt16, ArraySegment<byte>> ();
 			this.mUdpPeer = mUdpPeer;
 			mUdpPeer.addNetListenFun (UdpNetCommand.COMMAND_PACKAGECHECK, ReceiveCheckPackage);
 		}
@@ -38,9 +38,12 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		private void ReceiveCheckPackage(NetReceivePackage mPackage)
 		{
 			PackageCheckResult mPackageCheckResult = Protocol3Utility.getData<PackageCheckResult> (mPackage.buffer.Array, mPackage.buffer.Offset, mPackage.buffer.Count);
+			UInt16 whoId = (UInt16)(mPackageCheckResult.NWhoOrderId >> 16);
+			UInt16 nOrderId = (UInt16)(mPackageCheckResult.NWhoOrderId & 0x00FF);
+
 			this.mUdpPeer.SendNetData (mPackage.nPackageId, mPackageCheckResult);
-			if (mWaitCheckQueue.ContainsKey (mPackageCheckResult.NOrderId)) {
-				mWaitCheckQueue.Remove (mPackageCheckResult.NOrderId);
+			if (mWaitCheckQueue.ContainsKey ((UInt16)mPackageCheckResult.NWhoOrderId)) {
+				mWaitCheckQueue.Remove ((UInt16)mPackageCheckResult.NWhoOrderId);
 			}
 		}
 

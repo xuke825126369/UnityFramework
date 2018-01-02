@@ -4,7 +4,7 @@ package udp_pointtopoint_protocols;
 //检查 包的序列，以及是否丢包
 message PackageCheckResult
 {
-	fixed32 nOrderId = 2; //包的序号ID
+	fixed32 nWhoOrderId = 2; //前Uint16 ：1：客户端，2：服务器， 后16位： 发包的序号ID
 }
 
 // 一切以心跳为准，有心跳就加进来，心跳超时就断开

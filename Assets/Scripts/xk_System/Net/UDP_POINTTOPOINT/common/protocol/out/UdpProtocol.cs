@@ -25,13 +25,13 @@ namespace UdpPointtopointProtocols {
       byte[] descriptorData = global::System.Convert.FromBase64String(
           string.Concat(
             "ChJ1ZHBfcHJvdG9jb2wucHJvdG8SGnVkcF9wb2ludHRvcG9pbnRfcHJvdG9j",
-            "b2xzIiYKElBhY2thZ2VDaGVja1Jlc3VsdBIQCghuT3JkZXJJZBgCIAEoByIg",
-            "CglIZWFydEJlYXQSEwoLblNlcnZlclRpbWUYASABKAciKQoKY3NDaGF0RGF0",
-            "YRIKCgJpZBgBIAEoBxIPCgd0YWxrTXNnGAIgASgJYgZwcm90bzM="));
+            "b2xzIikKElBhY2thZ2VDaGVja1Jlc3VsdBITCgtuV2hvT3JkZXJJZBgCIAEo",
+            "ByIgCglIZWFydEJlYXQSEwoLblNlcnZlclRpbWUYASABKAciKQoKY3NDaGF0",
+            "RGF0YRIKCgJpZBgBIAEoBxIPCgd0YWxrTXNnGAIgASgJYgZwcm90bzM="));
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
           new pbr::FileDescriptor[] { },
           new pbr::GeneratedClrTypeInfo(null, new pbr::GeneratedClrTypeInfo[] {
-            new pbr::GeneratedClrTypeInfo(typeof(global::UdpPointtopointProtocols.PackageCheckResult), global::UdpPointtopointProtocols.PackageCheckResult.Parser, new[]{ "NOrderId" }, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::UdpPointtopointProtocols.PackageCheckResult), global::UdpPointtopointProtocols.PackageCheckResult.Parser, new[]{ "NWhoOrderId" }, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::UdpPointtopointProtocols.HeartBeat), global::UdpPointtopointProtocols.HeartBeat.Parser, new[]{ "NServerTime" }, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::UdpPointtopointProtocols.csChatData), global::UdpPointtopointProtocols.csChatData.Parser, new[]{ "Id", "TalkMsg" }, null, null, null)
           }));
@@ -68,7 +68,7 @@ namespace UdpPointtopointProtocols {
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public PackageCheckResult(PackageCheckResult other) : this() {
-      nOrderId_ = other.nOrderId_;
+      nWhoOrderId_ = other.nWhoOrderId_;
       _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
     }
 
@@ -77,17 +77,17 @@ namespace UdpPointtopointProtocols {
       return new PackageCheckResult(this);
     }
 
-    /// <summary>Field number for the "nOrderId" field.</summary>
-    public const int NOrderIdFieldNumber = 2;
-    private uint nOrderId_;
+    /// <summary>Field number for the "nWhoOrderId" field.</summary>
+    public const int NWhoOrderIdFieldNumber = 2;
+    private uint nWhoOrderId_;
     /// <summary>
-    ///包的序号ID
+    ///前Uint16 ：1：客户端，2：服务器， 后16位： 发包的序号ID
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    public uint NOrderId {
-      get { return nOrderId_; }
+    public uint NWhoOrderId {
+      get { return nWhoOrderId_; }
       set {
-        nOrderId_ = value;
+        nWhoOrderId_ = value;
       }
     }
 
@@ -104,14 +104,14 @@ namespace UdpPointtopointProtocols {
       if (ReferenceEquals(other, this)) {
         return true;
       }
-      if (NOrderId != other.NOrderId) return false;
+      if (NWhoOrderId != other.NWhoOrderId) return false;
       return Equals(_unknownFields, other._unknownFields);
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public override int GetHashCode() {
       int hash = 1;
-      if (NOrderId != 0) hash ^= NOrderId.GetHashCode();
+      if (NWhoOrderId != 0) hash ^= NWhoOrderId.GetHashCode();
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
       }
@@ -125,9 +125,9 @@ namespace UdpPointtopointProtocols {
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public void WriteTo(pb::CodedOutputStream output) {
-      if (NOrderId != 0) {
+      if (NWhoOrderId != 0) {
         output.WriteRawTag(21);
-        output.WriteFixed32(NOrderId);
+        output.WriteFixed32(NWhoOrderId);
       }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
@@ -137,7 +137,7 @@ namespace UdpPointtopointProtocols {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public int CalculateSize() {
       int size = 0;
-      if (NOrderId != 0) {
+      if (NWhoOrderId != 0) {
         size += 1 + 4;
       }
       if (_unknownFields != null) {
@@ -151,8 +151,8 @@ namespace UdpPointtopointProtocols {
       if (other == null) {
         return;
       }
-      if (other.NOrderId != 0) {
-        NOrderId = other.NOrderId;
+      if (other.NWhoOrderId != 0) {
+        NWhoOrderId = other.NWhoOrderId;
       }
       _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
     }
@@ -166,7 +166,7 @@ namespace UdpPointtopointProtocols {
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
           case 21: {
-            NOrderId = input.ReadFixed32();
+            NWhoOrderId = input.ReadFixed32();
             break;
           }
         }

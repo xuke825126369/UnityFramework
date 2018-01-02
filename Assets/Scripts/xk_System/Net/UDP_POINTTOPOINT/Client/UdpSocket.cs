@@ -9,7 +9,7 @@ using System.Threading;
 
 namespace xk_System.Net.UDP.POINTTOPOINT.Client
 {
-	public abstract class SocketUdp_Basic
+	public class SocketUdp_Basic:SocketReceivePeer
 	{
 		private EndPoint remoteEndPoint = null;
 		private Socket mSocket = null;
@@ -76,9 +76,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				}
 			}
 		}
-
-		public abstract void ReceiveSocketStream (byte[] stream, int offset, int length);
-
+			
 		public void SendNetStream (byte[] msg,int offset,int Length)
 		{
 			if (m_state == NETSTATE.CONNECTED) {
@@ -99,6 +97,134 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			}
 			mThread.Abort ();
 		}
+	}
+
+	public class SocketUdp_Poll : SocketReceivePeer
+	{
+		private Socket mSocket = null;
+		byte[] mReceiveStream = null;
+
+		public SocketUdp_Poll()
+		{
+			mReceiveStream = new byte[ClientConfig.nMaxBufferSize];
+		}
+
+		public void InitNet (string ServerAddr, int ServerPort)
+		{
+			try {
+				IPEndPoint mIPEndPoint = new IPEndPoint (IPAddress.Parse (ServerAddr), ServerPort);
+				mSocket = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+				mSocket.Connect (mIPEndPoint);
+				mSocket.Blocking = false;
+				DebugSystem.Log ("Client Net InitNet Success： IP: " + ServerAddr + " | Port: " + ServerPort);
+			} catch (SocketException e) {
+				DebugSystem.LogError ("客户端初始化失败000： " + e.SocketErrorCode + " | " + e.Message);
+			} catch (Exception e) {
+				DebugSystem.LogError ("客户端初始化失败111：" + e.Message);
+			}
+		}
+
+		private void Poll()
+		{
+			if (mSocket.Poll (0, SelectMode.SelectRead)) {
+				ProcessInput ();
+			}
+
+			if (mSocket.Poll (0, SelectMode.SelectError)) {
+				ProcessExcept ();
+			}
+		}
+
+		private void ProcessInput()
+		{
+			SocketError error;
+
+			int Length = mSocket.Receive (mReceiveStream, 0, mReceiveStream.Length, SocketFlags.None, out error);
+			ReceiveSocketStream (mReceiveStream, 0, Length);
+		}
+
+		private void ProcessExcept ()
+		{
+			//DebugSystem.LogError ("Client SocketExcept");
+			this.mSocket.Close ();
+			this.mSocket = null;
+		}
+
+		public override void Update (double elapsed)
+		{
+			Poll ();
+			base.Update (elapsed);
+		}
+
+		public void CloseNet ()
+		{
+			if (mSocket != null) {
+				mSocket.Close ();
+				mSocket = null;
+			}
+		}
+	}
+
+	public class SocketUdp_SocketAsyncEventArgs:SocketReceivePeer
+	{
+		private SocketAsyncEventArgs ReceiveArgs;
+		private Socket mSocket = null;
+
+		public SocketUdp_SocketAsyncEventArgs()
+		{
+
+		}
+
+		public void InitNet (string ServerAddr, int ServerPort)
+		{
+			try {
+				mSocket = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+				IPAddress mIPAddress = IPAddress.Parse (ServerAddr);
+				IPEndPoint mIPEndPoint = new IPEndPoint (mIPAddress, ServerPort);
+				mSocket.Connect (mIPEndPoint);
+				ConnectServer ();
+				DebugSystem.Log ("Client Net InitNet Success： IP: " + ServerAddr + " | Port: " + ServerPort);
+			} catch (SocketException e) {
+				DebugSystem.LogError ("客户端初始化失败：" + e.Message + " | " + e.SocketErrorCode);
+			}
+		}
+
+		private void ConnectServer ()
+		{
+			ReceiveArgs = new SocketAsyncEventArgs ();
+			ReceiveArgs.Completed += Receive_Fun;
+			ReceiveArgs.SetBuffer (new byte[ClientConfig.nMaxBufferSize], 0, ClientConfig.nMaxBufferSize);
+			mSocket.ReceiveAsync (ReceiveArgs);
+		}
+
+		public void SendNetStream (byte[] msg,int offset,int Length)
+		{
+			SocketError mError = SocketError.SocketError;
+			try {
+				mSocket.Send (msg, offset, Length, SocketFlags.None, out mError);
+			} catch (Exception e) {
+				DebugSystem.LogError ("发送字节失败： " + e.Message + " | " + mError.ToString ());
+			}
+		}
+
+		private void Receive_Fun (object sender, SocketAsyncEventArgs e)
+		{
+			if (e.SocketError == SocketError.Success && e.BytesTransferred > 0) {
+				ReceiveSocketStream (e.Buffer, 0, e.BytesTransferred);
+				mSocket.ReceiveAsync (e);
+			} else {
+				DebugSystem.Log ("接收数据失败： " + e.SocketError.ToString ());
+				CloseNet ();
+			}
+		}
+
+		public void CloseNet ()
+		{
+			if (mSocket != null) {
+				mSocket.Close ();
+				mSocket = null;
+			}
+		}			
 	}
 }
 

@@ -19,15 +19,10 @@ namespace xk_System.Net.UDP.BROADCAST.Test
 			mNetSystem = gameObject.AddComponent<NetServer> ();
 
 			StartCoroutine (StartTest ());
-			//StartCoroutine (SendBroadCast ());
 		}
 
 		private IEnumerator StartTest ()
 		{
-			while (!mNetSystem.bInitFinish) {
-				yield return 0;
-			}
-
 			mNetSystem.addNetListenFun (UdpNetCommand.COMMAND_SCBROADCASTIP, Receive_ServerSenddata);
 			yield return Run ();
 		}
@@ -41,23 +36,7 @@ namespace xk_System.Net.UDP.BROADCAST.Test
 			}
 		}
 
-		IEnumerator SendBroadCast ()
-		{
-			while (true) {
-				yield return new WaitForSeconds (1f);
-				Send ();
-			}
-		}
-
 		public static int nReceiveCount = 0;
-
-		private void Send ()
-		{
-			scBroadcastIP msg = new scBroadcastIP ();
-			msg.Ip = "127.0.0.1";
-
-			mNetSystem.sendNetData (UdpNetCommand.COMMAND_SCBROADCASTIP, msg);
-		}
 
 		private void Receive_ServerSenddata (NetPackage package)
 		{

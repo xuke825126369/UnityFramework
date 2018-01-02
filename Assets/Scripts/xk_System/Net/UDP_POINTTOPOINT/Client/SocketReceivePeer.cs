@@ -10,7 +10,7 @@ using xk_System.Net.UDP.POINTTOPOINT.Protocol;
 
 namespace xk_System.Net.UDP.POINTTOPOINT.Client
 {
-	public abstract class SocketPeer: SocketUdp_Basic
+	public abstract class SocketReceivePeer
 	{
 		protected CircularBuffer<byte> mParseStreamList = null;
 		protected Dictionary<UInt16, Action<NetReceivePackage>> mLogicFuncDic = null;
@@ -18,54 +18,18 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		protected ObjectPool<NetReceivePackage> mReceivePackagePool = null;
 		protected Queue<NetReceivePackage> mReceivePackageQueue = null;
 
-		protected UdpCheckPool mUdpCheckPool = null;
-		private UInt16 nPackageOrderId;
+		protected UdpReceiveCheckPool mUdpCheckPool = null;
 
-		public SocketPeer ()
+		public SocketReceivePeer ()
 		{
 			mParseStreamList = new CircularBuffer<byte> (2 * ClientConfig.nMaxBufferSize);
 			mLogicFuncDic = new Dictionary<UInt16, Action<NetReceivePackage>> ();
 
 			mReceivePackagePool = new ObjectPool<NetReceivePackage> ();
 			mReceivePackageQueue = new Queue<NetReceivePackage> ();
-			mUdpCheckPool = new UdpCheckPool (this);
-
-			nPackageOrderId = 1;
+			mUdpCheckPool = new UdpReceiveCheckPool (this as ClientPeer);
 		}
 
-		public void SendNetData (UInt16 id, byte[] buffer)
-		{
-			int readBytes = 0;
-			int nBeginIndex = 0;
-			UInt16 groupCount = (UInt16)(buffer.Length / ClientConfig.nMaxBufferSize + 1);
-			while (nBeginIndex < buffer.Length) {
-				if (nBeginIndex + ClientConfig.nMaxBufferSize - 12 > buffer.Length) {
-					readBytes = buffer.Length - nBeginIndex;
-				} else {
-					readBytes = ClientConfig.nMaxBufferSize - 12;
-				}
-
-				UInt16 nPackageId = id;
-				UInt16 nOrderId = this.nPackageOrderId;
-				UInt32 uniqueId = NetPackageUtility.getUniqueId (nPackageId, nOrderId, groupCount);
-				groupCount = 1;
-
-				ArraySegment<byte> stream = NetEncryptionStream.EncryptionGroup (uniqueId, buffer, nBeginIndex, readBytes);
-				SendNetStream (stream.Array, stream.Offset, stream.Count);
-				mUdpCheckPool.AddSendCheck (nOrderId, stream);
-
-				nBeginIndex += readBytes;
-				this.nPackageOrderId++;
-			}
-		}
-
-		public void SendNetData (UInt16 id, object data)
-		{
-			IMessage data1 = data as IMessage;
-			byte[] stream = Protocol3Utility.SerializePackage (data1);
-			SendNetData (id, stream);
-		}
-			
 		public void AddLogicHandleQueue (NetReceivePackage mPackage)
 		{
 			if (mLogicFuncDic.ContainsKey (mPackage.nPackageId)) {
@@ -91,7 +55,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			}
 		}
 
-		public override void ReceiveSocketStream (byte[] data, int index, int Length)
+		public void ReceiveSocketStream (byte[] data, int index, int Length)
 		{
 			lock (mParseStreamList) {
 				mParseStreamList.WriteFrom (data, index, Length);

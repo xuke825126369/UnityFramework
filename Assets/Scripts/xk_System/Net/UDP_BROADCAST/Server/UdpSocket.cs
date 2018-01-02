@@ -16,7 +16,7 @@ namespace xk_System.Net.UDP.BROADCAST.Server
 		Thread mThread  = null;
 		private int nServerPort = 0;
 
-		public void InitNet (string ip, UInt16 ServerPort)
+		public void InitNet (UInt16 ServerPort)
 		{
 			nServerPort = ServerPort;
 			mSocket = new Socket (AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);//初始化一个Scoket实习,采用UDP传输
@@ -54,16 +54,11 @@ namespace xk_System.Net.UDP.BROADCAST.Server
 			}
 		}
 
-		public void SendNetStream (byte[] msg,int offset, int count)
-		{
-			DebugSystem.Log ("发送长度： " + count);
-			mSocket.SendTo (msg, offset, count, SocketFlags.None, ep);
-		}
-
 		public  void CloseNet ()
 		{
 			mSocket.Close ();
 			mThread.Abort ();
 		}
+
 	}
 }

@@ -3,12 +3,28 @@ using System.Collections.Generic;
 using UnityEngine;
 using xk_System.DataStructure;
 using xk_System.Debug;
+using System;
 
 public class SimpleTest : MonoBehaviour {
 	void Start ()
 	{
-		TimeProfiler mProfiler = new TimeProfiler ();
-		mProfiler.Test (Test2);
+		Test3 ();
+	}
+
+	public void Test3()
+	{
+		UInt16 whoId = 2;
+		UInt16 nOrderId = 1456;
+
+		UInt32 result = ((UInt32)whoId) << 16;
+		result += (UInt32)nOrderId;
+
+		whoId = (UInt16)(result >> 16);
+		nOrderId = (UInt16)(result << 16 >> 16);
+
+		DebugSystem.Log ("result: " + result);
+		DebugSystem.Log ("whoId: " + whoId);
+		DebugSystem.Log ("nOrderId: " + nOrderId);
 	}
 
 	public void Test2()
