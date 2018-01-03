@@ -12,7 +12,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		public UDPLikeTCPPeer()
 		{
 			addNetListenFun (UdpNetCommand.COMMAND_HEARTBEAT, ReceiveServerHeartBeat);
-			addNetListenFun (UdpNetCommand.COMMAND_SCBROADCASTIP, ReceiveServerBroadcastIP);
 		}
 
 		public override void Update (double elapsed)
@@ -22,17 +21,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				SendHeartBeat ();
 				fHeartBeatTime = 0.0;
 			}
-		}
-
-		private void ReceiveServerBroadcastIP (NetReceivePackage mPackage)
-		{
-			//if (!bHaveServerIp) {
-			//	UdpProtocols.scBroadcastIP msg = Protocol3Utility.getData<UdpProtocols.scBroadcastIP> (mPackage.buffer.Array, mPackage.buffer.Offset, mPackage.buffer.Count);
-			//	ip = msg.Ip;
-			//	InitNetServerIP ();
-			//
-			//	SendHeartBeat ();
-			//}
 		}
 
 		private void SendHeartBeat()

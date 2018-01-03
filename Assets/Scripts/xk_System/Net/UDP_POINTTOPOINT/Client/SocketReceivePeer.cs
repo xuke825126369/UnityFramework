@@ -18,7 +18,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		protected ObjectPool<NetReceivePackage> mReceivePackagePool = null;
 		protected Queue<NetReceivePackage> mReceivePackageQueue = null;
 
-		protected UdpReceiveCheckPool mUdpCheckPool = null;
+		protected UdpCheckPool mUdpCheckPool = null;
 
 		public SocketReceivePeer ()
 		{
@@ -27,7 +27,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 			mReceivePackagePool = new ObjectPool<NetReceivePackage> ();
 			mReceivePackageQueue = new Queue<NetReceivePackage> ();
-			mUdpCheckPool = new UdpReceiveCheckPool (this as ClientPeer);
+			mUdpCheckPool = new UdpCheckPool (this as ClientPeer);
 		}
 
 		public void AddLogicHandleQueue (NetReceivePackage mPackage)
@@ -104,7 +104,11 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				mNetReceivePackage.nOrderId = NetPackageUtility.getOrderId (mNetReceivePackage.nUniqueId);
 				mNetReceivePackage.nGroupCount = NetPackageUtility.getGroupCount (mNetReceivePackage.nUniqueId);
 
-				mUdpCheckPool.AddReceiveCheck (mNetReceivePackage);
+				if (mNetReceivePackage.nPackageId >= 50) {
+					mUdpCheckPool.AddReceiveCheck (mNetReceivePackage);
+				} else {
+					AddLogicHandleQueue (mNetReceivePackage);
+				}
 			}
 
 			return bSucccess;

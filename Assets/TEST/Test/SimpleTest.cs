@@ -8,7 +8,28 @@ using System;
 public class SimpleTest : MonoBehaviour {
 	void Start ()
 	{
-		Test3 ();
+		Test4 ();
+	}
+	System.Timers.Timer tm = null;
+	private void Test4()
+	{
+		tm = new System.Timers.Timer ();
+		tm.Interval = 3000.0;
+		tm.AutoReset = true;
+
+		tm.Start ();
+		tm.Elapsed += (object sender, System.Timers.ElapsedEventArgs args) => {
+			Debug.Log ("定时器：" + args.SignalTime.ToString ());
+			tm.Stop();
+		};
+
+
+	}
+
+	private void OnDestroy()
+	{
+		if (tm != null)
+			tm.Stop ();
 	}
 
 	public void Test3()
@@ -16,11 +37,12 @@ public class SimpleTest : MonoBehaviour {
 		UInt16 whoId = 2;
 		UInt16 nOrderId = 1456;
 
-		UInt32 result = ((UInt32)whoId) << 16;
-		result += (UInt32)nOrderId;
+		UInt32 result = (UInt32)((whoId) << 16);
+		result |= (UInt32)nOrderId;
 
 		whoId = (UInt16)(result >> 16);
-		nOrderId = (UInt16)(result << 16 >> 16);
+		//nOrderId = (UInt16)(result << 16 >> 16);
+		nOrderId = (UInt16)(result & 0x0000FFFF); 
 
 		DebugSystem.Log ("result: " + result);
 		DebugSystem.Log ("whoId: " + whoId);

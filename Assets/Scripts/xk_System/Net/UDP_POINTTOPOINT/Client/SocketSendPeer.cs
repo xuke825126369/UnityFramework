@@ -10,11 +10,9 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 	public class SocketSendPeer : SocketUdp_Basic
 	{
 		private UInt16 nPackageOrderId;
-		private UdpSendCheckPool mUdpCheckPool;
 
 		public SocketSendPeer()
 		{
-			mUdpCheckPool = new UdpSendCheckPool (this as ClientPeer);
 			nPackageOrderId = 1;
 		}
 
@@ -37,7 +35,10 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 				ArraySegment<byte> stream = NetEncryptionStream.EncryptionGroup (uniqueId, buffer, nBeginIndex, readBytes);
 				SendNetStream (stream.Array, stream.Offset, stream.Count);
-				mUdpCheckPool.AddSendCheck (nOrderId, stream);
+
+				if (nPackageId >= 50) {
+					mUdpCheckPool.AddSendCheck (nOrderId, stream);
+				}
 
 				nBeginIndex += readBytes;
 				this.nPackageOrderId++;

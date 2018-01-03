@@ -7,43 +7,67 @@ using UdpPointtopointProtocols;
 
 namespace xk_System.Net.UDP.POINTTOPOINT.Client
 {
-	public class UdpSendCheckPool
+	public class UdpCheckPool
 	{
-		private Dictionary<UInt16, ArraySegment<byte>> mWaitCheckQueue = null;
-		private Dictionary<UInt16, PackageCheckResult> mCheckResultDic = new Dictionary<UInt16, PackageCheckResult>();
-		private ClientPeer mUdpPeer;
-
-		public UdpSendCheckPool(ClientPeer mUdpPeer)
+		public struct CheckInfo
 		{
-			mWaitCheckQueue = new Dictionary<UInt16, ArraySegment<byte>> ();
+			public const int SendCheckCount = 3;
+			public const int ReceiveCheckCount = 2;
+			public ArraySegment<byte> mArraySegment;
+			public int nReceiveCheckResultCount;
+		}
+
+		private Dictionary<UInt16, CheckInfo> mWaitCheckSendDic = null;
+		private Dictionary<UInt16, CheckInfo> mWaitCheckReceiveDic =  null;
+		private ClientPeer mUdpPeer;
+		private ObjectPool<System.Timers.Timer> mTimerPool = null;
+
+		public UdpCheckPool(ClientPeer mUdpPeer)
+		{
+			mTimerPool = new ObjectPool<System.Timers.Timer> ();
+			mWaitCheckSendDic = new Dictionary<ushort, CheckInfo> ();
+			mWaitCheckReceiveDic = new Dictionary<ushort, CheckInfo> ();
 			this.mUdpPeer = mUdpPeer;
 			mUdpPeer.addNetListenFun (UdpNetCommand.COMMAND_PACKAGECHECK, ReceiveCheckPackage);
 		}
 
 		public void AddSendCheck(UInt16 nOrderId, ArraySegment<byte> sendBuff)
 		{
-			mWaitCheckQueue [nOrderId] = sendBuff;
+			mWaitCheckSendDic [nOrderId] = sendBuff;
 
-			System.Timers.Timer tm = new System.Timers.Timer ();
-			tm.Interval = 3.0;
-			tm.AutoReset = false;
-			tm.Elapsed += (object sender, System.Timers.ElapsedEventArgs args) => {
-				if (mWaitCheckQueue.ContainsKey (nOrderId)) {
-					ArraySegment<byte> buff = mWaitCheckQueue [nOrderId];
-					this.mUdpPeer.SendNetStream (buff.Array, buff.Offset, buff.Count);
-				}
-			};
+			System.Timers.Timer tm = mTimerPool.Pop ();
+			tm.Interval = 2.0;
+			tm.AutoReset = true;
+			tm.Start ();
+
+			if (tm.Elapsed == null) {
+				tm.Elapsed += (object sender, System.Timers.ElapsedEventArgs args) => {
+					if (mWaitCheckSendDic.ContainsKey (nOrderId)) {
+						ArraySegment<byte> buff = mWaitCheckSendDic [nOrderId];
+						this.mUdpPeer.SendNetStream (buff.Array, buff.Offset, buff.Count);
+					} else {
+						tm.Stop ();
+						mTimerPool.recycle (tm);
+					}
+				};
+			}
 		}
 
 		private void ReceiveCheckPackage(NetReceivePackage mPackage)
 		{
 			PackageCheckResult mPackageCheckResult = Protocol3Utility.getData<PackageCheckResult> (mPackage.buffer.Array, mPackage.buffer.Offset, mPackage.buffer.Count);
 			UInt16 whoId = (UInt16)(mPackageCheckResult.NWhoOrderId >> 16);
-			UInt16 nOrderId = (UInt16)(mPackageCheckResult.NWhoOrderId & 0x00FF);
+			UInt16 nOrderId = (UInt16)(mPackageCheckResult.NWhoOrderId & 0x0000FFFF);
 
-			this.mUdpPeer.SendNetData (mPackage.nPackageId, mPackageCheckResult);
-			if (mWaitCheckQueue.ContainsKey ((UInt16)mPackageCheckResult.NWhoOrderId)) {
-				mWaitCheckQueue.Remove ((UInt16)mPackageCheckResult.NWhoOrderId);
+			if (whoId == 1) {
+				this.mUdpPeer.SendNetData (mPackage.nPackageId, mPackageCheckResult);
+
+				if (mWaitCheckSendDic.ContainsKey (nOrderId)) {
+					mWaitCheckSendDic.Remove ((UInt16)mPackageCheckResult.NWhoOrderId);
+				}
+			} else if (whoId == 2) {
+				
+
 			}
 		}
 
@@ -111,7 +135,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				DebugSystem.Log ("接受 过去的 废物包： " + mPackage.nPackageId);
 			}
 		}
-			
+
 		private void CheckCombinePackage(NetReceivePackage mPackage)
 		{
 			if (mPackage.nGroupCount > 1) {
@@ -130,7 +154,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				for (int i = 0; i < mReceiveGroupList.Count; i++) {
 					var currentGroup = mReceiveGroupList [i];
 					if (currentGroup.groupId + currentGroup.nGroupCount > mPackage.nOrderId &&
-					    currentGroup.groupId < mPackage.nOrderId) {
+						currentGroup.groupId < mPackage.nOrderId) {
 
 						currentGroup.mReceivePackageDic [mPackage.nOrderId] = mPackage;
 
@@ -149,7 +173,8 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 		public void Update()
 		{
-				
+
 		}
+			
 	}
 }
