@@ -11,18 +11,18 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		public UInt16 port = 7878;
 		public string ip = "127.0.0.1";
 
-		NetSystem mNetSystem = null;
+		ClientPeer mNetSystem = null;
 
 		private void InitNet()
 		{
-			mNetSystem = new NetSystem ();
+			mNetSystem = new ClientPeer ();
 			mNetSystem.InitNet (ip, port);
 		}
 
-		private void Update(double elapsed)
+		private void Update()
 		{
 			if (mNetSystem != null) {
-				mNetSystem.Update (elapsed);
+				mNetSystem.Update (Time.deltaTime);
 			}
 		}
 
@@ -36,12 +36,12 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			mNetSystem.SendNetData (nPackageId, data);
 		}
 
-		public void addNetListenFun (UInt16 nPackageId, Action<NetReceivePackage> func)
+		public void addNetListenFun (UInt16 nPackageId, Action<NetPackage> func)
 		{
 			mNetSystem.addNetListenFun (nPackageId, func);
 		}
 
-		public void removeNetListenFun (UInt16 nPackageId, Action<NetReceivePackage> func)
+		public void removeNetListenFun (UInt16 nPackageId, Action<NetPackage> func)
 		{
 			mNetSystem.removeNetListenFun (nPackageId, func);
 		}

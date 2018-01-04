@@ -18,6 +18,7 @@ namespace xk_System.Net.UDP.BROADCAST.Test
 			gameObject.AddComponent<LogManager> ();
 			mNetSystem = gameObject.AddComponent<NetServer> ();
 
+			mNetSystem.Init ();
 			StartCoroutine (StartTest ());
 		}
 

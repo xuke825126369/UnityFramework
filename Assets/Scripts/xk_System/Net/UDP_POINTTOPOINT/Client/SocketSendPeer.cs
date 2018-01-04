@@ -11,13 +11,20 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 	{
 		private UInt16 nPackageOrderId;
 
+		List<NetPackage> mCanUseSortPackageList;
+		List<NetPackage> mUsedPackageList;
+
 		public SocketSendPeer()
 		{
 			nPackageOrderId = 1;
+			mCanUseSortPackageList = new List<NetPackage> ();
+			mUsedPackageList = new List<NetPackage> ();
 		}
 
 		public void SendNetData (UInt16 id, byte[] buffer)
 		{
+			var mPackage = mUdpFixedSizePackagePool.Pop ();
+
 			int readBytes = 0;
 			int nBeginIndex = 0;
 			UInt16 groupCount = (UInt16)(buffer.Length / ClientConfig.nMaxBufferSize + 1);
@@ -27,21 +34,26 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				} else {
 					readBytes = ClientConfig.nMaxBufferSize - 12;
 				}
-
-				UInt16 nPackageId = id;
-				UInt16 nOrderId = this.nPackageOrderId;
-				UInt32 uniqueId = NetPackageUtility.getUniqueId (nPackageId, nOrderId, groupCount);
-				groupCount = 1;
-
-				ArraySegment<byte> stream = NetEncryptionStream.EncryptionGroup (uniqueId, buffer, nBeginIndex, readBytes);
+					
+				mPackage.nOrderId = this.nPackageOrderId;
+				mPackage.nGroupCount = groupCount;
+				mPackage.nPackageId = id;
+				mPackage.buffer = buffer;
+				mPackage.Offset = nBeginIndex;
+				mPackage.Length = readBytes;
+				ArraySegment<byte> stream = NetPackageEncryption.Encryption (mPackage);
 				SendNetStream (stream.Array, stream.Offset, stream.Count);
 
-				if (nPackageId >= 50) {
-					mUdpCheckPool.AddSendCheck (nOrderId, stream);
+				if (id >= 50) {
+					mUdpCheckPool.AddSendCheck (this.nPackageOrderId, stream);
+					nBeginIndex += readBytes;
+					this.nPackageOrderId++;
+				} else {
+					
 				}
 
 				nBeginIndex += readBytes;
-				this.nPackageOrderId++;
+				groupCount = 1;
 			}
 		}
 

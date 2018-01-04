@@ -37,30 +37,15 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			mThread.Start ();
 		}
 
-		public void InitNet(IPAddress address, UInt16 port)
-		{
-			this.port = port;
-			this.ip = ip;
-
-			mSocket = new Socket (AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-			IPEndPoint iep = new IPEndPoint (address, port);
-			remoteEndPoint = (EndPoint)iep;
-
-			mThread = new Thread (HandData);
-			mThread.Start ();
-		}
-
-		byte[] data = new byte[ClientConfig.nMaxBufferSize];
-
 		private void HandData()
 		{
 			while (true) {
 				if (m_state == NETSTATE.CONNECTED) {
 					int length = 0;
 					try {
-						length = mSocket.ReceiveFrom (data, ref remoteEndPoint);
+						length = mSocket.ReceiveFrom (mReceiveStream.Buffer, 0, mReceiveStream.Buffer.Length, SocketFlags.None, ref remoteEndPoint);
 						if (length > 0) {
-							ReceiveSocketStream (data, 0, length);
+							HandleReceivePackage ();
 						}
 					} catch (Exception e) {
 						this.CloseNet ();
@@ -140,7 +125,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			SocketError error;
 
 			int Length = mSocket.Receive (mReceiveStream, 0, mReceiveStream.Length, SocketFlags.None, out error);
-			ReceiveSocketStream (mReceiveStream, 0, Length);
 		}
 
 		private void ProcessExcept ()
@@ -210,7 +194,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		private void Receive_Fun (object sender, SocketAsyncEventArgs e)
 		{
 			if (e.SocketError == SocketError.Success && e.BytesTransferred > 0) {
-				ReceiveSocketStream (e.Buffer, 0, e.BytesTransferred);
+				Array.Copy (e.Buffer, 0, mReceiveStream.Buffer, 0, e.BytesTransferred);
 				mSocket.ReceiveAsync (e);
 			} else {
 				DebugSystem.Log ("接收数据失败： " + e.SocketError.ToString ());

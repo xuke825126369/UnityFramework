@@ -5,62 +5,38 @@ using Google.Protobuf;
 
 namespace xk_System.Net.UDP.POINTTOPOINT.Client
 {
-	public class NetPackageUtility
+	public class NetPackage
 	{
-		public static UInt16 getPackageId(UInt32 uniqueId)
-		{
-			return (UInt16)(uniqueId / 10 / 10);
-		}
-
-		public static UInt16 getOrderId(UInt32 uniqueId)
-		{
-			return (UInt16)(uniqueId / 10 % 10);
-		}
-
-		public static UInt16 getGroupCount(UInt32 uniqueId)
-		{
-			return (UInt16)(uniqueId % 10);
-		}
-
-		public static UInt32 getUniqueId(UInt16 nPackageId, UInt16 orderId, UInt16 groupCount)
-		{
-			return ((UInt32)nPackageId * 10 + orderId) * 10 + groupCount;
-		}
-	}
-
-	public class NetPackageGroup
-	{
-		List<NetReceivePackage> mGroupNetPackageQueue = new List<NetReceivePackage> ();
-
-		public void AddToGroup(NetReceivePackage mNetPackage)
-		{
-			mGroupNetPackageQueue.Add (mNetPackage);
-		}
-	}
-
-	public class NetReceivePackage
-	{
-		public UInt32 nUniqueId;
-		public UInt16 nPackageId;
 		public UInt16 nOrderId;
 		public UInt16 nGroupCount;
+		public UInt16 nPackageId;
 
-		public ArraySegment<byte> buffer;
-		private static BufferManager mBufferManager = null;
+		public byte[] buffer;
+		public int Length;
+		public int Offset;
 
-		public NetReceivePackage()
+		public NetPackage()
 		{
-			if (mBufferManager == null) {
-				mBufferManager = new BufferManager (ClientConfig.nMaxBufferSize * 1024, ClientConfig.nMaxBufferSize);
-			}
-			mBufferManager.SetBuffer (out buffer);
+			nOrderId = 0;
+			nGroupCount = 0;
+			nPackageId = 0;
+
+			buffer = null;
+			Length = 0;
+			Offset = 0;
 		}
 	}
 
-	public class NetSendPackage
+	public class NetUdpFixedSizePackage:NetPackage
 	{
-		public UInt16 nPackageId;
-		public object message;
+		public NetUdpFixedSizePackage()
+		{
+			buffer = new byte[ClientConfig.nUdpPackageFixedSize];
+		}
 	}
 
+	public class NetCombinePackage : NetUdpFixedSizePackage
+	{
+			
+	}
 }

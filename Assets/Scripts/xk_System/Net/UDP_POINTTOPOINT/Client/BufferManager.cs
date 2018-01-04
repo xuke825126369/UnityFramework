@@ -6,7 +6,7 @@ using System;
 
 namespace xk_System.Net.UDP.POINTTOPOINT.Client
 {
-	public class BufferManager
+	public class BufferManager:Singleton<BufferManager>
 	{
 		private int Length;
 		private byte[] m_buffer;
@@ -14,7 +14,12 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		private int nReadIndex = 0;
 		private int nBufferSize = 0;
 
-		public BufferManager (int totalBytes,int nBufferSize)
+		public BufferManager()
+		{
+			this.Init (ClientConfig.nMaxBufferSize * 128, ClientConfig.nMaxBufferSize);
+		}
+
+		public void Init (int totalBytes,int nBufferSize)
 		{
 			this.Length = totalBytes;
 			this.nReadIndex = 0;

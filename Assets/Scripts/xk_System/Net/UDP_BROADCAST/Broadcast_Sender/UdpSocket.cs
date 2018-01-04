@@ -9,7 +9,7 @@ using System.Threading;
 
 namespace xk_System.Net.UDP.BROADCAST.Client
 {
-	public class SocketUdp_Basic : SocketReceivePeer
+	public class SocketUdp_Basic
 	{
 		private EndPoint remoteSendBroadCastEndPoint = null;
 		private Socket mSendBroadCastSocket = null;
@@ -39,7 +39,6 @@ namespace xk_System.Net.UDP.BROADCAST.Client
 			mSendBroadCastSocket.Close ();
 		}
 	}
-
 }
 
 

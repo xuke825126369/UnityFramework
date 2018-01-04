@@ -27,6 +27,13 @@ namespace xk_System.DataStructure
 			this.reset ();
 		}
 
+		public int Capacity
+		{
+			get {
+				return buffer.Length;
+			}
+		}
+
 		public int Length {
 			get {
 				return dataLength;
@@ -41,16 +48,6 @@ namespace xk_System.DataStructure
 			get {
 				return buffer;
 			}
-		}
-
-		public void WriteFrom (T[] otherBuffer, int offset, int count)
-		{
-			if (count > dataLength) {
-				buffer = new T[buffer.Length];
-			}
-			
-			Array.Copy (otherBuffer, offset, buffer, dataLength, count);
-			dataLength = count;
 		}
 	}
 }

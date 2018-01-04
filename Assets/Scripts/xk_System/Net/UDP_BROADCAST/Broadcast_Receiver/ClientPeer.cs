@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace xk_System.Net.UDP.BROADCAST.Server
 {
-	public class ClientPeer:SocketSendPeer
+	public class ClientPeer:UdpSockek_Basic
 	{
 		
 	}

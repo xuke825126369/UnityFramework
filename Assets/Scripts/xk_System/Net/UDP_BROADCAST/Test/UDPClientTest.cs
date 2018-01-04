@@ -20,8 +20,6 @@ namespace xk_System.Net.UDP.BROADCAST.Test
 			mNetSystem = gameObject.AddComponent<NetClient> ();
 			mNetSystem.InitNet ();
 
-			mNetSystem.addNetListenFun (UdpNetCommand.COMMAND_SCBROADCASTIP, Receive_ServerSenddata);
-
 			StartCoroutine (SendBroadCast ());
 		}
 

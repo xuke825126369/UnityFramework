@@ -14,6 +14,11 @@ namespace xk_System.Net.UDP.BROADCAST.Client
 			SendNetData (id, stream);
 		}
 
+		public virtual void Update(double elapsed)
+		{
+
+		}
+
 		public void SendNetData (UInt16 id, byte[] buffer)
 		{
 			ArraySegment<byte> stream = NetEncryptionStream.EncryptionGroup (id, buffer, 0, buffer.Length);

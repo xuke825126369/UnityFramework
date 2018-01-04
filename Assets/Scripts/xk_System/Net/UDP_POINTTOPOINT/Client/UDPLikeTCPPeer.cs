@@ -29,9 +29,9 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			SendNetData (UdpNetCommand.COMMAND_HEARTBEAT, sendMsg);
 		}
 
-		private void ReceiveServerHeartBeat(NetReceivePackage mPackage)
+		private void ReceiveServerHeartBeat(NetPackage mPackage)
 		{
-			HeartBeat msg = Protocol3Utility.getData<HeartBeat> (mPackage.buffer.Array, mPackage.buffer.Offset, mPackage.buffer.Count);
+			HeartBeat msg = Protocol3Utility.getData<HeartBeat> (mPackage.buffer, 0, mPackage.Length);
 
 		}
 	}

@@ -34,15 +34,5 @@ namespace xk_System.Net.UDP.BROADCAST.Client
 		{
 			mNetSystem.SendNetData (nPackageId, data);
 		}
-
-		public void addNetListenFun (UInt16 nPackageId, Action<NetReceivePackage> func)
-		{
-			mNetSystem.addNetListenFun (nPackageId, func);
-		}
-
-		public void removeNetListenFun (UInt16 nPackageId, Action<NetReceivePackage> func)
-		{
-			mNetSystem.removeNetListenFun (nPackageId, func);
-		}
 	}
 }

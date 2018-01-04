@@ -12,34 +12,36 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 {
 	public abstract class SocketReceivePeer
 	{
-		protected CircularBuffer<byte> mParseStreamList = null;
-		protected Dictionary<UInt16, Action<NetReceivePackage>> mLogicFuncDic = null;
-
-		protected ObjectPool<NetReceivePackage> mReceivePackagePool = null;
-		protected Queue<NetReceivePackage> mReceivePackageQueue = null;
+		protected Dictionary<UInt16, Action<NetPackage>> mLogicFuncDic = null;
+		protected Queue<NetPackage> mNeedHandlePackageQueue = null;
+			
+		protected ListBuffer<byte> mReceiveStream = null;
+		protected ObjectPool<NetUdpFixedSizePackage> mUdpFixedSizePackagePool = null;
+		protected List<NetCombinePackage> mCanUseSortPackageList = null;
 
 		protected UdpCheckPool mUdpCheckPool = null;
 
 		public SocketReceivePeer ()
 		{
-			mParseStreamList = new CircularBuffer<byte> (2 * ClientConfig.nMaxBufferSize);
-			mLogicFuncDic = new Dictionary<UInt16, Action<NetReceivePackage>> ();
+			mReceiveStream = new ListBuffer<byte> (ClientConfig.nUdpPackageFixedSize);
+			mLogicFuncDic = new Dictionary<UInt16, Action<NetPackage>> ();
 
-			mReceivePackagePool = new ObjectPool<NetReceivePackage> ();
-			mReceivePackageQueue = new Queue<NetReceivePackage> ();
+			mUdpFixedSizePackagePool = new ObjectPool<NetUdpFixedSizePackage> ();
+			mCanUseSortPackageList = new List<NetCombinePackage> ();
+			mNeedHandlePackageQueue = new Queue<NetPackage> ();
 			mUdpCheckPool = new UdpCheckPool (this as ClientPeer);
 		}
 
-		public void AddLogicHandleQueue (NetReceivePackage mPackage)
+		public void AddLogicHandleQueue (NetPackage mPackage)
 		{
 			if (mLogicFuncDic.ContainsKey (mPackage.nPackageId)) {
-				mReceivePackageQueue.Enqueue (mPackage);
+				mNeedHandlePackageQueue.Enqueue (mPackage);
 			} else {
 				DebugSystem.LogError ("不存在的 协议ID: " + mPackage.nPackageId);
 			}
 		}
 
-		public void addNetListenFun (UInt16 command, Action<NetReceivePackage> func)
+		public void addNetListenFun (UInt16 command, Action<NetPackage> func)
 		{
 			if (!mLogicFuncDic.ContainsKey (command)) {
 				mLogicFuncDic [command] = func;
@@ -48,31 +50,28 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			}
 		}
 
-		public void removeNetListenFun (UInt16 command, Action<NetReceivePackage> func)
+		public void removeNetListenFun (UInt16 command, Action<NetPackage> func)
 		{
 			if (mLogicFuncDic.ContainsKey (command)) {
 				mLogicFuncDic [command] -= func;
 			}
 		}
 
-		public void ReceiveSocketStream (byte[] data, int index, int Length)
-		{
-			lock (mParseStreamList) {
-				mParseStreamList.WriteFrom (data, index, Length);
-			}
-		}
-
 		public virtual void Update (double elapsed)
 		{
-			HandleReceivePackage ();
-			while (mReceivePackageQueue.Count > 0) {
-				NetReceivePackage mNetReceivePackage = mReceivePackageQueue.Dequeue ();
-				mLogicFuncDic [mNetReceivePackage.nPackageId] (mNetReceivePackage);
-				mReceivePackagePool.recycle (mNetReceivePackage);
+			while (mNeedHandlePackageQueue.Count > 0) {
+				NetPackage mNetPackage = mNeedHandlePackageQueue.Dequeue ();
+				mLogicFuncDic [mNetPackage.nPackageId] (mNetPackage);
+
+				if (mNetPackage is NetCombinePackage) {
+					mCanUseSortPackageList.Add (mNetPackage as NetCombinePackage);
+				} else if (mNetPackage is NetUdpFixedSizePackage) {
+					mUdpFixedSizePackagePool.recycle (mNetPackage as NetUdpFixedSizePackage);
+				}
 			}
 		}
 
-		private void HandleReceivePackage ()
+		protected void HandleReceivePackage ()
 		{
 			int PackageCout = 0;
 
@@ -81,40 +80,34 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			}
 
 			if (PackageCout == 0) {
-				if (mParseStreamList.Length > 0) {
-					DebugSystem.LogError ("客户端 正在解包: " + mParseStreamList.Length + " | " + mParseStreamList.Capacity);
+				if (mReceiveStream.Length > 0) {
+					DebugSystem.LogError ("客户端 正在解包: " + mReceiveStream.Length);
 				}
 			}
 		}
 
 		private bool GetPackage ()
 		{
-			if (mParseStreamList.Length <= 0) {
+			if (mReceiveStream.Length <= 0) {
 				return false;
 			}
 
-			NetReceivePackage mNetReceivePackage = mReceivePackagePool.Pop ();
-			bool bSucccess = false;
-			lock (mParseStreamList) {
-				bSucccess = NetEncryptionStream.DeEncryption (mParseStreamList, mNetReceivePackage);
-			}
+			NetUdpFixedSizePackage mNetPackage = mUdpFixedSizePackagePool.Pop ();
+			bool bSucccess = NetPackageEncryption.DeEncryption (mReceiveStream, mNetPackage);
 
 			if (bSucccess) {
-				mNetReceivePackage.nPackageId = NetPackageUtility.getPackageId (mNetReceivePackage.nUniqueId);
-				mNetReceivePackage.nOrderId = NetPackageUtility.getOrderId (mNetReceivePackage.nUniqueId);
-				mNetReceivePackage.nGroupCount = NetPackageUtility.getGroupCount (mNetReceivePackage.nUniqueId);
-
-				if (mNetReceivePackage.nPackageId >= 50) {
-					mUdpCheckPool.AddReceiveCheck (mNetReceivePackage);
+				
+				if (mNetPackage.nPackageId >= 50) {
+					mUdpCheckPool.AddReceiveCheck (mNetPackage);
 				} else {
-					AddLogicHandleQueue (mNetReceivePackage);
+					AddLogicHandleQueue (mNetPackage);
 				}
 			}
 
 			return bSucccess;
 		}
 			
-		public void release ()
+		public virtual void release ()
 		{
 			
 		}

@@ -10,7 +10,8 @@ namespace xk_System.Net.UDP.BROADCAST.Server
 		public UInt16 port = 7878;
 
 		ClientPeer mNetSystem = null;
-		private void Init ()
+
+		public void Init ()
 		{
 			mNetSystem = new ClientPeer ();
 			mNetSystem.InitNet (port);
@@ -18,7 +19,9 @@ namespace xk_System.Net.UDP.BROADCAST.Server
 
 		private void Update ()
 		{
-			mNetSystem.Update ();
+			if (mNetSystem != null) {
+				mNetSystem.Update ();
+			}
 		}
 
 		private void OnDestroy ()
