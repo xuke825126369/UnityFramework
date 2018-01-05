@@ -11,12 +11,11 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		public int port = 7878;
 
 		NetSystem mNetSystem = null;
-		public bool bInitFinish = false;
-		private void Start ()
+
+		public void Init ()
 		{
 			mNetSystem = new NetSystem ();
-			mNetSystem.initNet (port);
-			bInitFinish = true;
+			mNetSystem.initNet (ip, port);
 		}
 
 		private void Update ()

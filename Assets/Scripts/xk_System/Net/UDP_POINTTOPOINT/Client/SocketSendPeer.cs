@@ -1,6 +1,5 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 using Google.Protobuf;
 using System;
 using xk_System.Net.UDP.POINTTOPOINT.Protocol;
@@ -11,14 +10,9 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 	{
 		private UInt16 nPackageOrderId;
 
-		List<NetPackage> mCanUseSortPackageList;
-		List<NetPackage> mUsedPackageList;
-
 		public SocketSendPeer()
 		{
 			nPackageOrderId = 1;
-			mCanUseSortPackageList = new List<NetPackage> ();
-			mUsedPackageList = new List<NetPackage> ();
 		}
 
 		public void SendNetData (UInt16 id, byte[] buffer)
@@ -27,22 +21,23 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 			int readBytes = 0;
 			int nBeginIndex = 0;
-			UInt16 groupCount = (UInt16)(buffer.Length / ClientConfig.nMaxBufferSize + 1);
+			UInt16 groupCount = (UInt16)(buffer.Length / ClientConfig.nUdpPackageFixedBodySize + 1);
 			while (nBeginIndex < buffer.Length) {
-				if (nBeginIndex + ClientConfig.nMaxBufferSize - 12 > buffer.Length) {
+				if (nBeginIndex + ClientConfig.nUdpPackageFixedBodySize > buffer.Length) {
 					readBytes = buffer.Length - nBeginIndex;
 				} else {
-					readBytes = ClientConfig.nMaxBufferSize - 12;
+					readBytes = ClientConfig.nUdpPackageFixedBodySize;
 				}
-					
+							
 				mPackage.nOrderId = this.nPackageOrderId;
 				mPackage.nGroupCount = groupCount;
 				mPackage.nPackageId = id;
-				mPackage.buffer = buffer;
-				mPackage.Offset = nBeginIndex;
+				mPackage.Offset = ClientConfig.nUdpPackageFixedHeadSize;
 				mPackage.Length = readBytes;
-				ArraySegment<byte> stream = NetPackageEncryption.Encryption (mPackage);
-				SendNetStream (stream.Array, stream.Offset, stream.Count);
+
+				Array.Copy (buffer, nBeginIndex, mPackage.buffer, mPackage.Offset, readBytes);
+				NetPackageEncryption.Encryption (mPackage);
+				SendNetStream (mPackage.buffer, mPackage.Offset, mPackage.Length);
 
 				if (id >= 50) {
 					mUdpCheckPool.AddSendCheck (this.nPackageOrderId, stream);

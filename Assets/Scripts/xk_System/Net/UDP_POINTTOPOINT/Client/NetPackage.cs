@@ -35,8 +35,12 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		}
 	}
 
-	public class NetCombinePackage : NetUdpFixedSizePackage
+	public class NetCombinePackage : NetPackage
 	{
-			
+		public NetCombinePackage()
+		{
+			buffer = new byte[ClientConfig.nUdpPackageFixedSize];
+		}			
 	}
 }
+

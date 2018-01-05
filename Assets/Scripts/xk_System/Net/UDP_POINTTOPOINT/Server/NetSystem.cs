@@ -11,9 +11,9 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 {
 	public class NetSystem :SocketSystem_UdpServer
 	{
-		public void initNet (int ServerPort)
+		public void initNet (string ip, int ServerPort)
 		{
-			base.InitNet (ServerPort);
+			base.InitNet (ip,ServerPort);
 		}
 
 		public void Update ()

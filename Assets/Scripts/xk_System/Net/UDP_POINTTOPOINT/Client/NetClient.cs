@@ -13,7 +13,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 		ClientPeer mNetSystem = null;
 
-		private void InitNet()
+		public void InitNet()
 		{
 			mNetSystem = new ClientPeer ();
 			mNetSystem.InitNet (ip, port);

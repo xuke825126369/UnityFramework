@@ -11,10 +11,10 @@ namespace xk_System.Net.UDP.BROADCAST.Server
 {
 	public class UdpSockek_Basic :SocketReceivePeer
 	{
-		EndPoint bindEndPoint = null;
-		EndPoint remoteEndPoint = null;
+		private EndPoint bindEndPoint = null;
+		private EndPoint remoteEndPoint = null;
 		private Socket mSocket = null;
-		Thread mThread  = null;
+		private Thread mThread  = null;
 		private int nServerPort = 0;
 
 		public void InitNet (UInt16 ServerPort)
@@ -43,6 +43,7 @@ namespace xk_System.Net.UDP.BROADCAST.Server
 					length = mSocket.ReceiveFrom (data, 0, data.Length, SocketFlags.None, ref remoteEndPoint);
 
 					if (length > 0) {
+						DebugSystem.Log ("Udp Receie Length: " + length);
 						ReceiveSocketStream (data, 0, length);
 					}
 				} catch (SocketException e) {

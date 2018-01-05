@@ -17,7 +17,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		Thread mThread  = null;
 		private int nServerPort = 0;
 
-		public void InitNet (int ServerPort)
+		public void InitNet (string ip, int ServerPort)
 		{
 			nServerPort = ServerPort;
 			mSocket = new Socket (AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);//初始化一个Scoket实习,采用UDP传输

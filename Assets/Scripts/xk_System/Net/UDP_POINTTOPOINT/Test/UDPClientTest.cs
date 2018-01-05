@@ -4,12 +4,12 @@ using UnityEngine;
 using System;
 using Google.Protobuf;
 using System.IO;
-using UdpBroadcastProtocols;
-using xk_System.Net.UDP.BROADCAST.Protocol;
 using xk_System.Debug;
-using xk_System.Net.UDP.BROADCAST.Client;
+using xk_System.Net.UDP.POINTTOPOINT.Client;
+using xk_System.Net.UDP.POINTTOPOINT.Protocol;
+using UdpPointtopointProtocols;
 
-namespace xk_System.Net.UDP.BROADCAST.Test
+namespace xk_System.Net.UDP.POINTTOPOINT.Test
 {
 	public class UDPClientTest : MonoBehaviour
 	{
@@ -36,30 +36,31 @@ namespace xk_System.Net.UDP.BROADCAST.Test
 
 		private void Send ()
 		{
-			scBroadcastIP msg = new scBroadcastIP ();
+			csChatData msg = new csChatData ();
 			if (UnityEngine.Random.Range (1, 5) == 1) {
-				msg.Ip = "127.0.0.1";	
+				msg.Id = 10000000;
+				msg.TalkMsg = "127.0.0.1";	
 			} else if (UnityEngine.Random.Range (1, 5) == 2) {
 				byte[] aa = new byte[10];
-				msg.Ip = BitConverter.ToString (aa);
+				msg.TalkMsg = BitConverter.ToString (aa);
 			} else if (UnityEngine.Random.Range (1, 5) == 1) {
-				msg.Ip = "127.0.0.1wefrwewqlkjef;ajfdja;ofdjas;jfd;asjdf;kajs;ldfjas;lkjf;lkasjfd;lkajsd;lkfjasd;ljfasljfd;lsa" +
+				msg.TalkMsg = "127.0.0.1wefrwewqlkjef;ajfdja;ofdjas;jfd;asjdf;kajs;ldfjas;lkjf;lkasjfd;lkajsd;lkfjasd;ljfasljfd;lsa" +
 				"asjfasjfd;ljas;fdj;alksjf;lkajsdflkjas;kjf;laskjfl;kasjfdlkjasd;lkjfas;lkjfl;ksadjflkasjfdsdffasjfkasdfaf" +
 				"sfasdfasdfjasjf;asjfkasj;dfjsa;lkfj;kasjf;lkjsafj;asljfdasjfkjsalkfjasjfdlasjfasjdfljasldjflasjflkasjfasdjf;" +
 				"ajsfajsdjfasdfj;asjfd;ajsfkjas;ljfa;sjf;asjfdlkjasdf;lja;lsjfd;asjf;lasjdfl;jas;lkdjfa;sjdf;lasjdfl;ajsdfajd" +
 				"asjf;ajsdfajofjpoweijfawjeruwqeriuqwiourpoqwiurpquwt9293401923750192709174307109237490172329fsncn,xc ., cxsjdfwjf" +
 				"";
 			} else {
-				msg.Ip = "我2018年，一定会找到老婆的 !!!";
+				msg.TalkMsg = "我2018年，一定会找到老婆的 !!!";
 			}
 
-			mNetSystem.sendNetData (UdpNetCommand.COMMAND_SCBROADCASTIP, msg);
+			mNetSystem.sendNetData (UdpNetCommand.COMMAND_TESTCHAT, msg);
 		}
 
-		private void Receive_ServerSenddata (NetReceivePackage package)
+		private void Receive_ServerSenddata (NetPackage package)
 		{
-			scBroadcastIP mServerSendData = Protocol3Utility.getData<scBroadcastIP> (package.buffer.Array, package.buffer.Offset, package.buffer.Count);
-			DebugSystem.Log ("Client: " + mServerSendData.Ip);
+			csChatData mServerSendData = Protocol3Utility.getData<csChatData> (package.buffer, package.Offset, package.Length);
+			DebugSystem.Log ("Client: " + mServerSendData.Id + " | " + mServerSendData.TalkMsg);
 			nReceiveCount++;
 		}
 	}
