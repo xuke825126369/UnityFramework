@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Google.Protobuf;
 using System;
 using xk_System.Net.UDP.POINTTOPOINT.Protocol;
+using xk_System.Debug;
 
 namespace xk_System.Net.UDP.POINTTOPOINT.Server
 {
@@ -31,16 +32,14 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 				mPackage.nOrderId = this.nPackageOrderId;
 				mPackage.nGroupCount = groupCount;
 				mPackage.nPackageId = id;
-				mPackage.Offset = ServerConfig.nUdpPackageFixedHeadSize;
-				mPackage.Length = readBytes;
-				Array.Copy (buffer, nBeginIndex, mPackage.buffer, mPackage.Offset, readBytes);
+				mPackage.Length = readBytes + ServerConfig.nUdpPackageFixedHeadSize;
+				Array.Copy (buffer, nBeginIndex, mPackage.buffer, ServerConfig.nUdpPackageFixedHeadSize, readBytes);
 
 				NetPackageEncryption.Encryption (mPackage);
-				SendNetStream (mPackage.buffer, mPackage.Offset, mPackage.Length);
+				SendNetStream (mPackage);
 
 				if (id >= 50) {
 					mUdpCheckPool.AddSendCheck (this.nPackageOrderId, mPackage);
-					nBeginIndex += readBytes;
 					this.nPackageOrderId++;
 				} else {
 					mUdpFixedSizePackagePool.recycle (mPackage);
@@ -51,12 +50,33 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			}
 		}
 
+		public NetUdpFixedSizePackage GetCheckResultPackage(UInt16 id, object data)
+		{
+			IMessage data1 = data as IMessage;
+			byte[] stream = Protocol3Utility.SerializePackage (data1);
+
+			var mPackage = mUdpFixedSizePackagePool.Pop ();
+			mPackage.nOrderId = 0;
+			mPackage.nGroupCount = 0;
+			mPackage.nPackageId = id;
+			mPackage.Length = stream.Length + ServerConfig.nUdpPackageFixedHeadSize;
+			Array.Copy (stream, 0, mPackage.buffer, ServerConfig.nUdpPackageFixedHeadSize, stream.Length);
+
+			NetPackageEncryption.Encryption (mPackage);
+
+			return mPackage;
+		}
+
+		public void SendNetStream(NetUdpFixedSizePackage mPackage)
+		{
+			SendNetStream (mPackage.buffer, 0, mPackage.Length);
+		}
+
 		public void SendNetData (UInt16 id, object data)
 		{
 			IMessage data1 = data as IMessage;
 			byte[] stream = Protocol3Utility.SerializePackage (data1);
 			SendNetData (id, stream);
 		}
-
 	}
 }

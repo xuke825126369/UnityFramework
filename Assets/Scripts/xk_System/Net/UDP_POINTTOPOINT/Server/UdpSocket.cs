@@ -46,8 +46,8 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			while (true) {
 				int length = 0;
 				try {
-					remoteEndPoint = new IPEndPoint (IPAddress.Any, 0);
-					length = mSocket.ReceiveFrom (mReceiveStream.Buffer, 0, mReceiveStream.Buffer.Length, SocketFlags.None, ref remoteEndPoint);
+					length = mSocket.ReceiveFrom (mReceiveStream.buffer, 0, mReceiveStream.buffer.Length, SocketFlags.None, ref remoteEndPoint);
+					mReceiveStream.Length = length;
 					if (length > 0) {
 						HandleReceivePackage ();
 					}
@@ -65,7 +65,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			
 		public void SendNetStream (byte[] msg,int offset,int Length)
 		{
-			var remoteEndPoint = new IPEndPoint (IPAddress.Parse (ip), port);
 			mSocket.SendTo (msg, offset, Length, SocketFlags.None, remoteEndPoint);
 		}
 
@@ -91,7 +90,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 		public SocketUdp_Poll()
 		{
-			mReceiveStream = new byte[ServerConfig.nMaxBufferSize];
+			mReceiveStream = new byte[ServerConfig.nUdpPackageFixedSize];
 		}
 
 		public void InitNet (string ServerAddr, int ServerPort)
@@ -177,7 +176,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		{
 			ReceiveArgs = new SocketAsyncEventArgs ();
 			ReceiveArgs.Completed += Receive_Fun;
-			ReceiveArgs.SetBuffer (new byte[ServerConfig.nMaxBufferSize], 0, ServerConfig.nMaxBufferSize);
+			ReceiveArgs.SetBuffer (new byte[ServerConfig.nUdpPackageFixedSize], 0, ServerConfig.nUdpPackageFixedSize);
 			mSocket.ReceiveAsync (ReceiveArgs);
 		}
 
@@ -194,7 +193,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		private void Receive_Fun (object sender, SocketAsyncEventArgs e)
 		{
 			if (e.SocketError == SocketError.Success && e.BytesTransferred > 0) {
-				Array.Copy (e.Buffer, 0, mReceiveStream.Buffer, 0, e.BytesTransferred);
+				Array.Copy (e.Buffer, 0, mReceiveStream.buffer, 0, e.BytesTransferred);
 				mSocket.ReceiveAsync (e);
 			} else {
 				DebugSystem.Log ("接收数据失败： " + e.SocketError.ToString ());

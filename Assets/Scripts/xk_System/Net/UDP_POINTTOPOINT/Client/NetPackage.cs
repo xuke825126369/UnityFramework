@@ -13,7 +13,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 		public byte[] buffer;
 		public int Length;
-		public int Offset;
 
 		public NetPackage()
 		{
@@ -23,7 +22,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 			buffer = null;
 			Length = 0;
-			Offset = 0;
 		}
 	}
 

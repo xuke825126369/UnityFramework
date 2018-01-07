@@ -1,10 +1,9 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 using Google.Protobuf;
 using System.IO;
 
-namespace xk_System.Net.UDP.POINTTOPOINT.Protocol
+namespace xk_System.Net.UDP.POINTTOPOINT.Server
 {
 	public class Protocol3Utility
 	{
@@ -15,7 +14,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Protocol
 			return stream;
 		}
 
-		public static T getData<T> (byte[] stream,int index,int Length) where T:IMessage, new()
+		private static T getData<T> (byte[] stream,int index,int Length) where T:IMessage, new()
 		{
 			T t = new T ();
 			Google.Protobuf.CodedInputStream mStream = new CodedInputStream (stream, index, Length);
@@ -23,11 +22,17 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Protocol
 			return t;
 		}
 
-		public static IMessage getData (IMessage t, byte[] stream,int index,int Length)
+		private static IMessage getData (IMessage t, byte[] stream,int index,int Length)
 		{
 			Google.Protobuf.CodedInputStream mStream = new CodedInputStream (stream, index, Length);
 			t.MergeFrom (mStream);
 			return t;
 		}
+
+		public static T getData<T>(NetPackage mPackage) where T:IMessage,new()
+		{
+			return getData<T> (mPackage.buffer, ServerConfig.nUdpPackageFixedHeadSize, mPackage.Length - ServerConfig.nUdpPackageFixedHeadSize);
+		}
+
 	}
 }

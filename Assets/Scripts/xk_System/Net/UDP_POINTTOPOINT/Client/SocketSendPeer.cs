@@ -20,7 +20,14 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		{
 			int readBytes = 0;
 			int nBeginIndex = 0;
-			UInt16 groupCount = (UInt16)(buffer.Length / ClientConfig.nUdpPackageFixedBodySize + 1);
+
+			UInt16 groupCount = 0;
+			if (buffer.Length % ClientConfig.nUdpPackageFixedBodySize == 0) {
+				groupCount = (UInt16)(buffer.Length / ClientConfig.nUdpPackageFixedBodySize);
+			} else {
+				groupCount = (UInt16)(buffer.Length / ClientConfig.nUdpPackageFixedBodySize + 1);
+			}
+			DebugSystem.Log ("buffer Length: " + buffer.Length);
 			while (nBeginIndex < buffer.Length) {
 				if (nBeginIndex + ClientConfig.nUdpPackageFixedBodySize > buffer.Length) {
 					readBytes = buffer.Length - nBeginIndex;
@@ -32,16 +39,16 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				mPackage.nOrderId = this.nPackageOrderId;
 				mPackage.nGroupCount = groupCount;
 				mPackage.nPackageId = id;
-				mPackage.Offset = ClientConfig.nUdpPackageFixedHeadSize;
-				mPackage.Length = readBytes;
-				Array.Copy (buffer, nBeginIndex, mPackage.buffer, mPackage.Offset, readBytes);
+				mPackage.Length = readBytes + ClientConfig.nUdpPackageFixedHeadSize;
+				Array.Copy (buffer, nBeginIndex, mPackage.buffer, ClientConfig.nUdpPackageFixedHeadSize, readBytes);
 
 				NetPackageEncryption.Encryption (mPackage);
 				SendNetStream (mPackage);
 
+				DebugSystem.Log ("发送包的个数： " + mPackage.nOrderId);
+
 				if (id >= 50) {
 					mUdpCheckPool.AddSendCheck (this.nPackageOrderId, mPackage);
-					nBeginIndex += readBytes;
 					this.nPackageOrderId++;
 				} else {
 					mUdpFixedSizePackagePool.recycle (mPackage);
@@ -61,9 +68,8 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			mPackage.nOrderId = 0;
 			mPackage.nGroupCount = 0;
 			mPackage.nPackageId = id;
-			mPackage.Offset = ClientConfig.nUdpPackageFixedHeadSize;
-			mPackage.Length = stream.Length;
-			Array.Copy (stream, 0, mPackage.buffer, mPackage.Offset, stream.Length);
+			mPackage.Length = stream.Length + ClientConfig.nUdpPackageFixedHeadSize;
+			Array.Copy (stream, 0, mPackage.buffer, ClientConfig.nUdpPackageFixedHeadSize, stream.Length);
 
 			NetPackageEncryption.Encryption (mPackage);
 
@@ -72,10 +78,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 		public void SendNetStream(NetUdpFixedSizePackage mPackage)
 		{
-			if (mPackage.buffer == null) {
-				DebugSystem.Log ("mPackage is Null");
-			}
-			SendNetStream (mPackage.buffer, mPackage.Offset, mPackage.Length);
+			SendNetStream (mPackage.buffer, 0, mPackage.Length);
 		}
 
 		public void SendNetData (UInt16 id, object data)

@@ -13,7 +13,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 		public byte[] buffer;
 		public int Length;
-		public int Offset;
 
 		public NetPackage()
 		{
@@ -23,7 +22,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 			buffer = null;
 			Length = 0;
-			Offset = 0;
 		}
 	}
 
@@ -39,7 +37,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 	{
 		public NetCombinePackage()
 		{
-			buffer = new byte[ServerConfig.nUdpPackageFixedSize];
+			buffer = new byte[ServerConfig.nUdpPackageFixedSize * 2];
 		}			
 	}
 }

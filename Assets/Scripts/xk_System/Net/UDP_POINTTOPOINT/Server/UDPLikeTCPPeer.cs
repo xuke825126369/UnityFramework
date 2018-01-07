@@ -16,6 +16,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 		public override void Update (double elapsed)
 		{
+			base.Update (elapsed);
 			fHeartBeatTime += elapsed;
 			if (fHeartBeatTime >= 3) {
 				SendHeartBeat ();
@@ -31,7 +32,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 		private void ReceiveServerHeartBeat(NetPackage mPackage)
 		{
-			HeartBeat msg = Protocol3Utility.getData<HeartBeat> (mPackage.buffer, 0, mPackage.Length);
+			HeartBeat msg = Protocol3Utility.getData<HeartBeat> (mPackage);
 
 		}
 	}

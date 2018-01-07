@@ -32,18 +32,18 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 			public NetCombinePackage GetCheckCombinePackageInfo()
 			{
-				byte[] buffer = new byte[nGroupCount * ClientConfig.nMaxBufferSize];
-				int Length = 0;
-				for (UInt16 i = groupId; i < groupId + nGroupCount; i++) {
-					byte[] tempBuf = mReceivePackageDic [i].buffer;
-					Array.Copy (tempBuf, mReceivePackageDic [i].Offset, buffer, i * ClientConfig.nMaxBufferSize, ClientConfig.nMaxBufferSize);
-					Length += mReceivePackageDic [i].Length;
+				NetCombinePackage mNetReceivePackage = new NetCombinePackage ();
+				int nSumLength = nGroupCount * ClientConfig.nUdpPackageFixedBodySize + ClientConfig.nUdpPackageFixedHeadSize;
+				if (mNetReceivePackage.buffer.Length < nSumLength) {
+					mNetReceivePackage.buffer = new byte[nSumLength];
 				}
 
-				NetCombinePackage mNetReceivePackage = new NetCombinePackage ();
-				mNetReceivePackage.buffer = buffer;
-				mNetReceivePackage.Offset = 0;
-				mNetReceivePackage.Length = Length;
+				mNetReceivePackage.Length = ClientConfig.nUdpPackageFixedHeadSize;
+				for (UInt16 i = groupId; i < groupId + nGroupCount; i++) {
+					byte[] tempBuf = mReceivePackageDic [i].buffer;
+					Array.Copy (tempBuf, ClientConfig.nUdpPackageFixedHeadSize, mNetReceivePackage.buffer, mNetReceivePackage.Length, (mReceivePackageDic [i].Length - ClientConfig.nUdpPackageFixedHeadSize));
+					mNetReceivePackage.Length += mReceivePackageDic [i].Length;
+				}
 
 				mNetReceivePackage.nOrderId = groupId;
 				mNetReceivePackage.nPackageId = nPackageId;
@@ -79,25 +79,16 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 		private void ReceiveCheckPackage(NetPackage mPackage)
 		{
-			PackageCheckResult mPackageCheckResult = Protocol3Utility.getData<PackageCheckResult> (mPackage.buffer, 0, mPackage.Length);
+			PackageCheckResult mPackageCheckResult = Protocol3Utility.getData<PackageCheckResult> (mPackage);
 			UInt16 whoId = (UInt16)(mPackageCheckResult.NWhoOrderId >> 16);
 			UInt16 nOrderId = (UInt16)(mPackageCheckResult.NWhoOrderId & 0x0000FFFF);
 
+			DebugSystem.Log ("Client: nWhoId: " + whoId + " | nOrderId: " + nOrderId);
 			if (whoId == 1) {
-				this.mUdpPeer.SendNetData (mPackage.nPackageId, mPackageCheckResult);
-
-				if (mWaitCheckSendDic.ContainsKey (nOrderId)) {
-					mWaitCheckSendDic.Remove (nOrderId);
-				}
+				this.mUdpPeer.SendNetStream (mPackage as NetUdpFixedSizePackage);
+				mWaitCheckSendDic.Remove (nOrderId);
 			} else if (whoId == 2) {
-				mWaitCheckReceiveDic [nOrderId].nReceiveCheckResultCount++;
-
-				if (mWaitCheckReceiveDic [nOrderId].nReceiveCheckResultCount >= 2) {
-					if (mWaitCheckReceiveDic.ContainsKey (nOrderId)) {
-						mWaitCheckReceiveDic.Remove (nOrderId);
-					}
-				}
-
+				mWaitCheckReceiveDic.Remove (nOrderId);
 			}
 		}
 
@@ -119,11 +110,11 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 					mCheckInfo.nReSendCount++;
 					if (mCheckInfo.nReSendCount > nMaxReSendCount) {
 						mCheckInfo.mTimer.Stop ();
-						DebugSystem.LogError ("发送超时");
+						DebugSystem.LogError ("Client 发送超时");
 						return;
 					}
 					NetUdpFixedSizePackage mPackage = mWaitCheckSendDic [nOrderId].mPackage;
-					this.mUdpPeer.SendNetStream (mPackage.buffer, mPackage.Offset, mPackage.Length);
+					this.mUdpPeer.SendNetStream (mPackage.buffer, 0, mPackage.Length);
 				} else {
 					mCheckInfo.mTimer.Stop ();
 				}
@@ -153,11 +144,11 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			mCheckInfo.mTimer.Elapsed += (object sender, System.Timers.ElapsedEventArgs args) => {
 				if (mWaitCheckSendDic.ContainsKey (mReceiveLogicPackage.nOrderId)) {
 					NetUdpFixedSizePackage mPackage = mWaitCheckSendDic [mReceiveLogicPackage.nOrderId].mPackage;
-					this.mUdpPeer.SendNetStream (mPackage.buffer, mPackage.Offset, mPackage.Length);
+					this.mUdpPeer.SendNetStream (mPackage.buffer, 0, mPackage.Length);
 					mCheckInfo.nReSendCount++;
 					if (mCheckInfo.nReSendCount >= nMaxReSendCount) {
 						mCheckInfo.mTimer.Stop ();
-						DebugSystem.LogError ("发送超时");
+						DebugSystem.LogError ("Client 发送超时");
 					}
 				} else {
 					mCheckInfo.mTimer.Stop ();
@@ -170,13 +161,13 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		{
 			if (mPackage.nOrderId == nCurrentWaitReceiveOrderId) {
 				nCurrentWaitReceiveOrderId++;
-				CheckCheckCombinePackageInfo (mPackage);
+				CheckCombinePackage (mPackage);
 
 				while (true) {
 					if (mReceivePackageDic.ContainsKey (nCurrentWaitReceiveOrderId)) {
 						mPackage = mReceivePackageDic [nCurrentWaitReceiveOrderId];
 						mReceivePackageDic.Remove (nCurrentWaitReceiveOrderId);
-						CheckCheckCombinePackageInfo (mPackage);
+						CheckCombinePackage (mPackage);
 
 						nCurrentWaitReceiveOrderId++;
 					} else {
@@ -186,17 +177,18 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			} else if (mPackage.nOrderId > nCurrentWaitReceiveOrderId) {
 				mReceivePackageDic [mPackage.nOrderId] = mPackage;
 			} else {
-				DebugSystem.Log ("接受 过去的 废物包： " + mPackage.nPackageId);
+				DebugSystem.Log ("Client 接受 过去的 废物包： " + mPackage.nPackageId);
 			}
 		}
 
-		private void CheckCheckCombinePackageInfo(NetUdpFixedSizePackage mPackage)
+		private void CheckCombinePackage(NetUdpFixedSizePackage mPackage)
 		{
 			if (mPackage.nGroupCount > 1) {
 				UInt16 groupId = mPackage.nOrderId;
 
 				CheckCombinePackageInfo cc = new CheckCombinePackageInfo ();
 				cc.groupId = groupId;
+				cc.nPackageId = mPackage.nPackageId;
 				cc.nGroupCount = mPackage.nGroupCount;
 				cc.mReceivePackageDic = new Dictionary<UInt16, NetUdpFixedSizePackage> ();
 				cc.mReceivePackageDic [mPackage.nOrderId] = mPackage;

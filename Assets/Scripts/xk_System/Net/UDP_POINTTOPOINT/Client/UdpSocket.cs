@@ -11,7 +11,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 {
 	public class SocketUdp_Basic : SocketReceivePeer
 	{
-		private EndPoint bindEndPoint = null;
 		private EndPoint remoteEndPoint = null;
 
 		private Socket mSocket = null;
@@ -32,11 +31,10 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			mUdpType = UDPTYPE.POINTTOPOINT;
 
 			mSocket = new Socket (AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-			//bindEndPoint = new IPEndPoint (IPAddress.Parse (ip), port);
-			//mSocket.Bind (remoteSendEndPoint);
-
-			SendNetStream (new byte[]{ 1, 1 }, 0, 2);
 			remoteEndPoint = new IPEndPoint (IPAddress.Parse (ip), port);
+
+			mSocket.Connect (remoteEndPoint);
+
 			mThread = new Thread (HandData);
 			mThread.Start ();
 		}
@@ -45,9 +43,10 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		{
 			while (true) {
 				int length = 0;
-				try {					
-					length = mSocket.ReceiveFrom (mReceiveStream.Buffer, 0, mReceiveStream.Capacity, SocketFlags.None, ref remoteEndPoint);
+				try {
+					length = mSocket.ReceiveFrom (mReceiveStream.buffer, 0, mReceiveStream.buffer.Length, SocketFlags.None, ref remoteEndPoint);
 					if (length > 0) {
+						mReceiveStream.Length = length;
 						HandleReceivePackage ();
 					}
 				} catch (SocketException e) {
@@ -64,11 +63,13 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				}
 			}
 		}
-			
-		public void SendNetStream (byte[] msg,int offset,int Length)
+
+		public void SendNetStream (byte[] msg, int offset, int Length)
 		{
-			var remoteReceiveEndPoint = new IPEndPoint (IPAddress.Parse (ip), port);
-			mSocket.SendTo (msg, offset, Length, SocketFlags.None, remoteReceiveEndPoint);
+			if (Length < ClientConfig.nUdpPackageFixedHeadSize) {
+				DebugSystem.LogError ("Client 发送包的长度 小于 包头长度 ");
+			}
+			mSocket.SendTo (msg, offset, Length, SocketFlags.None, remoteEndPoint);
 		}
 
 		protected virtual void reConnectServer ()
@@ -93,7 +94,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 		public SocketUdp_Poll()
 		{
-			mReceiveStream = new byte[ClientConfig.nMaxBufferSize];
+			mReceiveStream = new byte[ClientConfig.nUdpPackageFixedSize];
 		}
 
 		public void InitNet (string ServerAddr, int ServerPort)
@@ -179,7 +180,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		{
 			ReceiveArgs = new SocketAsyncEventArgs ();
 			ReceiveArgs.Completed += Receive_Fun;
-			ReceiveArgs.SetBuffer (new byte[ClientConfig.nMaxBufferSize], 0, ClientConfig.nMaxBufferSize);
+			ReceiveArgs.SetBuffer (new byte[ClientConfig.nUdpPackageFixedSize], 0, ClientConfig.nUdpPackageFixedSize);
 			mSocket.ReceiveAsync (ReceiveArgs);
 		}
 
@@ -196,7 +197,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		private void Receive_Fun (object sender, SocketAsyncEventArgs e)
 		{
 			if (e.SocketError == SocketError.Success && e.BytesTransferred > 0) {
-				Array.Copy (e.Buffer, 0, mReceiveStream.Buffer, 0, e.BytesTransferred);
+				Array.Copy (e.Buffer, 0, mReceiveStream.buffer, 0, e.BytesTransferred);
 				mSocket.ReceiveAsync (e);
 			} else {
 				DebugSystem.Log ("接收数据失败： " + e.SocketError.ToString ());

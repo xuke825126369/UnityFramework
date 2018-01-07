@@ -15,7 +15,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		protected Dictionary<UInt16, Action<NetPackage>> mLogicFuncDic = null;
 		protected Queue<NetPackage> mNeedHandlePackageQueue = null;
 			
-		protected ListBuffer<byte> mReceiveStream = null;
+		protected NetUdpFixedSizePackage mReceiveStream = null;
 		protected ObjectPool<NetUdpFixedSizePackage> mUdpFixedSizePackagePool = null;
 		protected List<NetCombinePackage> mCanUseSortPackageList = null;
 
@@ -23,7 +23,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 		public SocketReceivePeer ()
 		{
-			mReceiveStream = new ListBuffer<byte> (ClientConfig.nUdpPackageFixedSize);
+			mReceiveStream = new NetUdpFixedSizePackage ();
 			mLogicFuncDic = new Dictionary<UInt16, Action<NetPackage>> ();
 
 			mUdpFixedSizePackagePool = new ObjectPool<NetUdpFixedSizePackage> ();
@@ -73,38 +73,17 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 		protected void HandleReceivePackage ()
 		{
-			int PackageCout = 0;
-
-			while (GetPackage ()) {
-				PackageCout++;
-			}
-
-			if (PackageCout == 0) {
-				if (mReceiveStream.Length > 0) {
-					DebugSystem.LogError ("客户端 正在解包: " + mReceiveStream.Length);
-				}
-			}
-		}
-
-		private bool GetPackage ()
-		{
-			if (mReceiveStream.Length <= 0) {
-				return false;
-			}
-
-			NetUdpFixedSizePackage mNetPackage = mUdpFixedSizePackagePool.Pop ();
-			bool bSucccess = NetPackageEncryption.DeEncryption (mReceiveStream, mNetPackage);
-
+			bool bSucccess = NetPackageEncryption.DeEncryption (mReceiveStream);
 			if (bSucccess) {
-				
-				if (mNetPackage.nPackageId >= 50) {
-					mUdpCheckPool.AddReceiveCheck (mNetPackage);
+				DebugSystem.Log ("客户端解析成功： " + mReceiveStream.nPackageId);
+				if (mReceiveStream.nPackageId >= 50) {
+					mUdpCheckPool.AddReceiveCheck (mReceiveStream);
 				} else {
-					AddLogicHandleQueue (mNetPackage);
+					AddLogicHandleQueue (mReceiveStream);
 				}
 			}
 
-			return bSucccess;
+			mReceiveStream = mUdpFixedSizePackagePool.Pop ();
 		}
 			
 		public virtual void release ()
