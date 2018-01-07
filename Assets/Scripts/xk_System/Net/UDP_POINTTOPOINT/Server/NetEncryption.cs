@@ -32,8 +32,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			mPackage.nOrderId = BitConverter.ToUInt16 (mPackage.buffer, 4);
 			mPackage.nGroupCount = BitConverter.ToUInt16 (mPackage.buffer, 6);
 			mPackage.nPackageId = BitConverter.ToUInt16 (mPackage.buffer, 8);
-
-			mPackage.Length = mPackage.Length - ServerConfig.nUdpPackageFixedHeadSize;
 			return true;
 		}
 

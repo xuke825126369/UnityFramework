@@ -26,14 +26,15 @@ namespace UdpPointtopointProtocols {
           string.Concat(
             "ChJ1ZHBfcHJvdG9jb2wucHJvdG8SGnVkcF9wb2ludHRvcG9pbnRfcHJvdG9j",
             "b2xzIikKElBhY2thZ2VDaGVja1Jlc3VsdBITCgtuV2hvT3JkZXJJZBgCIAEo",
-            "ByIgCglIZWFydEJlYXQSEwoLblNlcnZlclRpbWUYASABKAciKQoKY3NDaGF0",
-            "RGF0YRIKCgJpZBgBIAEoBxIPCgd0YWxrTXNnGAIgASgJYgZwcm90bzM="));
+            "ByIgCglIZWFydEJlYXQSEwoLblNlcnZlclRpbWUYASABKAciPwoKY3NDaGF0",
+            "RGF0YRIKCgJpZBgBIAEoBxIPCgd0YWxrTXNnGAIgASgJEhQKDHRhbGtNc2dC",
+            "eXRlcxgDIAEoDGIGcHJvdG8z"));
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
           new pbr::FileDescriptor[] { },
           new pbr::GeneratedClrTypeInfo(null, new pbr::GeneratedClrTypeInfo[] {
             new pbr::GeneratedClrTypeInfo(typeof(global::UdpPointtopointProtocols.PackageCheckResult), global::UdpPointtopointProtocols.PackageCheckResult.Parser, new[]{ "NWhoOrderId" }, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::UdpPointtopointProtocols.HeartBeat), global::UdpPointtopointProtocols.HeartBeat.Parser, new[]{ "NServerTime" }, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::UdpPointtopointProtocols.csChatData), global::UdpPointtopointProtocols.csChatData.Parser, new[]{ "Id", "TalkMsg" }, null, null, null)
+            new pbr::GeneratedClrTypeInfo(typeof(global::UdpPointtopointProtocols.csChatData), global::UdpPointtopointProtocols.csChatData.Parser, new[]{ "Id", "TalkMsg", "TalkMsgBytes" }, null, null, null)
           }));
     }
     #endregion
@@ -340,6 +341,7 @@ namespace UdpPointtopointProtocols {
     public csChatData(csChatData other) : this() {
       id_ = other.id_;
       talkMsg_ = other.talkMsg_;
+      talkMsgBytes_ = other.talkMsgBytes_;
       _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
     }
 
@@ -370,6 +372,17 @@ namespace UdpPointtopointProtocols {
       }
     }
 
+    /// <summary>Field number for the "talkMsgBytes" field.</summary>
+    public const int TalkMsgBytesFieldNumber = 3;
+    private pb::ByteString talkMsgBytes_ = pb::ByteString.Empty;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public pb::ByteString TalkMsgBytes {
+      get { return talkMsgBytes_; }
+      set {
+        talkMsgBytes_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+      }
+    }
+
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public override bool Equals(object other) {
       return Equals(other as csChatData);
@@ -385,6 +398,7 @@ namespace UdpPointtopointProtocols {
       }
       if (Id != other.Id) return false;
       if (TalkMsg != other.TalkMsg) return false;
+      if (TalkMsgBytes != other.TalkMsgBytes) return false;
       return Equals(_unknownFields, other._unknownFields);
     }
 
@@ -393,6 +407,7 @@ namespace UdpPointtopointProtocols {
       int hash = 1;
       if (Id != 0) hash ^= Id.GetHashCode();
       if (TalkMsg.Length != 0) hash ^= TalkMsg.GetHashCode();
+      if (TalkMsgBytes.Length != 0) hash ^= TalkMsgBytes.GetHashCode();
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
       }
@@ -414,6 +429,10 @@ namespace UdpPointtopointProtocols {
         output.WriteRawTag(18);
         output.WriteString(TalkMsg);
       }
+      if (TalkMsgBytes.Length != 0) {
+        output.WriteRawTag(26);
+        output.WriteBytes(TalkMsgBytes);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
       }
@@ -427,6 +446,9 @@ namespace UdpPointtopointProtocols {
       }
       if (TalkMsg.Length != 0) {
         size += 1 + pb::CodedOutputStream.ComputeStringSize(TalkMsg);
+      }
+      if (TalkMsgBytes.Length != 0) {
+        size += 1 + pb::CodedOutputStream.ComputeBytesSize(TalkMsgBytes);
       }
       if (_unknownFields != null) {
         size += _unknownFields.CalculateSize();
@@ -445,6 +467,9 @@ namespace UdpPointtopointProtocols {
       if (other.TalkMsg.Length != 0) {
         TalkMsg = other.TalkMsg;
       }
+      if (other.TalkMsgBytes.Length != 0) {
+        TalkMsgBytes = other.TalkMsgBytes;
+      }
       _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
     }
 
@@ -462,6 +487,10 @@ namespace UdpPointtopointProtocols {
           }
           case 18: {
             TalkMsg = input.ReadString();
+            break;
+          }
+          case 26: {
+            TalkMsgBytes = input.ReadBytes();
             break;
           }
         }

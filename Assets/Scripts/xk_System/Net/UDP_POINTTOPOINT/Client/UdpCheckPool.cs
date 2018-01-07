@@ -42,7 +42,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				for (UInt16 i = groupId; i < groupId + nGroupCount; i++) {
 					byte[] tempBuf = mReceivePackageDic [i].buffer;
 					Array.Copy (tempBuf, ClientConfig.nUdpPackageFixedHeadSize, mNetReceivePackage.buffer, mNetReceivePackage.Length, (mReceivePackageDic [i].Length - ClientConfig.nUdpPackageFixedHeadSize));
-					mNetReceivePackage.Length += mReceivePackageDic [i].Length;
+					mNetReceivePackage.Length += (mReceivePackageDic [i].Length - ClientConfig.nUdpPackageFixedHeadSize);
 				}
 
 				mNetReceivePackage.nOrderId = groupId;
@@ -94,6 +94,10 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 		public void AddSendCheck(UInt16 nOrderId, NetUdpFixedSizePackage sendBuff)
 		{
+			if (!ClientConfig.bNeedCheckPackage) {
+				return;
+			}
+
 			CheckPackageInfo mCheckInfo = mCheckPackagePool.Pop ();
 			mCheckInfo.nReceiveCheckResultCount = 0;
 			mCheckInfo.nReSendCount = 0;
@@ -123,6 +127,11 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 		public void AddReceiveCheck(NetUdpFixedSizePackage mReceiveLogicPackage)
 		{
+			if (!ClientConfig.bNeedCheckPackage) {
+				CheckCombinePackage (mReceiveLogicPackage);
+				return;
+			}
+
 			CheckReceivePackageLoss (mReceiveLogicPackage);
 
 			PackageCheckResult mResult = new PackageCheckResult ();

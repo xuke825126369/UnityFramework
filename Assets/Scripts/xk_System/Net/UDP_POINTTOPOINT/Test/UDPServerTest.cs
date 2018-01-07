@@ -41,8 +41,10 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 
 		private void Receive_ServerSenddata (NetPackage package)
 		{
+			DebugSystem.Log ("Server packageLength: " + package.Length);
 			csChatData mServerSendData = Protocol3Utility.getData<csChatData> (package);
 			DebugSystem.Log ("Server: " + mServerSendData.TalkMsg);
+
 			mNetSystem.sendNetData (UdpNetCommand.COMMAND_TESTCHAT, mServerSendData);
 			nReceiveCount++;
 		}

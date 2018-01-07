@@ -43,7 +43,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 					byte[] tempBuf = mReceivePackageDic [i].buffer;
 					int tempLength = mReceivePackageDic [i].Length;
 					Array.Copy (tempBuf, ServerConfig.nUdpPackageFixedHeadSize, mNetReceivePackage.buffer, mNetReceivePackage.Length, (mReceivePackageDic [i].Length - ServerConfig.nUdpPackageFixedHeadSize));
-					mNetReceivePackage.Length += mReceivePackageDic [i].Length;
+					mNetReceivePackage.Length += (mReceivePackageDic [i].Length - ServerConfig.nUdpPackageFixedHeadSize);
 				}
 
 				mNetReceivePackage.nOrderId = groupId;
@@ -85,15 +85,19 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			UInt16 nOrderId = (UInt16)(mPackageCheckResult.NWhoOrderId & 0x0000FFFF);
 
 			if (whoId == 1) {
-				mWaitCheckSendDic.Remove (nOrderId);
+				mWaitCheckReceiveDic.Remove (nOrderId);
 			} else if (whoId == 2) {
 				this.mUdpPeer.SendNetStream (mPackage as NetUdpFixedSizePackage);
-				mWaitCheckReceiveDic.Remove (nOrderId);
+				mWaitCheckSendDic.Remove (nOrderId);
 			}
 		}
 
 		public void AddSendCheck(UInt16 nOrderId, NetUdpFixedSizePackage sendBuff)
 		{
+			if (!ServerConfig.bNeedCheckPackage) {
+				return;
+			}
+
 			CheckPackageInfo mCheckInfo = mCheckPackagePool.Pop ();
 			mCheckInfo.nReceiveCheckResultCount = 0;
 			mCheckInfo.nReSendCount = 0;
@@ -123,6 +127,11 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 		public void AddReceiveCheck(NetUdpFixedSizePackage mReceiveLogicPackage)
 		{
+			if (!ServerConfig.bNeedCheckPackage) {
+				CheckCombinePackage (mReceiveLogicPackage);
+				return;
+			}
+
 			DebugSystem.Log ("增加检查池 包： " + mReceiveLogicPackage.nGroupCount + " | " + mReceiveLogicPackage.nOrderId + " | " + mReceiveLogicPackage.nPackageId);
 			CheckReceivePackageLoss (mReceiveLogicPackage);
 

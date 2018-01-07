@@ -8,6 +8,7 @@ using xk_System.Debug;
 using xk_System.Net.UDP.POINTTOPOINT.Client;
 using xk_System.Net.UDP.POINTTOPOINT.Protocol;
 using UdpPointtopointProtocols;
+using System.Text;
 
 namespace xk_System.Net.UDP.POINTTOPOINT.Test
 {
@@ -57,11 +58,13 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 				"士大夫阿克苏的罚款数量的反抗拉萨；离开收费道路开辟【文科i软破i人品oooeeeeeee发d士大夫随风倒就是格式发给老师开发公司健康的" +
 				"";
 			}
+
 			mNetSystem.sendNetData (UdpNetCommand.COMMAND_TESTCHAT, msg);
 		}
 
 		private void Receive_ServerSenddata (NetPackage package)
 		{
+			DebugSystem.Log ("Client packageLength: " + package.Length);
 			csChatData mServerSendData = Protocol3Utility.getData<csChatData> (package);
 			DebugSystem.Log ("Client: " + mServerSendData.Id + " | " + mServerSendData.TalkMsg);
 			nReceiveCount++;

@@ -75,7 +75,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		{
 			bool bSucccess = NetPackageEncryption.DeEncryption (mReceiveStream);
 			if (bSucccess) {
-				DebugSystem.Log ("客户端解析成功： " + mReceiveStream.nPackageId);
+				DebugSystem.Log ("客户端解析成功： " + mReceiveStream.Length);
 				if (mReceiveStream.nPackageId >= 50) {
 					mUdpCheckPool.AddReceiveCheck (mReceiveStream);
 				} else {

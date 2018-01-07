@@ -18,5 +18,6 @@ message csChatData
 {
 	fixed32 id = 1;
 	string talkMsg = 2;
+	bytes talkMsgBytes = 3;
 }
 

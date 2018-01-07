@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using Google.Protobuf;
 using System;
-using xk_System.Net.UDP.POINTTOPOINT.Protocol;
 using xk_System.Debug;
 
 namespace xk_System.Net.UDP.POINTTOPOINT.Client
@@ -27,7 +26,8 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			} else {
 				groupCount = (UInt16)(buffer.Length / ClientConfig.nUdpPackageFixedBodySize + 1);
 			}
-			DebugSystem.Log ("buffer Length: " + buffer.Length);
+				
+			DebugSystem.Log ("Client bufferLength: " + buffer.Length);
 			while (nBeginIndex < buffer.Length) {
 				if (nBeginIndex + ClientConfig.nUdpPackageFixedBodySize > buffer.Length) {
 					readBytes = buffer.Length - nBeginIndex;
@@ -44,8 +44,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 				NetPackageEncryption.Encryption (mPackage);
 				SendNetStream (mPackage);
-
-				DebugSystem.Log ("发送包的个数： " + mPackage.nOrderId);
 
 				if (id >= 50) {
 					mUdpCheckPool.AddSendCheck (this.nPackageOrderId, mPackage);
