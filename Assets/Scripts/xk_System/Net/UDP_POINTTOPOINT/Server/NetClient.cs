@@ -9,7 +9,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 	public class NetClient: MonoBehaviour
 	{
 		public UInt16 port = 7878;
-		public string ip = "127.0.0.1";
+		public string ip = "192.168.122.24";
 
 		ClientPeer mNetSystem = null;
 

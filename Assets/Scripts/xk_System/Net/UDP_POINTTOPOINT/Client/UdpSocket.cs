@@ -9,10 +9,10 @@ using System.Threading;
 
 namespace xk_System.Net.UDP.POINTTOPOINT.Client
 {
-	public class SocketUdp_Basic:SocketReceivePeer
+	public class SocketUdp_Basic : SocketReceivePeer
 	{
-		private EndPoint remoteReceiveEndPoint = null;
-		private EndPoint remoteSendEndPoint = null;
+		private EndPoint bindEndPoint = null;
+		private EndPoint remoteEndPoint = null;
 
 		private Socket mSocket = null;
 		private Thread mThread = null;
@@ -32,10 +32,11 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			mUdpType = UDPTYPE.POINTTOPOINT;
 
 			mSocket = new Socket (AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-			remoteSendEndPoint = new IPEndPoint (IPAddress.Parse (ip), port);
+			//bindEndPoint = new IPEndPoint (IPAddress.Parse (ip), port);
+			//mSocket.Bind (remoteSendEndPoint);
 
-			remoteReceiveEndPoint = new IPEndPoint (IPAddress.Any, 0);
-
+			SendNetStream (new byte[]{ 1, 1 }, 0, 2);
+			remoteEndPoint = new IPEndPoint (IPAddress.Parse (ip), port);
 			mThread = new Thread (HandData);
 			mThread.Start ();
 		}
@@ -44,10 +45,8 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		{
 			while (true) {
 				int length = 0;
-				try {
-					
-					remoteReceiveEndPoint = new IPEndPoint (IPAddress.Any, 0);
-					length = mSocket.ReceiveFrom (mReceiveStream.Buffer, 0, mReceiveStream.Capacity, SocketFlags.None, ref remoteReceiveEndPoint);
+				try {					
+					length = mSocket.ReceiveFrom (mReceiveStream.Buffer, 0, mReceiveStream.Capacity, SocketFlags.None, ref remoteEndPoint);
 					if (length > 0) {
 						HandleReceivePackage ();
 					}
@@ -69,7 +68,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		public void SendNetStream (byte[] msg,int offset,int Length)
 		{
 			var remoteReceiveEndPoint = new IPEndPoint (IPAddress.Parse (ip), port);
-			mSocket.SendTo (msg, offset, Length, SocketFlags.None, remoteSendEndPoint);
+			mSocket.SendTo (msg, offset, Length, SocketFlags.None, remoteReceiveEndPoint);
 		}
 
 		protected virtual void reConnectServer ()
