@@ -1,62 +1,46 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 using System;
+using Google.Protobuf;
 
 namespace xk_System.Net.UDP.POINTTOPOINT.Server
 {
-	public class NetPackage:ObjectPoolInterface
+	public class NetPackage
 	{
-		public int clientId;
-		public int command;
-		public byte[] buffer = null;
+		public UInt16 nOrderId;
+		public UInt16 nGroupCount;
+		public UInt16 nPackageId;
 
-		public void reset()
+		public byte[] buffer;
+		public int Length;
+		public int Offset;
+
+		public NetPackage()
 		{
-			command = -1;
+			nOrderId = 0;
+			nGroupCount = 0;
+			nPackageId = 0;
+
 			buffer = null;
+			Length = 0;
+			Offset = 0;
 		}
 	}
 
-	public class ClientNetBuffer: ObjectPoolInterface
+	public class NetUdpFixedSizePackage:NetPackage
 	{
-		private int clientId;
-		private byte[] buffer;
-		private int dataLength;
-
-		public void reset()
+		public NetUdpFixedSizePackage()
 		{
-			clientId = -1;
-			dataLength = 0;
+			buffer = new byte[ServerConfig.nUdpPackageFixedSize];
 		}
+	}
 
-		public int ClientId {
-			get {
-				return clientId;
-			}
-		}
-
-		public int Length {
-			get {
-				return dataLength;
-			}
-		}
-
-		public byte[] Buffer {
-			get {
-				return buffer;
-			}
-		}
-
-		public void WriteFrom(int clientId, byte[] otherBuffer,int offset,int count)
+	public class NetCombinePackage : NetPackage
+	{
+		public NetCombinePackage()
 		{
-			this.clientId = clientId;
-			if (count > dataLength) {
-				buffer = new byte[count];
-			}
-
-			Array.Copy (otherBuffer, offset, buffer, 0, count);
-			dataLength = count;
-		}
+			buffer = new byte[ServerConfig.nUdpPackageFixedSize];
+		}			
 	}
 }
+

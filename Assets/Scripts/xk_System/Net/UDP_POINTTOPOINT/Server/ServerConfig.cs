@@ -1,12 +1,17 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
+using System;
 
 namespace xk_System.Net.UDP.POINTTOPOINT.Server
 {
 	public class ServerConfig
 	{
-		public const int numConnections = 1024;
-		public const int nMaxBufferSize = 1024 * 64;
+		public const int nMaxBufferSize = 1024;
+		public const bool IsLittleEndian = false;
+		public const bool bNeedCheckPackage = true;
+
+		public const int nUdpPackageFixedSize = 1024;
+		public const int nUdpPackageFixedHeadSize = 12;
+		public const int nUdpPackageFixedBodySize = nUdpPackageFixedSize - nUdpPackageFixedHeadSize;
 	}
 }

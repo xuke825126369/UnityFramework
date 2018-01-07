@@ -11,14 +11,14 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 {
 	public class UDPServerTest : MonoBehaviour
 	{
-		NetServer mNetSystem = null;
+		NetClient mNetSystem = null;
 
 		private void Start ()
 		{
 			gameObject.AddComponent<LogManager> ();
-			mNetSystem = gameObject.AddComponent<NetServer> ();
+			mNetSystem = gameObject.AddComponent<NetClient> ();
 
-			mNetSystem.Init ();
+			mNetSystem.InitNet ();
 			StartCoroutine (StartTest ());
 		}
 
@@ -43,7 +43,9 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 		{
 			csChatData mServerSendData = Protocol3Utility.getData<csChatData> (package.buffer, 0, package.buffer.Length);
 			DebugSystem.Log ("Server: " + mServerSendData.TalkMsg);
+			mNetSystem.sendNetData (UdpNetCommand.COMMAND_TESTCHAT, mServerSendData);
 			nReceiveCount++;
 		}
 	}
+
 }

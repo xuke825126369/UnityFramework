@@ -19,7 +19,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 		{
 			mNetSystem = gameObject.AddComponent<NetClient> ();
 			mNetSystem.InitNet ();
-
+			mNetSystem.addNetListenFun (UdpNetCommand.COMMAND_TESTCHAT, Receive_ServerSenddata);
 			StartCoroutine (SendBroadCast ());
 		}
 

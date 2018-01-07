@@ -3,9 +3,8 @@ using System.Collections.Generic;
 using Google.Protobuf;
 using System;
 using xk_System.Net.UDP.POINTTOPOINT.Protocol;
-using xk_System.Debug;
 
-namespace xk_System.Net.UDP.POINTTOPOINT.Client
+namespace xk_System.Net.UDP.POINTTOPOINT.Server
 {
 	public class SocketSendPeer : SocketUdp_Basic
 	{
@@ -20,24 +19,24 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		{
 			int readBytes = 0;
 			int nBeginIndex = 0;
-			UInt16 groupCount = (UInt16)(buffer.Length / ClientConfig.nUdpPackageFixedBodySize + 1);
+			UInt16 groupCount = (UInt16)(buffer.Length / ServerConfig.nUdpPackageFixedBodySize + 1);
 			while (nBeginIndex < buffer.Length) {
-				if (nBeginIndex + ClientConfig.nUdpPackageFixedBodySize > buffer.Length) {
+				if (nBeginIndex + ServerConfig.nUdpPackageFixedBodySize > buffer.Length) {
 					readBytes = buffer.Length - nBeginIndex;
 				} else {
-					readBytes = ClientConfig.nUdpPackageFixedBodySize;
+					readBytes = ServerConfig.nUdpPackageFixedBodySize;
 				}
 
 				var mPackage = mUdpFixedSizePackagePool.Pop ();
 				mPackage.nOrderId = this.nPackageOrderId;
 				mPackage.nGroupCount = groupCount;
 				mPackage.nPackageId = id;
-				mPackage.Offset = ClientConfig.nUdpPackageFixedHeadSize;
+				mPackage.Offset = ServerConfig.nUdpPackageFixedHeadSize;
 				mPackage.Length = readBytes;
 				Array.Copy (buffer, nBeginIndex, mPackage.buffer, mPackage.Offset, readBytes);
 
 				NetPackageEncryption.Encryption (mPackage);
-				SendNetStream (mPackage);
+				SendNetStream (mPackage.buffer, mPackage.Offset, mPackage.Length);
 
 				if (id >= 50) {
 					mUdpCheckPool.AddSendCheck (this.nPackageOrderId, mPackage);
@@ -50,32 +49,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				nBeginIndex += readBytes;
 				groupCount = 1;
 			}
-		}
-
-		public NetUdpFixedSizePackage GetCheckResultPackage(UInt16 id, object data)
-		{
-			IMessage data1 = data as IMessage;
-			byte[] stream = Protocol3Utility.SerializePackage (data1);
-
-			var mPackage = mUdpFixedSizePackagePool.Pop ();
-			mPackage.nOrderId = 0;
-			mPackage.nGroupCount = 0;
-			mPackage.nPackageId = id;
-			mPackage.Offset = ClientConfig.nUdpPackageFixedHeadSize;
-			mPackage.Length = stream.Length;
-			Array.Copy (stream, 0, mPackage.buffer, mPackage.Offset, stream.Length);
-
-			NetPackageEncryption.Encryption (mPackage);
-
-			return mPackage;
-		}
-
-		public void SendNetStream(NetUdpFixedSizePackage mPackage)
-		{
-			if (mPackage.buffer == null) {
-				DebugSystem.Log ("mPackage is Null");
-			}
-			SendNetStream (mPackage.buffer, mPackage.Offset, mPackage.Length);
 		}
 
 		public void SendNetData (UInt16 id, object data)

@@ -11,7 +11,9 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 {
 	public class SocketUdp_Basic:SocketReceivePeer
 	{
-		private EndPoint remoteEndPoint = null;
+		private EndPoint remoteReceiveEndPoint = null;
+		private EndPoint remoteSendEndPoint = null;
+
 		private Socket mSocket = null;
 		private Thread mThread = null;
 
@@ -30,8 +32,9 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			mUdpType = UDPTYPE.POINTTOPOINT;
 
 			mSocket = new Socket (AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-			IPEndPoint iep = new IPEndPoint (IPAddress.Parse (ip), port);
-			remoteEndPoint = (EndPoint)iep;
+			remoteSendEndPoint = new IPEndPoint (IPAddress.Parse (ip), port);
+
+			remoteReceiveEndPoint = new IPEndPoint (IPAddress.Any, 0);
 
 			mThread = new Thread (HandData);
 			mThread.Start ();
@@ -40,33 +43,33 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		private void HandData()
 		{
 			while (true) {
-				if (m_state == NETSTATE.CONNECTED) {
-					int length = 0;
-					try {
-						length = mSocket.ReceiveFrom (mReceiveStream.Buffer, 0, mReceiveStream.Buffer.Length, SocketFlags.None, ref remoteEndPoint);
-						if (length > 0) {
-							HandleReceivePackage ();
-						}
-					} catch (Exception e) {
-						this.CloseNet ();
-
-						m_state = NETSTATE.DISCONNECTED;
-						peer_event mEvent = new peer_event ();
-						mEvent.mNetEventType = NETEVENT.DISCONNECTED;
-						mEvent.msg = e.Message;
-						break;
+				int length = 0;
+				try {
+					
+					remoteReceiveEndPoint = new IPEndPoint (IPAddress.Any, 0);
+					length = mSocket.ReceiveFrom (mReceiveStream.Buffer, 0, mReceiveStream.Capacity, SocketFlags.None, ref remoteReceiveEndPoint);
+					if (length > 0) {
+						HandleReceivePackage ();
 					}
-				} else {
-					Thread.Sleep (100);
+				} catch (SocketException e) {
+					DebugSystem.LogError (e.SocketErrorCode);
+				} catch (Exception e) {
+					DebugSystem.LogError (e.Message);
+					//this.CloseNet ();
+
+					m_state = NETSTATE.DISCONNECTED;
+					peer_event mEvent = new peer_event ();
+					mEvent.mNetEventType = NETEVENT.DISCONNECTED;
+					mEvent.msg = e.Message;
+					break;
 				}
 			}
 		}
 			
 		public void SendNetStream (byte[] msg,int offset,int Length)
 		{
-			if (m_state == NETSTATE.CONNECTED) {
-				mSocket.SendTo (msg, offset, Length, SocketFlags.None, remoteEndPoint);
-			}
+			var remoteReceiveEndPoint = new IPEndPoint (IPAddress.Parse (ip), port);
+			mSocket.SendTo (msg, offset, Length, SocketFlags.None, remoteSendEndPoint);
 		}
 
 		protected virtual void reConnectServer ()

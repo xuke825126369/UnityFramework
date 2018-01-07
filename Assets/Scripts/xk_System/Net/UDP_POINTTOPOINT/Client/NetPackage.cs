@@ -27,7 +27,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		}
 	}
 
-	public class NetUdpFixedSizePackage:NetPackage
+	public class NetUdpFixedSizePackage : NetPackage
 	{
 		public NetUdpFixedSizePackage()
 		{

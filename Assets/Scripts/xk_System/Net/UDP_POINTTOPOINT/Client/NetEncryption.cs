@@ -62,6 +62,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			byte[] byBuLen = BitConverter.GetBytes (buffer_Length);
 			Array.Copy (byBuLen, 0, mPackage.buffer, 10, byBuLen.Length);
 
+			mPackage.Offset = 0;
 		}
 	}
 }
