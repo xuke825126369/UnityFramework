@@ -59,6 +59,6 @@ public class Timer
 
 	public double elapsed ()
 	{
-		return (DateTime.Now - nLastTime).TotalSeconds;
+		return (DateTime.Now - nLastTime).TotalMilliseconds;
 	}
 }

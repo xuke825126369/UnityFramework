@@ -14,10 +14,10 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 	{
 		protected Dictionary<UInt16, Action<NetPackage>> mLogicFuncDic = null;
 		protected Queue<NetPackage> mNeedHandlePackageQueue = null;
-			
+
 		protected NetUdpFixedSizePackage mReceiveStream = null;
 		protected ObjectPool<NetUdpFixedSizePackage> mUdpFixedSizePackagePool = null;
-		protected List<NetCombinePackage> mCanUseSortPackageList = null;
+		protected ObjectPool<NetCombinePackage> mCombinePackagePool = null;
 
 		protected UdpCheckPool mUdpCheckPool = null;
 
@@ -27,9 +27,19 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			mLogicFuncDic = new Dictionary<UInt16, Action<NetPackage>> ();
 
 			mUdpFixedSizePackagePool = new ObjectPool<NetUdpFixedSizePackage> ();
-			mCanUseSortPackageList = new List<NetCombinePackage> ();
+			mCombinePackagePool = new ObjectPool<NetCombinePackage> ();
 			mNeedHandlePackageQueue = new Queue<NetPackage> ();
 			mUdpCheckPool = new UdpCheckPool (this as ClientPeer);
+		}
+
+		public NetCombinePackage GetNetCombinePackage()
+		{
+			return mCombinePackagePool.Pop ();
+		}
+
+		public void RecycleNetUdpFixedPackage(NetUdpFixedSizePackage mPackage)
+		{
+			mUdpFixedSizePackagePool.recycle (mPackage);
 		}
 
 		public void AddLogicHandleQueue (NetPackage mPackage)
@@ -59,12 +69,19 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 		public virtual void Update (double elapsed)
 		{
+			mUdpCheckPool.Update (elapsed);
 			while (mNeedHandlePackageQueue.Count > 0) {
 				NetPackage mNetPackage = mNeedHandlePackageQueue.Dequeue ();
 				mLogicFuncDic [mNetPackage.nPackageId] (mNetPackage);
 
 				if (mNetPackage is NetCombinePackage) {
-					mCanUseSortPackageList.Add (mNetPackage as NetCombinePackage);
+					NetCombinePackage mCombinePackage = mNetPackage as NetCombinePackage;
+					var iter = mCombinePackage.mNeedRecyclePackage.GetEnumerator ();
+					while (iter.MoveNext ()) {
+						mUdpFixedSizePackagePool.recycle (iter.Current);
+					}
+					mCombinePackage.mNeedRecyclePackage.Clear ();
+					mCombinePackagePool.recycle (mNetPackage as NetCombinePackage);
 				} else if (mNetPackage is NetUdpFixedSizePackage) {
 					mUdpFixedSizePackagePool.recycle (mNetPackage as NetUdpFixedSizePackage);
 				}
@@ -75,7 +92,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		{
 			bool bSucccess = NetPackageEncryption.DeEncryption (mReceiveStream);
 			if (bSucccess) {
-				DebugSystem.Log ("客户端解析成功： " + mReceiveStream.Length);
 				if (mReceiveStream.nPackageId >= 50) {
 					mUdpCheckPool.AddReceiveCheck (mReceiveStream);
 				} else {
