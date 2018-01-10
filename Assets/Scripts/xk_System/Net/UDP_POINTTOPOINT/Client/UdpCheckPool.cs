@@ -11,6 +11,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 	{
 		class CheckPackageInfo
 		{
+			public UInt16 nOrderId;
 			public NetUdpFixedSizePackage mPackage;
 			public Timer mTimer;
 			public int nReSendCount;
@@ -26,8 +27,16 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		private const float nReSendTime = 3000.0f;
 
 		private ObjectPool<CheckPackageInfo> mCheckPackagePool = null;
+
 		private Dictionary<UInt16, CheckPackageInfo> mWaitCheckSendDic = null;
 		private Dictionary<UInt16, CheckPackageInfo> mWaitCheckReceiveDic = null;
+
+		private List<UInt16> mWaitRemoveCheckSendOrderIdList = null;
+		private List<UInt16> mWaitRemoveCheckReceiveOrderIdList = null;
+
+		private List<CheckPackageInfo> mWaitAddCheckSendOrderIdList = null;
+		private List<CheckPackageInfo> mWaitAddCheckReceiveOrderIdList = null;
+
 		private ClientPeer mUdpPeer = null;
 
 		private UInt16 nCurrentWaitReceiveOrderId;
@@ -39,6 +48,12 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			mCheckPackagePool = new ObjectPool<CheckPackageInfo> ();
 			mWaitCheckSendDic = new Dictionary<ushort, CheckPackageInfo> ();
 			mWaitCheckReceiveDic = new Dictionary<ushort, CheckPackageInfo> ();
+
+			mWaitRemoveCheckSendOrderIdList = new List<ushort> ();
+			mWaitRemoveCheckReceiveOrderIdList = new List<ushort> ();
+
+			mWaitAddCheckSendOrderIdList = new List<CheckPackageInfo> ();
+			mWaitAddCheckReceiveOrderIdList = new List<CheckPackageInfo> ();
 
 			mReceivePackageDic = new Dictionary<ushort, NetUdpFixedSizePackage> ();
 			nCurrentWaitReceiveOrderId = 1;
@@ -54,20 +69,31 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			UInt16 whoId = (UInt16)(mPackageCheckResult.NWhoOrderId >> 16);
 			UInt16 nOrderId = (UInt16)(mPackageCheckResult.NWhoOrderId & 0x0000FFFF);
 
-			DebugSystem.Log ("Client: nWhoId: " + whoId + " | nOrderId: " + nOrderId);
-
+			//DebugSystem.Log ("Client: nWhoId: " + whoId + " | nOrderId: " + nOrderId);
 			if (whoId == 1) {
 				this.mUdpPeer.SendNetStream (mPackage as NetUdpFixedSizePackage);
+				if (mWaitCheckSendDic.ContainsKey (nOrderId)) {
+					mUdpPeer.RecycleNetUdpFixedPackage (mWaitCheckSendDic [nOrderId].mPackage);
 
-				mUdpPeer.RecycleNetUdpFixedPackage (mWaitCheckSendDic [nOrderId].mPackage);
-				mWaitCheckSendDic.Remove (nOrderId);
+					if (!mWaitRemoveCheckSendOrderIdList.Contains (nOrderId)) {
+						mWaitRemoveCheckSendOrderIdList.Add (nOrderId);
+					}
+				} else {
+					DebugSystem.LogError ("不存在的发送 OrderId: " + nOrderId);
+				}
 			} else if (whoId == 2) {
-				mUdpPeer.RecycleNetUdpFixedPackage (mWaitCheckReceiveDic [nOrderId].mPackage);
-				mWaitCheckReceiveDic.Remove (nOrderId);
+				if (mWaitCheckReceiveDic.ContainsKey (nOrderId)) {
+					mUdpPeer.RecycleNetUdpFixedPackage (mWaitCheckReceiveDic [nOrderId].mPackage);
+					if (!mWaitRemoveCheckReceiveOrderIdList.Contains (nOrderId)) {
+						mWaitRemoveCheckReceiveOrderIdList.Add (nOrderId);
+					}
+				} else {
+					DebugSystem.LogError ("不存在的接受 OrderId: " + nOrderId);
+				}
 			}
 		}
 
-		public void AddSendCheck (UInt16 nOrderId, NetUdpFixedSizePackage sendBuff)
+		public void AddSendCheck (NetUdpFixedSizePackage mPackage)
 		{
 			if (!ClientConfig.bNeedCheckPackage) {
 				return;
@@ -75,9 +101,11 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 			CheckPackageInfo mCheckInfo = mCheckPackagePool.Pop ();
 			mCheckInfo.nReSendCount = 0;
-			mCheckInfo.mPackage = sendBuff;
+			mCheckInfo.mPackage = mPackage;
 			mCheckInfo.mTimer.restart ();
-			mWaitCheckSendDic [nOrderId] = mCheckInfo;
+			mCheckInfo.nOrderId = mPackage.nOrderId;
+
+			mWaitAddCheckSendOrderIdList.Add (mCheckInfo);
 		}
 
 		public void AddReceiveCheck (NetUdpFixedSizePackage mReceiveLogicPackage)
@@ -98,13 +126,18 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			mCheckInfo.nReSendCount = 0;
 			mCheckInfo.mPackage = mCheckResultPackage;
 			mCheckInfo.mTimer.restart ();
-			mWaitCheckReceiveDic [mReceiveLogicPackage.nOrderId] = mCheckInfo;
+			mCheckInfo.nOrderId = mReceiveLogicPackage.nOrderId;
+
+			mWaitAddCheckReceiveOrderIdList.Add (mCheckInfo);
 		}
 
 		private void CheckReceivePackageLoss (NetUdpFixedSizePackage mPackage)
 		{
 			if (mPackage.nOrderId == nCurrentWaitReceiveOrderId) {
 				nCurrentWaitReceiveOrderId++;
+				if (nCurrentWaitReceiveOrderId == 0) {
+					nCurrentWaitReceiveOrderId = 1;
+				}
 				CheckCombinePackage (mPackage);
 
 				while (true) {
@@ -114,6 +147,9 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 						CheckCombinePackage (mPackage);
 
 						nCurrentWaitReceiveOrderId++;
+						if (nCurrentWaitReceiveOrderId == 0) {
+							nCurrentWaitReceiveOrderId = 1;
+						}
 					} else {
 						break;
 					}
@@ -172,6 +208,28 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 		public void Update (double elapsed)
 		{
+			for (int i = 0; i < mWaitRemoveCheckSendOrderIdList.Count; ++i) {
+				mWaitCheckSendDic.Remove (mWaitRemoveCheckSendOrderIdList [i]);
+			}
+			mWaitRemoveCheckSendOrderIdList.Clear ();
+
+			for (int i = 0; i < mWaitRemoveCheckReceiveOrderIdList.Count; ++i) {
+				mWaitCheckReceiveDic.Remove (mWaitRemoveCheckReceiveOrderIdList [i]);
+			}
+			mWaitRemoveCheckReceiveOrderIdList.Clear ();
+
+			for (int i = 0; i < mWaitAddCheckSendOrderIdList.Count; ++i) {
+				CheckPackageInfo mPackageInfo = mWaitAddCheckSendOrderIdList [i];
+				mWaitCheckSendDic [mPackageInfo.nOrderId] = mPackageInfo;
+			}
+			mWaitAddCheckSendOrderIdList.Clear ();
+
+			for (int i = 0; i < mWaitAddCheckReceiveOrderIdList.Count; ++i) {
+				CheckPackageInfo mPackageInfo = mWaitAddCheckReceiveOrderIdList [i];
+				mWaitCheckReceiveDic [mPackageInfo.nOrderId] = mPackageInfo;
+			}
+			mWaitAddCheckReceiveOrderIdList.Clear ();
+
 			var iter1 = mWaitCheckSendDic.GetEnumerator ();
 			while (iter1.MoveNext ()) {
 				CheckPackageInfo mCheckInfo = iter1.Current.Value;
@@ -186,7 +244,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 					mCheckInfo.mTimer.restart ();
 				}
 			}
-				
+
 			var iter2 = mWaitCheckReceiveDic.GetEnumerator ();
 			while (iter2.MoveNext ()) {
 				CheckPackageInfo mCheckInfo = iter2.Current.Value;

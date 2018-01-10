@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using Google.Protobuf;
 using System;
-using xk_System.Net.UDP.POINTTOPOINT.Protocol;
 using xk_System.Debug;
 
 namespace xk_System.Net.UDP.POINTTOPOINT.Server
@@ -28,45 +27,20 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 				groupCount = (UInt16)(buffer.Length / ServerConfig.nUdpPackageFixedBodySize + 1);
 			}
 
-			if (groupCount > 1) {
-				while (nBeginIndex < buffer.Length) {
-					if (nBeginIndex + ServerConfig.nUdpPackageFixedBodySize > buffer.Length) {
-						readBytes = buffer.Length - nBeginIndex;
-					} else {
-						readBytes = ServerConfig.nUdpPackageFixedBodySize;
-					}
-
-					var mPackage = mUdpFixedSizePackagePool.Pop ();
-					mPackage.nOrderId = this.nPackageOrderId;
-					mPackage.nGroupCount = groupCount;
-					mPackage.nPackageId = id;
-					mPackage.Length = readBytes + ServerConfig.nUdpPackageFixedHeadSize;
-					Array.Copy (buffer, nBeginIndex, mPackage.buffer, ServerConfig.nUdpPackageFixedHeadSize, readBytes);
-
-					NetPackageEncryption.Encryption (mPackage);
-					SendNetStream (mPackage);
-
-					if (id >= 50) {
-						mUdpCheckPool.AddSendCheck (this.nPackageOrderId, mPackage);
-						this.nPackageOrderId++;
-					} else {
-						mUdpFixedSizePackagePool.recycle (mPackage);
-					}
-
-					nBeginIndex += readBytes;
-					groupCount = 1;
+			//DebugSystem.Log ("Client bufferLength: " + buffer.Length);
+			while (nBeginIndex < buffer.Length) {
+				if (nBeginIndex + ServerConfig.nUdpPackageFixedBodySize > buffer.Length) {
+					readBytes = buffer.Length - nBeginIndex;
+				} else {
+					readBytes = ServerConfig.nUdpPackageFixedBodySize;
 				}
-			} else {
-				
+
 				var mPackage = mUdpFixedSizePackagePool.Pop ();
 				mPackage.nOrderId = this.nPackageOrderId;
-				mPackage.nGroupCount = 1;
+				mPackage.nGroupCount = groupCount;
 				mPackage.nPackageId = id;
-				mPackage.Length = buffer.Length + ServerConfig.nUdpPackageFixedHeadSize;
-
-				if (buffer.Length > 0) {
-					Array.Copy (buffer, 0, mPackage.buffer, ServerConfig.nUdpPackageFixedHeadSize, buffer.Length);
-				}
+				mPackage.Length = readBytes + ServerConfig.nUdpPackageFixedHeadSize;
+				Array.Copy (buffer, nBeginIndex, mPackage.buffer, ServerConfig.nUdpPackageFixedHeadSize, readBytes);
 
 				NetPackageEncryption.Encryption (mPackage);
 				SendNetStream (mPackage);
@@ -74,11 +48,15 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 				if (id >= 50) {
 					mUdpCheckPool.AddSendCheck (this.nPackageOrderId, mPackage);
 					this.nPackageOrderId++;
+					if (this.nPackageOrderId == 0) {
+						this.nPackageOrderId = 1;
+					}
 				} else {
 					mUdpFixedSizePackagePool.recycle (mPackage);
 				}
 
 				nBeginIndex += readBytes;
+				groupCount = 1;
 			}
 		}
 
@@ -110,5 +88,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			byte[] stream = Protocol3Utility.SerializePackage (data1);
 			SendNetData (id, stream);
 		}
+
 	}
 }

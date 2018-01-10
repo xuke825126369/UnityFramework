@@ -70,6 +70,8 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		public virtual void Update (double elapsed)
 		{
 			mUdpCheckPool.Update (elapsed);
+
+			int nPackageCount = 0;
 			while (mNeedHandlePackageQueue.Count > 0) {
 				NetPackage mNetPackage = mNeedHandlePackageQueue.Dequeue ();
 				mLogicFuncDic [mNetPackage.nPackageId] (mNetPackage);
@@ -85,6 +87,12 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				} else if (mNetPackage is NetUdpFixedSizePackage) {
 					mUdpFixedSizePackagePool.recycle (mNetPackage as NetUdpFixedSizePackage);
 				}
+
+				nPackageCount++;
+			}
+
+			if (nPackageCount > 10) {
+				//DebugSystem.Log ("客户端 处理逻辑包的数量： " + nPackageCount);
 			}
 		}
 

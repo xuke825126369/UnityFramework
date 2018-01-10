@@ -17,7 +17,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 		protected NetUdpFixedSizePackage mReceiveStream = null;
 		protected ObjectPool<NetUdpFixedSizePackage> mUdpFixedSizePackagePool = null;
-		protected List<NetCombinePackage> mCanUseSortPackageList = null;
+		protected ObjectPool<NetCombinePackage> mCombinePackagePool = null;
 
 		protected UdpCheckPool mUdpCheckPool = null;
 
@@ -27,15 +27,27 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			mLogicFuncDic = new Dictionary<UInt16, Action<NetPackage>> ();
 
 			mUdpFixedSizePackagePool = new ObjectPool<NetUdpFixedSizePackage> ();
-			mCanUseSortPackageList = new List<NetCombinePackage> ();
+			mCombinePackagePool = new ObjectPool<NetCombinePackage> ();
 			mNeedHandlePackageQueue = new Queue<NetPackage> ();
 			mUdpCheckPool = new UdpCheckPool (this as ClientPeer);
 		}
 
+		public NetCombinePackage GetNetCombinePackage()
+		{
+			return mCombinePackagePool.Pop ();
+		}
+
+		public void RecycleNetUdpFixedPackage(NetUdpFixedSizePackage mPackage)
+		{
+			mUdpFixedSizePackagePool.recycle (mPackage);
+		}
+
 		public void AddLogicHandleQueue (NetPackage mPackage)
 		{
-			lock (mNeedHandlePackageQueue) {
+			if (mLogicFuncDic.ContainsKey (mPackage.nPackageId)) {
 				mNeedHandlePackageQueue.Enqueue (mPackage);
+			} else {
+				DebugSystem.LogError ("不存在的 协议ID: " + mPackage.nPackageId);
 			}
 		}
 
@@ -57,31 +69,38 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 		public virtual void Update (double elapsed)
 		{
+			mUdpCheckPool.Update (elapsed);
+
 			int nPackageCount = 0;
 			while (mNeedHandlePackageQueue.Count > 0) {
 				NetPackage mNetPackage = mNeedHandlePackageQueue.Dequeue ();
-				if (mLogicFuncDic.ContainsKey (mNetPackage.nPackageId)) {
-					mLogicFuncDic [mNetPackage.nPackageId] (mNetPackage);
-				} else {
-					DebugSystem.LogError ("nPackageId 不在字典中： " + mNetPackage.nPackageId);
-				}
+				DebugSystem.Assert (mNetPackage != null, "网络包 is Null ");
+				mLogicFuncDic [mNetPackage.nPackageId] (mNetPackage);
 
 				if (mNetPackage is NetCombinePackage) {
-					mCanUseSortPackageList.Add (mNetPackage as NetCombinePackage);
+					NetCombinePackage mCombinePackage = mNetPackage as NetCombinePackage;
+					var iter = mCombinePackage.mNeedRecyclePackage.GetEnumerator ();
+					while (iter.MoveNext ()) {
+						mUdpFixedSizePackagePool.recycle (iter.Current);
+					}
+					mCombinePackage.mNeedRecyclePackage.Clear ();
+					mCombinePackagePool.recycle (mNetPackage as NetCombinePackage);
 				} else if (mNetPackage is NetUdpFixedSizePackage) {
 					mUdpFixedSizePackagePool.recycle (mNetPackage as NetUdpFixedSizePackage);
 				}
 
 				nPackageCount++;
 			}
+
+			if (nPackageCount > 0) {
+				//DebugSystem.Log ("服务器 处理逻辑的数量： " + nPackageCount);
+			}
 		}
 
 		protected void HandleReceivePackage ()
 		{
 			bool bSucccess = NetPackageEncryption.DeEncryption (mReceiveStream);
-
 			if (bSucccess) {
-				DebugSystem.Log ("Server 包： " + mReceiveStream.nGroupCount + " | " + mReceiveStream.nOrderId + " | " + mReceiveStream.nPackageId);
 				if (mReceiveStream.nPackageId >= 50) {
 					mUdpCheckPool.AddReceiveCheck (mReceiveStream);
 				} else {
@@ -91,11 +110,10 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 			mReceiveStream = mUdpFixedSizePackagePool.Pop ();
 		}
-			
+
 		public virtual void release ()
 		{
-			
+
 		}
-	
 	}
 }

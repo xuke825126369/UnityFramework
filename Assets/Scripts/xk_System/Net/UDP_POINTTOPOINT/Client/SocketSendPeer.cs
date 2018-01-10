@@ -27,7 +27,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				groupCount = (UInt16)(buffer.Length / ClientConfig.nUdpPackageFixedBodySize + 1);
 			}
 				
-			DebugSystem.Log ("Client bufferLength: " + buffer.Length);
+			//DebugSystem.Log ("Client bufferLength: " + buffer.Length);
 			while (nBeginIndex < buffer.Length) {
 				if (nBeginIndex + ClientConfig.nUdpPackageFixedBodySize > buffer.Length) {
 					readBytes = buffer.Length - nBeginIndex;
@@ -46,8 +46,11 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				SendNetStream (mPackage);
 
 				if (id >= 50) {
-					mUdpCheckPool.AddSendCheck (this.nPackageOrderId, mPackage);
+					mUdpCheckPool.AddSendCheck (mPackage);
 					this.nPackageOrderId++;
+					if (this.nPackageOrderId == 0) {
+						this.nPackageOrderId = 1;
+					}
 				} else {
 					mUdpFixedSizePackagePool.recycle (mPackage);
 				}

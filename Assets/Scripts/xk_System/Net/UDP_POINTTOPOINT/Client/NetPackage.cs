@@ -63,7 +63,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 		public bool CheckCombineFinish ()
 		{
-			if (mReceivePackageDic.Count == nGroupCount) {
+			if (mReceivePackageDic.Count == nCombineGroupCount) {
 				SetPackage ();
 
 				return true;
@@ -86,7 +86,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				base.Length += (mReceivePackageDic [i].Length - ClientConfig.nUdpPackageFixedHeadSize);
 			}
 
-			base.nPackageId = nPackageId;
+			base.nPackageId = nCombinePackageId;
 		}
 	}
 }

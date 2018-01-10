@@ -8,8 +8,36 @@ using System;
 public class SimpleTest : MonoBehaviour {
 	void Start ()
 	{
-		Test4 ();
+		Test5 ();
 	}
+
+	class AAA
+	{
+		public string aaa;
+
+		public AAA(string aa)
+		{
+			this.aaa = aa;
+		}
+	}
+
+	private void Test5()
+	{
+		Dictionary<int,AAA> mDic = new Dictionary<int, AAA> ();
+		mDic [1] = new AAA ("1213e23");
+		mDic [2] = new AAA ("23232r23r");
+
+		var iter = mDic.GetEnumerator ();
+		while (iter.MoveNext ()) {
+			iter.Current.Value.aaa = "werwrwerweerwer";
+
+			DebugSystem.Log (iter.Current.Value.aaa);
+		}
+
+
+
+	}
+
 	System.Timers.Timer tm = null;
 	private void Test4()
 	{

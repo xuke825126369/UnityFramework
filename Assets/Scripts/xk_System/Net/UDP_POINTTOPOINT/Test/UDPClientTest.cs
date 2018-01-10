@@ -29,11 +29,19 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 
 		IEnumerator SendBroadCast ()
 		{
+			int i = 0;
 			while (true) {
-				yield return new WaitForSeconds (1f);
+				yield return new WaitForSeconds (0.1f);
 				Send ();
-				break;
+				i++;
+				if (i == 1000) {
+					break;
+				}
 			}
+
+			yield return new WaitForSeconds (1f);
+
+			DebugSystem.Log ("发送接受数量： " + nSendCount + " | " + nReceiveCount);
 		}
 
 		private void Send ()
@@ -60,11 +68,12 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 			}
 
 			mNetSystem.sendNetData (UdpNetCommand.COMMAND_TESTCHAT, msg);
+			nSendCount++;
 		}
 
 		private void Receive_ServerSenddata (NetPackage package)
 		{
-			DebugSystem.Log ("Client packageLength: " + package.Length);
+			//DebugSystem.Log ("Client packageLength: " + package.Length);
 			csChatData mServerSendData = Protocol3Utility.getData<csChatData> (package);
 			DebugSystem.Log ("Client: " + mServerSendData.Id + " | " + mServerSendData.TalkMsg);
 			nReceiveCount++;
