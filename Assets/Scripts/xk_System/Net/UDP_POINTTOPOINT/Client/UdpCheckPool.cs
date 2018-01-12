@@ -159,6 +159,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			} else {
 				DebugSystem.Log ("Client 接受 过去的 废物包： " + mPackage.nPackageId);
 			}
+
 		}
 
 		private void CheckCombinePackage (NetUdpFixedSizePackage mPackage)

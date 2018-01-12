@@ -16,19 +16,19 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		protected Queue<NetPackage> mNeedHandlePackageQueue = null;
 
 		protected NetUdpFixedSizePackage mReceiveStream = null;
-		protected ObjectPool<NetUdpFixedSizePackage> mUdpFixedSizePackagePool = null;
-		protected ObjectPool<NetCombinePackage> mCombinePackagePool = null;
+		protected SafeObjectPool<NetUdpFixedSizePackage> mUdpFixedSizePackagePool = null;
+		protected SafeObjectPool<NetCombinePackage> mCombinePackagePool = null;
 
 		protected UdpCheckPool mUdpCheckPool = null;
 
 		public SocketReceivePeer ()
 		{
-			mReceiveStream = new NetUdpFixedSizePackage ();
 			mLogicFuncDic = new Dictionary<UInt16, Action<NetPackage>> ();
-
-			mUdpFixedSizePackagePool = new ObjectPool<NetUdpFixedSizePackage> ();
-			mCombinePackagePool = new ObjectPool<NetCombinePackage> ();
 			mNeedHandlePackageQueue = new Queue<NetPackage> ();
+
+			mUdpFixedSizePackagePool = new SafeObjectPool<NetUdpFixedSizePackage> ();
+			mCombinePackagePool = new SafeObjectPool<NetCombinePackage> ();
+
 			mUdpCheckPool = new UdpCheckPool (this as ClientPeer);
 		}
 
@@ -107,13 +107,12 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 					AddLogicHandleQueue (mReceiveStream);
 				}
 			}
-
-			mReceiveStream = mUdpFixedSizePackagePool.Pop ();
 		}
 
 		public virtual void release ()
 		{
 
 		}
+
 	}
 }

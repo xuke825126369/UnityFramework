@@ -9,7 +9,7 @@ using System.Threading;
 
 namespace xk_System.Net.UDP.POINTTOPOINT.Server
 {
-	public class SocketUdp_Basic:SocketReceivePeer
+	public class SocketUdp_Server_Basic
 	{
 		private EndPoint bindEndPoint = null;
 		private EndPoint remoteEndPoint = null;
@@ -63,7 +63,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 				}
 			}
 		}
-			
+
 		public void SendNetStream (byte[] msg,int offset,int Length)
 		{
 			mSocket.SendTo (msg, offset, Length, SocketFlags.None, remoteEndPoint);

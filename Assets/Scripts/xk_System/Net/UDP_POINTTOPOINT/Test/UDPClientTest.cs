@@ -77,6 +77,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 			csChatData mServerSendData = Protocol3Utility.getData<csChatData> (package);
 			DebugSystem.Log ("Client: " + mServerSendData.Id + " | " + mServerSendData.TalkMsg);
 			nReceiveCount++;
+
 		}
 	}
 }

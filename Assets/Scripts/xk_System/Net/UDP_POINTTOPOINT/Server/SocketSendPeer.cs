@@ -35,7 +35,10 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 					readBytes = ServerConfig.nUdpPackageFixedBodySize;
 				}
 
-				var mPackage = mUdpFixedSizePackagePool.Pop ();
+				NetUdpFixedSizePackage mPackage = null;
+				lock (mUdpFixedSizePackagePool) {
+					mPackage = mUdpFixedSizePackagePool.Pop ();
+				}
 				mPackage.nOrderId = this.nPackageOrderId;
 				mPackage.nGroupCount = groupCount;
 				mPackage.nPackageId = id;

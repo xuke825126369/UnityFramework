@@ -7,6 +7,7 @@ using xk_System.Debug;
 using System.Net.Sockets;
 using Google.Protobuf;
 using xk_System.Net.UDP.POINTTOPOINT.Protocol;
+using System.Collections.Concurrent;
 
 namespace xk_System.Net.UDP.POINTTOPOINT.Client
 {
@@ -23,7 +24,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 		public SocketReceivePeer ()
 		{
-			mReceiveStream = new NetUdpFixedSizePackage ();
 			mLogicFuncDic = new Dictionary<UInt16, Action<NetPackage>> ();
 
 			mUdpFixedSizePackagePool = new ObjectPool<NetUdpFixedSizePackage> ();
@@ -37,9 +37,18 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			return mCombinePackagePool.Pop ();
 		}
 
+		public NetUdpFixedSizePackage GetNetUdpFixedPackage()
+		{
+			lock (mUdpFixedSizePackagePool) {
+				return mUdpFixedSizePackagePool.Pop ();
+			}
+		}
+
 		public void RecycleNetUdpFixedPackage(NetUdpFixedSizePackage mPackage)
 		{
-			mUdpFixedSizePackagePool.recycle (mPackage);
+			lock (mUdpFixedSizePackagePool) {
+				mUdpFixedSizePackagePool.recycle (mPackage);
+			}
 		}
 
 		public void AddLogicHandleQueue (NetPackage mPackage)
@@ -106,8 +115,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 					AddLogicHandleQueue (mReceiveStream);
 				}
 			}
-
-			mReceiveStream = mUdpFixedSizePackagePool.Pop ();
 		}
 			
 		public virtual void release ()

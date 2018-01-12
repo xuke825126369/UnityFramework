@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 using xk_System.Debug;
+using System.Collections.Concurrent;
 
 namespace xk_System
 {
@@ -46,6 +47,46 @@ namespace xk_System
 			mObjectPool.Clear ();
 			mObjectPool = null;
 		}
+	}
+
+	public class SafeObjectPool<T> where T:new()
+	{
+		private int nMaxObjectCount = 0;
+		private ConcurrentQueue<T> mObjectPool = null;
+
+		public SafeObjectPool()
+		{
+			this.nMaxObjectCount = int.MaxValue;
+			mObjectPool = new ConcurrentQueue<T> ();
+		}
+
+		public T Pop()
+		{
+			if (!mObjectPool.IsEmpty) {
+				T t = default(T);
+				if (!mObjectPool.TryDequeue (out t)) {
+					t = new T ();
+				}
+				return t;
+			} else {
+				return new T ();
+			}
+		}
+
+		public void recycle(T t)
+		{
+			if (t is ObjectPoolInterface) {
+				ObjectPoolInterface mInterface = t as ObjectPoolInterface;
+				mInterface.reset ();
+			}
+			mObjectPool.Enqueue (t);
+		}
+
+		public void release()
+		{
+			mObjectPool = null;
+		}
+
 	}
 		
 	public class ArrayGCPool<T>
