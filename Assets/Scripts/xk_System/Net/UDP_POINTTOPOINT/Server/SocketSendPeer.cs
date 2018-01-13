@@ -36,9 +36,8 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 				}
 
 				NetUdpFixedSizePackage mPackage = null;
-				lock (mUdpFixedSizePackagePool) {
-					mPackage = mUdpFixedSizePackagePool.Pop ();
-				}
+				mPackage = ObjectPoolManager.Instance.mUdpFixedSizePackagePool.Pop ();
+
 				mPackage.nOrderId = this.nPackageOrderId;
 				mPackage.nGroupCount = groupCount;
 				mPackage.nPackageId = id;
@@ -55,7 +54,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 						this.nPackageOrderId = 1;
 					}
 				} else {
-					mUdpFixedSizePackagePool.recycle (mPackage);
+					ObjectPoolManager.Instance.mUdpFixedSizePackagePool.recycle (mPackage);
 				}
 
 				nBeginIndex += readBytes;
@@ -68,7 +67,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			IMessage data1 = data as IMessage;
 			byte[] stream = Protocol3Utility.SerializePackage (data1);
 
-			var mPackage = mUdpFixedSizePackagePool.Pop ();
+			var mPackage = ObjectPoolManager.Instance.mUdpFixedSizePackagePool.Pop ();
 			mPackage.nOrderId = 0;
 			mPackage.nGroupCount = 0;
 			mPackage.nPackageId = id;

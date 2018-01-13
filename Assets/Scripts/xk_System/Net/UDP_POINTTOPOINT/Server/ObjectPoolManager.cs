@@ -6,13 +6,16 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 {
 	public class ObjectPoolManager:Singleton<ObjectPoolManager>
 	{
-		public ObjectPool<NetUdpFixedSizePackage> mUdpFixedSizePackagePool;
-		public ObjectPool<NetCombinePackage> mCombinePackagePool;
+		public SafeObjectPool<NetUdpFixedSizePackage> mUdpFixedSizePackagePool;
+		public SafeObjectPool<NetCombinePackage> mCombinePackagePool;
+		public SafeObjectPool<ClientPeer> mClientPeerPool;
 
 		public ObjectPoolManager()
 		{
-			mUdpFixedSizePackagePool = new ObjectPool<NetUdpFixedSizePackage> ();
-			mCombinePackagePool = new ObjectPool<NetCombinePackage> ();
+			mUdpFixedSizePackagePool = new SafeObjectPool<NetUdpFixedSizePackage> ();
+			mCombinePackagePool = new SafeObjectPool<NetCombinePackage> ();
+			mClientPeerPool = new SafeObjectPool<ClientPeer> ();
 		}
+
 	}
 }

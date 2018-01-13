@@ -14,13 +14,19 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 		public void Init()
 		{
+			mServer = new SocketUdp_Server_Basic ();
 			mServer.InitNet (ip, port);
 		}
 
 		private void Update()
 		{
-			ClientPeerManager.Instance.Update ();
+			ClientPeerManager.Instance.Update (Time.deltaTime);
+		}
 
+		private void OnDestroy()
+		{
+			//ClientPeerManager.Instance.Release ();
+			mServer.CloseNet ();
 		}
 		
 	}

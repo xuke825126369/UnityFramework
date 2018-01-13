@@ -11,20 +11,20 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 {
 	public class UDPServerTest : MonoBehaviour
 	{
-		NetClient mNetSystem = null;
+		NetServer mNetSystem = null;
 
 		private void Start ()
 		{
 			gameObject.AddComponent<LogManager> ();
-			mNetSystem = gameObject.AddComponent<NetClient> ();
+			mNetSystem = gameObject.AddComponent<NetServer> ();
 
-			mNetSystem.InitNet ();
+			mNetSystem.Init ();
 			StartCoroutine (StartTest ());
 		}
 
 		private IEnumerator StartTest ()
 		{
-			mNetSystem.addNetListenFun (UdpNetCommand.COMMAND_TESTCHAT, Receive_ServerSenddata);
+			PackageManager.Instance.addNetListenFun (UdpNetCommand.COMMAND_TESTCHAT, Receive_ServerSenddata);
 			yield return Run ();
 		}
 
@@ -39,13 +39,13 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 
 		public static int nReceiveCount = 0;
 
-		private void Receive_ServerSenddata (NetPackage package)
+		private void Receive_ServerSenddata (ClientPeer peer, NetPackage package)
 		{
 			//DebugSystem.Log ("Server packageLength: ew");
 			csChatData mServerSendData = Protocol3Utility.getData<csChatData> (package);
 			//DebugSystem.Log ("Server: " + mServerSendData.TalkMsg);
 
-			mNetSystem.sendNetData (UdpNetCommand.COMMAND_TESTCHAT, mServerSendData);
+			peer.SendNetData (UdpNetCommand.COMMAND_TESTCHAT, mServerSendData);
 			nReceiveCount++;
 		}
 	}

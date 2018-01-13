@@ -6,6 +6,7 @@ using xk_System.Debug;
 using System.Text;
 using System;
 using System.Threading;
+using System.Collections.Concurrent;
 
 namespace xk_System.Net.UDP.POINTTOPOINT.Server
 {
@@ -19,22 +20,26 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		private string ip;
 		private UInt16 port;
 
-		protected UDPTYPE mUdpType;
 		protected NETSTATE m_state;
 		protected Queue<peer_event> mPeerEventQueue = new Queue<peer_event> ();
+
+		private ConcurrentQueue<NetUdpFixedSizePackage> mReceivePackageQueue = null;
+
+		public SocketUdp_Server_Basic()
+		{
+			mReceivePackageQueue = new ConcurrentQueue<NetUdpFixedSizePackage> ();
+		}
 
 		public void InitNet (string ip, UInt16 ServerPort)
 		{
 			this.port = ServerPort;
 			this.ip = ip;
 			m_state = NETSTATE.DISCONNECTED;
-			mUdpType = UDPTYPE.POINTTOPOINT;
 
 			mSocket = new Socket (AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
 
 			bindEndPoint = new IPEndPoint (IPAddress.Parse (ip), port);
 			mSocket.Bind (bindEndPoint);
-
 			remoteEndPoint = new IPEndPoint (IPAddress.Any, 0);
 
 			mThread = new Thread (HandData);
@@ -46,50 +51,61 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			while (true) {
 				int length = 0;
 				try {
-					mReceiveStream = mUdpFixedSizePackagePool.Pop ();
-					length = mSocket.ReceiveFrom (mReceiveStream.buffer, 0, mReceiveStream.buffer.Length, SocketFlags.None, ref remoteEndPoint);
-					mReceiveStream.Length = length;
+					//remoteEndPoint = new IPEndPoint (IPAddress.Any, 0);
+					NetUdpFixedSizePackage mPackage = ObjectPoolManager.Instance.mUdpFixedSizePackagePool.Pop ();
+					length = mSocket.ReceiveFrom (mPackage.buffer, 0, mPackage.buffer.Length, SocketFlags.None, ref remoteEndPoint);
+					mPackage.Length = length;
+
 					if (length > 0) {
-						HandleReceivePackage ();
+						IPEndPoint point = remoteEndPoint as IPEndPoint;
+						UInt16 tempPort = (UInt16)point.Port;
+
+						ClientPeer mPeer = null;
+						if (!ClientPeerManager.Instance.IsExist (tempPort)) {
+							mPeer = ObjectPoolManager.Instance.mClientPeerPool.Pop ();
+							mPeer.ConnectClient (mSocket, point);
+							ClientPeerManager.Instance.AddClient (mPeer);
+
+							DebugSystem.Log ("增加 客户端信息： " + tempPort);
+						}
+
+						mPeer = ClientPeerManager.Instance.FindClient (tempPort);
+						mPeer.ReceiveUdpSocketFixedPackage (mPackage);
+					} else {
+						ObjectPoolManager.Instance.mUdpFixedSizePackagePool.recycle (mPackage);
 					}
+				} catch (SocketException e) {
+					DebugSystem.LogError ("SocketException: " + e.SocketErrorCode);
+					break;
 				} catch (Exception e) {
-					this.CloseNet ();
+					DebugSystem.LogError ("服务器 异常： " + e.Message + " | " + e.StackTrace);
 
 					m_state = NETSTATE.DISCONNECTED;
 					peer_event mEvent = new peer_event ();
 					mEvent.mNetEventType = NETEVENT.DISCONNECTED;
 					mEvent.msg = e.Message;
+
 					break;
 				}
+
 			}
-		}
-
-		public void SendNetStream (byte[] msg,int offset,int Length)
-		{
-			mSocket.SendTo (msg, offset, Length, SocketFlags.None, remoteEndPoint);
-		}
-
-		protected virtual void reConnectServer ()
-		{
-
 		}
 
 		public void CloseNet ()
 		{
 			if (mSocket != null) {
 				mSocket.Close ();
-				mSocket = null;
 			}
 			mThread.Abort ();
 		}
 	}
 
-	public class SocketUdp_Poll : SocketReceivePeer
+	public class SocketUdp_Server_Poll : SocketReceivePeer
 	{
 		private Socket mSocket = null;
 		byte[] mReceiveStream = null;
 
-		public SocketUdp_Poll()
+		public SocketUdp_Server_Poll()
 		{
 			mReceiveStream = new byte[ServerConfig.nUdpPackageFixedSize];
 		}
@@ -149,12 +165,12 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		}
 	}
 
-	public class SocketUdp_SocketAsyncEventArgs:SocketReceivePeer
+	public class SocketUdp_Server_SocketAsyncEventArgs:SocketReceivePeer
 	{
 		private SocketAsyncEventArgs ReceiveArgs;
 		private Socket mSocket = null;
 
-		public SocketUdp_SocketAsyncEventArgs()
+		public SocketUdp_Server_SocketAsyncEventArgs()
 		{
 
 		}
@@ -194,7 +210,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		private void Receive_Fun (object sender, SocketAsyncEventArgs e)
 		{
 			if (e.SocketError == SocketError.Success && e.BytesTransferred > 0) {
-				Array.Copy (e.Buffer, 0, mReceiveStream.buffer, 0, e.BytesTransferred);
+				//Array.Copy (e.Buffer, 0, mReceiveStream.buffer, 0, e.BytesTransferred);
 				mSocket.ReceiveAsync (e);
 			} else {
 				DebugSystem.Log ("接收数据失败： " + e.SocketError.ToString ());
@@ -210,6 +226,8 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			}
 		}			
 	}
+
+
 }
 
 

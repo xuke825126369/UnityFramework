@@ -1,32 +1,60 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System;
+using System.Collections.Concurrent;
+using xk_System.Debug;
 
 namespace xk_System.Net.UDP.POINTTOPOINT.Server
 {
 	public class ClientPeerManager:Singleton<ClientPeerManager>
 	{
-		Dictionary<UInt16, ClientPeer> mClientDic = null;
+		private ConcurrentDictionary<UInt16, ClientPeer> mClientDic = null;
 
 		public  ClientPeerManager()
 		{
-			mClientDic = new Dictionary<ushort, ClientPeer> ();
+			mClientDic = new ConcurrentDictionary<ushort, ClientPeer> ();
 		}
 
 		public void Update(double elapsed)
 		{
-
-
+			if (!mClientDic.IsEmpty) {
+				var iter = mClientDic.GetEnumerator ();
+				while (iter.MoveNext ()) {
+					iter.Current.Value.Update (elapsed);
+				}
+			}
 		}
 
-		public void AddClient(UInt16 port, ClientPeer peer)
+		public bool IsExist(UInt16 port)
 		{
-			mClientDic [port] = peer;
+			return mClientDic.ContainsKey (port);
 		}
 
-		public void RemoveClient(UInt16 port)
+		public void AddClient(ClientPeer peer)
 		{
-			mClientDic.Remove (port);
+			if (!mClientDic.TryAdd (peer.getPort (), peer)) {
+				DebugSystem.LogError ("AddClient Error");
+			}
+		}
+
+		public ClientPeer FindClient(UInt16 port)
+		{
+			if (IsExist (port)) {
+				ClientPeer peer = null;
+				if (!mClientDic.TryGetValue (port, out peer)) {
+					DebugSystem.LogError ("FindClient Error");
+				}
+				return peer;
+			}
+
+			DebugSystem.LogError ("ClientPeer 不存在");
+			return null;
+		}
+
+		public bool RemoveClient(UInt16 port)
+		{
+			ClientPeer peer;
+			return mClientDic.TryRemove (port, out peer);
 		}
 
 		public void Broadcast(UInt16 id, object data)
@@ -44,6 +72,5 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 				mClientDic [iter.Current].SendNetData (id, data);
 			}
 		}
-		
 	}
 }

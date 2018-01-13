@@ -13,15 +13,16 @@ namespace xk_System
 	}
 
 	//Object 池子
-	public class ObjectPool<T> where T:new()
+	public class ObjectPool<T> where T:class, new()
 	{
-		private int nMaxObjectCount = 0;
 		Queue<T> mObjectPool = null;
 
-		public ObjectPool()
+		public ObjectPool(int initCapacity = 0)
 		{
-			this.nMaxObjectCount = int.MaxValue;
 			mObjectPool = new Queue<T> ();
+			for (int i = 0; i < initCapacity; i++) {
+				mObjectPool.Enqueue (new T ());
+			}
 		}
 
 		public T Pop()
@@ -49,15 +50,18 @@ namespace xk_System
 		}
 	}
 
-	public class SafeObjectPool<T> where T:new()
+	public class SafeObjectPool<T> where T:class,new()
 	{
 		private int nMaxObjectCount = 0;
 		private ConcurrentQueue<T> mObjectPool = null;
 
-		public SafeObjectPool()
+		public SafeObjectPool(int initCapacity = 0)
 		{
 			this.nMaxObjectCount = int.MaxValue;
 			mObjectPool = new ConcurrentQueue<T> ();
+			for (int i = 0; i < initCapacity; i++) {
+				mObjectPool.Enqueue (new T ());
+			}
 		}
 
 		public T Pop()
@@ -65,7 +69,8 @@ namespace xk_System
 			if (!mObjectPool.IsEmpty) {
 				T t = default(T);
 				if (!mObjectPool.TryDequeue (out t)) {
-					t = new T ();
+					DebugSystem.LogError ("Pop 失败");
+					return default(T);
 				}
 				return t;
 			} else {

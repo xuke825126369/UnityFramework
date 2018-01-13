@@ -73,7 +73,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			if (whoId == 1) {
 				this.mUdpPeer.SendNetStream (mPackage as NetUdpFixedSizePackage);
 				if (mWaitCheckSendDic.ContainsKey (nOrderId)) {
-					mUdpPeer.RecycleNetUdpFixedPackage (mWaitCheckSendDic [nOrderId].mPackage);
+					mUdpPeer.RecycleSendPackage (mWaitCheckSendDic [nOrderId].mPackage);
 
 					if (!mWaitRemoveCheckSendOrderIdList.Contains (nOrderId)) {
 						mWaitRemoveCheckSendOrderIdList.Add (nOrderId);
@@ -83,7 +83,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				}
 			} else if (whoId == 2) {
 				if (mWaitCheckReceiveDic.ContainsKey (nOrderId)) {
-					mUdpPeer.RecycleNetUdpFixedPackage (mWaitCheckReceiveDic [nOrderId].mPackage);
+					mUdpPeer.RecycleReceivePackage (mWaitCheckReceiveDic [nOrderId].mPackage);
 					if (!mWaitRemoveCheckReceiveOrderIdList.Contains (nOrderId)) {
 						mWaitRemoveCheckReceiveOrderIdList.Add (nOrderId);
 					}

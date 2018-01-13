@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using xk_System.DataStructure;
 using System;
+using System.Collections.Concurrent;
 using xk_System.Event;
 using xk_System.Debug;
 using System.Net.Sockets;
@@ -12,21 +13,14 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 {
 	public abstract class SocketReceivePeer
 	{
-		protected Dictionary<UInt16, Action<NetPackage>> mLogicFuncDic = null;
-		protected Queue<NetPackage> mNeedHandlePackageQueue = null;
-
-		protected NetUdpFixedSizePackage mReceiveStream = null;
-		protected SafeObjectPool<NetUdpFixedSizePackage> mUdpFixedSizePackagePool = null;
+		protected ConcurrentQueue<NetPackage> mNeedHandlePackageQueue = null;
 		protected SafeObjectPool<NetCombinePackage> mCombinePackagePool = null;
 
 		protected UdpCheckPool mUdpCheckPool = null;
 
 		public SocketReceivePeer ()
 		{
-			mLogicFuncDic = new Dictionary<UInt16, Action<NetPackage>> ();
-			mNeedHandlePackageQueue = new Queue<NetPackage> ();
-
-			mUdpFixedSizePackagePool = new SafeObjectPool<NetUdpFixedSizePackage> ();
+			mNeedHandlePackageQueue = new ConcurrentQueue<NetPackage> ();
 			mCombinePackagePool = new SafeObjectPool<NetCombinePackage> ();
 
 			mUdpCheckPool = new UdpCheckPool (this as ClientPeer);
@@ -39,32 +33,12 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 		public void RecycleNetUdpFixedPackage(NetUdpFixedSizePackage mPackage)
 		{
-			mUdpFixedSizePackagePool.recycle (mPackage);
+			ObjectPoolManager.Instance.mUdpFixedSizePackagePool.recycle (mPackage);
 		}
 
 		public void AddLogicHandleQueue (NetPackage mPackage)
 		{
-			if (mLogicFuncDic.ContainsKey (mPackage.nPackageId)) {
-				mNeedHandlePackageQueue.Enqueue (mPackage);
-			} else {
-				DebugSystem.LogError ("不存在的 协议ID: " + mPackage.nPackageId);
-			}
-		}
-
-		public void addNetListenFun (UInt16 command, Action<NetPackage> func)
-		{
-			if (!mLogicFuncDic.ContainsKey (command)) {
-				mLogicFuncDic [command] = func;
-			} else {
-				mLogicFuncDic [command] += func;
-			}
-		}
-
-		public void removeNetListenFun (UInt16 command, Action<NetPackage> func)
-		{
-			if (mLogicFuncDic.ContainsKey (command)) {
-				mLogicFuncDic [command] -= func;
-			}
+			mNeedHandlePackageQueue.Enqueue (mPackage);
 		}
 
 		public virtual void Update (double elapsed)
@@ -73,20 +47,23 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 			int nPackageCount = 0;
 			while (mNeedHandlePackageQueue.Count > 0) {
-				NetPackage mNetPackage = mNeedHandlePackageQueue.Dequeue ();
+				NetPackage mNetPackage = null;
+				if (!mNeedHandlePackageQueue.TryDequeue (out mNetPackage)) {
+					break;
+				}
 				DebugSystem.Assert (mNetPackage != null, "网络包 is Null ");
-				mLogicFuncDic [mNetPackage.nPackageId] (mNetPackage);
+				PackageManager.Instance.Execute (this as ClientPeer, mNetPackage);
 
 				if (mNetPackage is NetCombinePackage) {
 					NetCombinePackage mCombinePackage = mNetPackage as NetCombinePackage;
 					var iter = mCombinePackage.mNeedRecyclePackage.GetEnumerator ();
 					while (iter.MoveNext ()) {
-						mUdpFixedSizePackagePool.recycle (iter.Current);
+						RecycleNetUdpFixedPackage (iter.Current);
 					}
 					mCombinePackage.mNeedRecyclePackage.Clear ();
 					mCombinePackagePool.recycle (mNetPackage as NetCombinePackage);
 				} else if (mNetPackage is NetUdpFixedSizePackage) {
-					mUdpFixedSizePackagePool.recycle (mNetPackage as NetUdpFixedSizePackage);
+					RecycleNetUdpFixedPackage (mNetPackage as NetUdpFixedSizePackage);
 				}
 
 				nPackageCount++;
@@ -97,14 +74,14 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			}
 		}
 
-		protected void HandleReceivePackage ()
+		public void ReceiveUdpSocketFixedPackage (NetUdpFixedSizePackage mPackage)
 		{
-			bool bSucccess = NetPackageEncryption.DeEncryption (mReceiveStream);
+			bool bSucccess = NetPackageEncryption.DeEncryption (mPackage);
 			if (bSucccess) {
-				if (mReceiveStream.nPackageId >= 50) {
-					mUdpCheckPool.AddReceiveCheck (mReceiveStream);
+				if (mPackage.nPackageId >= 50) {
+					mUdpCheckPool.AddReceiveCheck (mPackage);
 				} else {
-					AddLogicHandleQueue (mReceiveStream);
+					AddLogicHandleQueue (mPackage);
 				}
 			}
 		}

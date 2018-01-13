@@ -34,7 +34,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 				yield return new WaitForSeconds (0.1f);
 				Send ();
 				i++;
-				if (i == 1000) {
+				if (i == 100) {
 					break;
 				}
 			}
@@ -50,7 +50,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 			if (UnityEngine.Random.Range (1, 5) == 10) {
 				msg.Id = 10000000;
 				msg.TalkMsg = "127.0.0.1";	
-			} else if (UnityEngine.Random.Range (1, 5) == 20) {
+			} else if (UnityEngine.Random.Range (1, 5) == 2) {
 				byte[] aa = new byte[2048];
 				msg.TalkMsg = BitConverter.ToString (aa);
 			} else if (UnityEngine.Random.Range (1, 5) == 30) {

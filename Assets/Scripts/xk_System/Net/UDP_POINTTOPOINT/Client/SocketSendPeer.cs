@@ -8,11 +8,13 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 {
 	public class SocketSendPeer : SocketUdp_Basic
 	{
+		private ObjectPool<NetUdpFixedSizePackage> mSendPackgePool = null;
 		private UInt16 nPackageOrderId;
 
 		public SocketSendPeer()
 		{
 			nPackageOrderId = 1;
+			mSendPackgePool = new ObjectPool<NetUdpFixedSizePackage> (50);
 		}
 
 		public void SendNetData (UInt16 id, byte[] buffer)
@@ -35,7 +37,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 					readBytes = ClientConfig.nUdpPackageFixedBodySize;
 				}
 
-				var mPackage = mUdpFixedSizePackagePool.Pop ();
+				var mPackage = mSendPackgePool.Pop ();
 				mPackage.nOrderId = this.nPackageOrderId;
 				mPackage.nGroupCount = groupCount;
 				mPackage.nPackageId = id;
@@ -52,7 +54,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 						this.nPackageOrderId = 1;
 					}
 				} else {
-					mUdpFixedSizePackagePool.recycle (mPackage);
+					mSendPackgePool.recycle (mPackage);
 				}
 
 				nBeginIndex += readBytes;
@@ -65,7 +67,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			IMessage data1 = data as IMessage;
 			byte[] stream = Protocol3Utility.SerializePackage (data1);
 
-			var mPackage = mUdpFixedSizePackagePool.Pop ();
+			var mPackage = mSendPackgePool.Pop ();
 			mPackage.nOrderId = 0;
 			mPackage.nGroupCount = 0;
 			mPackage.nPackageId = id;
@@ -75,6 +77,11 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			NetPackageEncryption.Encryption (mPackage);
 
 			return mPackage;
+		}
+
+		public void RecycleSendPackage(NetUdpFixedSizePackage mPackage)
+		{
+			mSendPackgePool.recycle (mPackage);
 		}
 
 		public void SendNetStream(NetUdpFixedSizePackage mPackage)
@@ -88,6 +95,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			byte[] stream = Protocol3Utility.SerializePackage (data1);
 			SendNetData (id, stream);
 		}
-
 	}
+
 }

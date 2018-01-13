@@ -44,19 +44,16 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			while (true) {
 				int length = 0;
 				try {
-					lock (mUdpFixedSizePackagePool) {
-						mReceiveStream = mUdpFixedSizePackagePool.Pop ();
-					}
+					NetUdpFixedSizePackage mReceiveStream = null;
+					mReceiveStream = mReceivePackagePool.Pop ();
 
 					length = mSocket.ReceiveFrom (mReceiveStream.buffer, 0, mReceiveStream.buffer.Length, SocketFlags.None, ref remoteEndPoint);
 					if (length > 0) {
 						//DebugSystem.Log("ReceiveLength: " + length);
 						mReceiveStream.Length = length;
-						HandleReceivePackage ();
+						ReceiveNetPackage (mReceiveStream);
 					} else {
-						lock (mUdpFixedSizePackagePool) {
-							mUdpFixedSizePackagePool.recycle (mReceiveStream);
-						}
+						mReceivePackagePool.recycle (mReceiveStream);
 					}
 				} catch (SocketException e) {
 					DebugSystem.LogError (e.SocketErrorCode);
@@ -90,7 +87,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		{
 			if (mSocket != null) {
 				mSocket.Close ();
-				mSocket = null;
 			}
 			mThread.Abort ();
 		}
@@ -206,7 +202,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		private void Receive_Fun (object sender, SocketAsyncEventArgs e)
 		{
 			if (e.SocketError == SocketError.Success && e.BytesTransferred > 0) {
-				Array.Copy (e.Buffer, 0, mReceiveStream.buffer, 0, e.BytesTransferred);
+				//Array.Copy (e.Buffer, 0, mReceiveStream.buffer, 0, e.BytesTransferred);
 				mSocket.ReceiveAsync (e);
 			} else {
 				DebugSystem.Log ("接收数据失败： " + e.SocketError.ToString ());

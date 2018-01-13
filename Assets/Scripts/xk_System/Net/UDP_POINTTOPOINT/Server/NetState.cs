@@ -3,12 +3,6 @@ using System.Collections.Generic;
 
 namespace xk_System.Net.UDP.POINTTOPOINT.Server
 {
-	public enum UDPTYPE
-	{
-		POINTTOPOINT = 1,
-		BROADCAST = 2,
-	}
-
 	public enum NETSTATE
 	{
 		CONNECTING = 1,

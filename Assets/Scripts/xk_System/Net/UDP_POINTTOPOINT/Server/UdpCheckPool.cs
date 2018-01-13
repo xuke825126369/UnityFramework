@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System;
+using System.Collections.Concurrent;
 using xk_System.Net.UDP.POINTTOPOINT.Protocol;
 using xk_System.Debug;
 using UdpPointtopointProtocols;
@@ -18,37 +19,36 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			public CheckPackageInfo ()
 			{
 				mTimer = new Timer ();
-				mTimer.restart ();
 			}
 		}
 
 		private const int nMaxReSendCount = 5;
 		private const float nReSendTime = 3000.0f;
 
-		private ObjectPool<CheckPackageInfo> mCheckPackagePool = null;
-		private Dictionary<UInt16, CheckPackageInfo> mWaitCheckSendDic = null;
-		private Dictionary<UInt16, CheckPackageInfo> mWaitCheckReceiveDic = null;
+		private SafeObjectPool<CheckPackageInfo> mCheckPackagePool = null;
+		private ConcurrentDictionary<UInt16, CheckPackageInfo> mWaitCheckSendDic = null;
+		private ConcurrentDictionary<UInt16, CheckPackageInfo> mWaitCheckReceiveDic = null;
 		private ClientPeer mUdpPeer = null;
 
 		private UInt16 nCurrentWaitReceiveOrderId;
-		private Dictionary<UInt16, NetUdpFixedSizePackage> mReceivePackageDic = null;
-		private List<NetCombinePackage> mReceiveGroupList = null;
+		private ConcurrentDictionary<UInt16, NetUdpFixedSizePackage> mReceivePackageDic = null;
+		private ConcurrentBag<NetCombinePackage> mReceiveGroupList = null;
 
 		public UdpCheckPool (ClientPeer mUdpPeer)
 		{
-			mCheckPackagePool = new ObjectPool<CheckPackageInfo> ();
-			mWaitCheckSendDic = new Dictionary<ushort, CheckPackageInfo> ();
-			mWaitCheckReceiveDic = new Dictionary<ushort, CheckPackageInfo> ();
+			mCheckPackagePool = new SafeObjectPool<CheckPackageInfo> ();
+			mWaitCheckSendDic = new ConcurrentDictionary<ushort, CheckPackageInfo> ();
+			mWaitCheckReceiveDic = new ConcurrentDictionary<ushort, CheckPackageInfo> ();
 
-			mReceivePackageDic = new Dictionary<ushort, NetUdpFixedSizePackage> ();
+			mReceivePackageDic = new ConcurrentDictionary<ushort, NetUdpFixedSizePackage> ();
 			nCurrentWaitReceiveOrderId = 1;
-			mReceiveGroupList = new List<NetCombinePackage> ();
+			mReceiveGroupList = new ConcurrentBag<NetCombinePackage> ();
 
 			this.mUdpPeer = mUdpPeer;
-			mUdpPeer.addNetListenFun (UdpNetCommand.COMMAND_PACKAGECHECK, ReceiveCheckPackage);
+			PackageManager.Instance.addNetListenFun (UdpNetCommand.COMMAND_PACKAGECHECK, ReceiveCheckPackage);
 		}
 
-		private void ReceiveCheckPackage (NetPackage mPackage)
+		private void ReceiveCheckPackage (ClientPeer peer, NetPackage mPackage)
 		{
 			PackageCheckResult mPackageCheckResult = Protocol3Utility.getData<PackageCheckResult> (mPackage);
 			UInt16 whoId = (UInt16)(mPackageCheckResult.NWhoOrderId >> 16);
@@ -61,14 +61,20 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 				if (mWaitCheckSendDic.ContainsKey (nOrderId)) {
 					mUdpPeer.RecycleNetUdpFixedPackage (mWaitCheckSendDic [nOrderId].mPackage);
-					mWaitCheckSendDic.Remove (nOrderId);
+					CheckPackageInfo mCheckInfo = null;
+					if (!mWaitCheckSendDic.TryRemove (nOrderId, out mCheckInfo)) {
+						DebugSystem.LogError ("mWaitCheckSendDic Remove 失败");
+					}
 				} else {
 					DebugSystem.LogError ("不存在的发送 OrderId: " + nOrderId);
 				}
 			} else if (whoId == 1) {
 				if (mWaitCheckReceiveDic.ContainsKey (nOrderId)) {
 					mUdpPeer.RecycleNetUdpFixedPackage (mWaitCheckReceiveDic [nOrderId].mPackage);
-					mWaitCheckReceiveDic.Remove (nOrderId);
+					CheckPackageInfo mCheckInfo = null;
+					if (!mWaitCheckReceiveDic.TryRemove (nOrderId, out mCheckInfo)) {
+						DebugSystem.LogError ("mWaitCheckReceiveDic Remove 失败");
+					}
 				} else {
 					DebugSystem.LogError ("不存在的接受 OrderId: " + nOrderId);
 				}
@@ -121,7 +127,11 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 				while (true) {
 					if (mReceivePackageDic.ContainsKey (nCurrentWaitReceiveOrderId)) {
 						mPackage = mReceivePackageDic [nCurrentWaitReceiveOrderId];
-						mReceivePackageDic.Remove (nCurrentWaitReceiveOrderId);
+
+						NetUdpFixedSizePackage mTempPackage = null;
+						if (!mReceivePackageDic.TryRemove (nCurrentWaitReceiveOrderId, out mTempPackage)) {
+							DebugSystem.LogError ("11111111111111111111111111111");
+						}
 						CheckCombinePackage (mPackage);
 
 						nCurrentWaitReceiveOrderId++;
@@ -158,9 +168,10 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 				bool bInCombineGroup = false;
 				NetCombinePackage mRemoveNetCombinePackage = null;
-				for (int i = 0; i < mReceiveGroupList.Count; i++) {
-					var currentGroup = mReceiveGroupList [i];
 
+				var iter = mReceiveGroupList.GetEnumerator ();
+				while (iter.MoveNext ()) {
+					NetCombinePackage currentGroup = iter.Current;
 					if (currentGroup.bInCombinePackage (mPackage)) {
 						currentGroup.mReceivePackageDic [mPackage.nOrderId] = mPackage;
 						currentGroup.mNeedRecyclePackage.Add (mPackage);
@@ -176,7 +187,9 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 				if (bInCombineGroup) {
 					if (mRemoveNetCombinePackage != null) {
 						mUdpPeer.AddLogicHandleQueue (mRemoveNetCombinePackage);
-						mReceiveGroupList.Remove (mRemoveNetCombinePackage);
+						if (!mReceiveGroupList.TryTake (out mRemoveNetCombinePackage)) {
+							DebugSystem.LogError ("移除失败");
+						}
 					}
 				} else {
 					mUdpPeer.AddLogicHandleQueue (mPackage);
@@ -223,8 +236,4 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 		}
 	}
-
-
-
-
 }
