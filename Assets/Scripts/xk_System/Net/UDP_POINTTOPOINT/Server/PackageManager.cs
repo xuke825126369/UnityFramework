@@ -11,10 +11,10 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 	public class PackageManager : Singleton<PackageManager>
 	{
 		private Dictionary<UInt16, Action<ClientPeer, NetPackage>> mNetEventDic = null;
+
 		public PackageManager()
 		{
 			mNetEventDic = new Dictionary<ushort, Action<ClientPeer, NetPackage>> ();
-
 			this.InitUdpSystemCommand ();
 		}
 

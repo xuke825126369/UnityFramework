@@ -33,7 +33,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 		private UInt16 nCurrentWaitReceiveOrderId;
 		private Dictionary<UInt16, NetUdpFixedSizePackage> mReceiveLossPackageDic = null;
-		private List<NetCombinePackage> mReceiveGroupList = null;
+		private Queue<NetCombinePackage> mReceiveGroupList = null;
 
 		public UdpCheckPool (ClientPeer mUdpPeer)
 		{
@@ -43,7 +43,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 			mReceiveLossPackageDic = new Dictionary<ushort, NetUdpFixedSizePackage> ();
 			nCurrentWaitReceiveOrderId = ClientConfig.nUdpMinOrderId;
-			mReceiveGroupList = new List<NetCombinePackage> ();
+			mReceiveGroupList = new Queue<NetCombinePackage> ();
 
 			this.mUdpPeer = mUdpPeer;
 			mUdpPeer.addNetListenFun (UdpNetCommand.COMMAND_PACKAGECHECK, ReceiveCheckPackage);
@@ -102,7 +102,12 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				mCheckInfo.mPackage = mPackage;
 				mCheckInfo.mTimer.restart ();
 
-				mWaitCheckSendDic.Add (nOrderId, mCheckInfo);
+
+				if (!mWaitCheckSendDic.ContainsKey (nOrderId)) {
+					mWaitCheckSendDic.Add (nOrderId, mCheckInfo);
+				} else {
+					DebugSystem.LogError ("Add SendCheck Repeated !!!" + nOrderId);
+				}
 			}
 
 			mUdpPeer.SendNetStream (mPackage);
@@ -125,7 +130,12 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				mCheckInfo.mPackage = mCheckResultPackage;
 				mCheckInfo.mTimer.restart ();
 
-				mWaitCheckReceiveDic.Add (nOrderId, mCheckInfo);
+				if (!mWaitCheckReceiveDic.ContainsKey (nOrderId)) {
+					DebugSystem.Log ("Add ReceiveCheck :  " + nOrderId);
+					mWaitCheckReceiveDic.Add (nOrderId, mCheckInfo);
+				} else {
+					DebugSystem.LogError ("Add ReceiveCheck Repeated !:  " + nOrderId);
+				}
 
 				mUdpPeer.SendNetStream (mCheckResultPackage);
 
@@ -138,9 +148,8 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		private void CheckReceivePackageLoss (NetUdpFixedSizePackage mPackage)
 		{
 			if (mPackage.nOrderId == nCurrentWaitReceiveOrderId) {
-				AddPackageOrderId ();
 				CheckCombinePackage (mPackage);
-
+				AddPackageOrderId ();
 				while (mReceiveLossPackageDic.Count > 0) {
 					if (mReceiveLossPackageDic.ContainsKey (nCurrentWaitReceiveOrderId)) {
 						mPackage = mReceiveLossPackageDic [nCurrentWaitReceiveOrderId];
@@ -163,40 +172,21 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		{
 			if (mPackage.nGroupCount > 1) {
 				NetCombinePackage cc = mUdpPeer.SafeGetNetCombinePackage ();
-				cc.mReceivePackageDic.Clear ();
-				cc.mNeedRecyclePackage.Clear ();
 
 				cc.nCombineGroupId = mPackage.nOrderId;
 				cc.nCombinePackageId = mPackage.nPackageId;
 				cc.nCombineGroupCount = mPackage.nGroupCount;
 
-				cc.mReceivePackageDic [mPackage.nOrderId] = mPackage;
-				cc.mNeedRecyclePackage.Add (mPackage);
+				cc.mCombinePackageQueue.Enqueue (mPackage);
 
-				mReceiveGroupList.Add (cc);
+				mReceiveGroupList.Enqueue (cc);
 			} else {
+				if (mReceiveGroupList.Count > 0) {
+					var currentGroup = mReceiveGroupList.Peek ();
+					currentGroup.mCombinePackageQueue.Enqueue (mPackage);
 
-				bool bInCombineGroup = false;
-				NetCombinePackage mRemoveNetCombinePackage = null;
-				for (int i = 0; i < mReceiveGroupList.Count; i++) {
-					var currentGroup = mReceiveGroupList [i];
-
-					if (currentGroup.bInCombinePackage (mPackage)) {
-						currentGroup.mReceivePackageDic [mPackage.nOrderId] = mPackage;
-						currentGroup.mNeedRecyclePackage.Add (mPackage);
-
-						if (currentGroup.CheckCombineFinish ()) {
-							mRemoveNetCombinePackage = currentGroup;
-						}
-						bInCombineGroup = true;
-						break;
-					}
-				}
-
-				if (bInCombineGroup) {
-					if (mRemoveNetCombinePackage != null) {
-						mUdpPeer.AddLogicHandleQueue (mRemoveNetCombinePackage);
-						mReceiveGroupList.Remove (mRemoveNetCombinePackage);
+					if (currentGroup.CheckCombineFinish ()) {
+						mUdpPeer.AddLogicHandleQueue (mReceiveGroupList.Dequeue ());
 					}
 				} else {
 					mUdpPeer.AddLogicHandleQueue (mPackage);
@@ -213,7 +203,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 					mCheckInfo.nReSendCount++;
 					if (mCheckInfo.nReSendCount > nMaxReSendCount) {
 						DebugSystem.LogError ("发送超时");
-						return;
+						break;
 					}
 
 					this.mUdpPeer.SendNetStream (mCheckInfo.mPackage);
@@ -228,7 +218,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 					mCheckInfo.nReSendCount++;
 					if (mCheckInfo.nReSendCount > nMaxReSendCount) {
 						DebugSystem.LogError ("发送超时");
-						return;
+						break;
 					}
 
 					this.mUdpPeer.SendNetStream (mCheckInfo.mPackage);

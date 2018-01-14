@@ -32,8 +32,9 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		private ClientPeer mUdpPeer = null;
 
 		private UInt16 nCurrentWaitReceiveOrderId;
-		private ConcurrentDictionary<UInt16, NetUdpFixedSizePackage> mReceivePackageDic = null;
-		private ConcurrentDictionary<UInt16, NetCombinePackage> mReceiveGroupList = null;
+		private ConcurrentDictionary<UInt16, NetUdpFixedSizePackage> mReceiveLossPackageDic = null;
+
+		private ConcurrentQueue<NetCombinePackage> mCombinePackageQueue = null;
 
 		public UdpCheckPool (ClientPeer mUdpPeer)
 		{
@@ -42,8 +43,8 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			mWaitCheckReceiveDic = new ConcurrentDictionary<ushort, CheckPackageInfo> ();
 
 			nCurrentWaitReceiveOrderId = ServerConfig.nUdpMinOrderId;
-			mReceivePackageDic = new ConcurrentDictionary<ushort, NetUdpFixedSizePackage> ();
-			mReceiveGroupList = new ConcurrentDictionary<UInt16, NetCombinePackage> ();
+			mCombinePackageQueue = new ConcurrentQueue<NetCombinePackage> ();
+			mReceiveLossPackageDic = new ConcurrentDictionary<ushort, NetUdpFixedSizePackage> ();
 
 			this.mUdpPeer = mUdpPeer;
 		}
@@ -162,7 +163,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 				mCheckInfo.mTimer.restart ();
 
 				if (!mWaitCheckReceiveDic.TryAdd (mReceiveLogicPackage.nOrderId, mCheckInfo)) {
-					DebugSystem.LogError ("Error ");
+					DebugSystem.LogError ("Server Add SendCheck Error ");
 				}
 
 				mUdpPeer.SendNetStream (mCheckResultPackage);
@@ -179,9 +180,9 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 				CheckCombinePackage (mPackage);
 				AddPackageOrderId ();
 
-				while (!mReceivePackageDic.IsEmpty) {
+				while (!mReceiveLossPackageDic.IsEmpty) {
 					NetUdpFixedSizePackage mTempPackage = null;
-					if (mReceivePackageDic.TryRemove (nCurrentWaitReceiveOrderId, out mTempPackage)) {
+					if (mReceiveLossPackageDic.TryRemove (nCurrentWaitReceiveOrderId, out mTempPackage)) {
 						CheckCombinePackage (mTempPackage);
 						AddPackageOrderId ();
 					} else {
@@ -189,11 +190,12 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 					}
 				}
 			} else if (mPackage.nOrderId > nCurrentWaitReceiveOrderId) {
-				if (!mReceivePackageDic.TryAdd (mPackage.nOrderId, mPackage)) {
-					DebugSystem.LogError ("Error");
+				if (!mReceiveLossPackageDic.TryAdd (mPackage.nOrderId, mPackage)) {
+					DebugSystem.LogError ("Server Add Loss Package Error");
 				}
 			} else {
 				DebugSystem.Log ("Server 接受 过去的 废物包： " + mPackage.nPackageId);
+				mUdpPeer.RecycleNetUdpFixedPackage (mPackage);
 			}
 		}
 
@@ -201,47 +203,29 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		{
 			if (mPackage.nGroupCount > 1) {
 				NetCombinePackage cc = mUdpPeer.GetNetCombinePackage ();
-				cc.mReceivePackageDic.Clear ();
 
 				cc.nCombineGroupId = mPackage.nOrderId;
 				cc.nCombinePackageId = mPackage.nPackageId;
 				cc.nCombineGroupCount = mPackage.nGroupCount;
 
-				if (!cc.mReceivePackageDic.TryAdd (mPackage.nOrderId, mPackage)) {
-					DebugSystem.LogError ("Error");
-				}
-				cc.mNeedRecyclePackage.Add (mPackage);
+				cc.mCombinePackageQueue.Enqueue (mPackage);
 
-				if (!mReceiveGroupList.TryAdd (cc.nCombineGroupId, cc)) {
-					DebugSystem.LogError ("Error");
-				}
+				mCombinePackageQueue.Enqueue (cc);
 			} else {
+				if (!mCombinePackageQueue.IsEmpty) {
+					NetCombinePackage currentGroup = null;
+					if (mCombinePackageQueue.TryPeek (out currentGroup)) {
+						currentGroup.mCombinePackageQueue.Enqueue (mPackage);
 
-				bool bInCombineGroup = false;
-				NetCombinePackage mRemoveNetCombinePackage = null;
-
-				lock (mReceiveGroupList) {
-					var iter = mReceiveGroupList.GetEnumerator ();
-					while (iter.MoveNext ()) {
-						NetCombinePackage currentGroup = iter.Current.Value;
-						if (currentGroup.bInCombinePackage (mPackage)) {
-							currentGroup.mReceivePackageDic [mPackage.nOrderId] = mPackage;
-							currentGroup.mNeedRecyclePackage.Add (mPackage);
-
-							if (currentGroup.CheckCombineFinish ()) {
-								if (!mReceiveGroupList.TryRemove (iter.Current.Key, out mRemoveNetCombinePackage)) {
-									DebugSystem.LogError ("移除失败");
-								}
+						if (currentGroup.CheckCombineFinish ()) {
+							NetCombinePackage mRemoveNetCombinePackage = null;
+							if (mCombinePackageQueue.TryDequeue (out mRemoveNetCombinePackage)) {
+								mUdpPeer.AddLogicHandleQueue (mRemoveNetCombinePackage);
+							} else {
+								DebugSystem.LogError ("移除失败");
 							}
-							bInCombineGroup = true;
-							break;
 						}
-					}
-				}
-
-				if (bInCombineGroup) {
-					if (mRemoveNetCombinePackage != null) {
-						mUdpPeer.AddLogicHandleQueue (mRemoveNetCombinePackage);
+					
 					}
 				} else {
 					mUdpPeer.AddLogicHandleQueue (mPackage);

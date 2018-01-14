@@ -17,7 +17,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		protected ConcurrentQueue<NetPackage> mNeedHandlePackageQueue = null;
 
 		protected ConcurrentQueue<NetUdpFixedSizePackage> mReceiveSocketPackageQueue = null;
-
 		protected SafeObjectPool<NetUdpFixedSizePackage> mReceivePackagePool = null;
 		protected SafeObjectPool<NetCombinePackage> mReceiveCombinePackagePool = null;
 
@@ -81,11 +80,12 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 			while (!mReceiveSocketPackageQueue.IsEmpty) {
 				NetUdpFixedSizePackage mPackage = null;
-				if (!mReceiveSocketPackageQueue.TryDequeue (out mPackage)) {
+				if (mReceiveSocketPackageQueue.TryDequeue (out mPackage)) {
+					mUdpCheckPool.AddReceiveCheck (mPackage);
+				} else {
 					DebugSystem.LogError ("Dequeue Error");
+					break;
 				}
-
-				mUdpCheckPool.AddReceiveCheck (mPackage);
 			}
 
 			int nPackageCount = 0;
@@ -93,17 +93,16 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				NetPackage mNetPackage = null;
 				if (!mNeedHandlePackageQueue.TryDequeue (out mNetPackage)) {
 					DebugSystem.Log ("Dequeue 失败");
+					break;
 				}
 
 				mLogicFuncDic [mNetPackage.nPackageId] (mNetPackage);
 
 				if (mNetPackage is NetCombinePackage) {
 					NetCombinePackage mCombinePackage = mNetPackage as NetCombinePackage;
-					var iter = mCombinePackage.mNeedRecyclePackage.GetEnumerator ();
-					while (iter.MoveNext ()) {
-						SafeRecycleReceivePackage (iter.Current);
+					while (mCombinePackage.mNeedRecyclePackageQueue.Count > 0) {
+						SafeRecycleReceivePackage (mCombinePackage.mNeedRecyclePackageQueue.Dequeue ());
 					}
-					mCombinePackage.mNeedRecyclePackage.Clear ();
 					mReceiveCombinePackagePool.recycle (mNetPackage as NetCombinePackage);
 				} else if (mNetPackage is NetUdpFixedSizePackage) {
 					SafeRecycleReceivePackage (mNetPackage as NetUdpFixedSizePackage);

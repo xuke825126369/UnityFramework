@@ -40,31 +40,17 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		public UInt16 nCombineGroupCount;
 		public UInt16 nCombinePackageId;
 
-		public ConcurrentDictionary<UInt16, NetUdpFixedSizePackage> mReceivePackageDic;
-		public ConcurrentBag<NetUdpFixedSizePackage> mNeedRecyclePackage;
+		public ConcurrentQueue<NetUdpFixedSizePackage> mCombinePackageQueue;
 
 		public NetCombinePackage ()
 		{
 			base.buffer = new byte[ServerConfig.nUdpCombinePackageFixedSize];
-
-			mReceivePackageDic = new ConcurrentDictionary<ushort, NetUdpFixedSizePackage> ();
-			mNeedRecyclePackage = new ConcurrentBag<NetUdpFixedSizePackage> ();
-		}
-
-		public bool bInCombinePackage(NetUdpFixedSizePackage mPackage)
-		{
-			UInt16 nOrderId = mPackage.nOrderId;
-			if (this.nCombineGroupId + this.nCombineGroupCount > nOrderId && this.nCombineGroupId < nOrderId) {
-				return true;
-			} else {
-				return false;
-			}
-
+			mCombinePackageQueue = new ConcurrentQueue<NetUdpFixedSizePackage> ();
 		}
 
 		public bool CheckCombineFinish ()
 		{
-			if (mReceivePackageDic.Count == nCombineGroupCount) {
+			if (mCombinePackageQueue.Count == nCombineGroupCount) {
 				SetPackage ();
 
 				return true;
@@ -81,10 +67,14 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			}
 
 			base.Length = ServerConfig.nUdpPackageFixedHeadSize;
-			for (UInt16 i = nCombineGroupId; i < nCombineGroupId + nCombineGroupCount; i++) {
-				byte[] tempBuf = mReceivePackageDic [i].buffer;
-				Array.Copy (tempBuf, ServerConfig.nUdpPackageFixedHeadSize, base.buffer, base.Length, (mReceivePackageDic [i].Length - ServerConfig.nUdpPackageFixedHeadSize));
-				base.Length += (mReceivePackageDic [i].Length - ServerConfig.nUdpPackageFixedHeadSize);
+			while (!mCombinePackageQueue.IsEmpty) {
+				NetUdpFixedSizePackage tempPackage = null;
+				if (mCombinePackageQueue.TryDequeue (out tempPackage)) {
+					Array.Copy (tempPackage.buffer, ServerConfig.nUdpPackageFixedHeadSize, base.buffer, base.Length, tempPackage.Length - ServerConfig.nUdpPackageFixedHeadSize);
+					base.Length += (tempPackage.Length - ServerConfig.nUdpPackageFixedHeadSize);
+
+					ObjectPoolManager.Instance.mUdpFixedSizePackagePool.recycle (tempPackage);
+				}
 			}
 
 			base.nPackageId = nCombinePackageId;

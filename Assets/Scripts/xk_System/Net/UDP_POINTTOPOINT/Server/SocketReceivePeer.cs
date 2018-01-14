@@ -68,13 +68,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 				if (mNetPackage is NetCombinePackage) {
 					NetCombinePackage mCombinePackage = mNetPackage as NetCombinePackage;
-					while (!mCombinePackage.mNeedRecyclePackage.IsEmpty) {
-						NetUdpFixedSizePackage tempPackage = null;
-						if (!mCombinePackage.mNeedRecyclePackage.TryTake (out tempPackage)) {
-							DebugSystem.LogError ("拿走包");
-						}
-						RecycleNetUdpFixedPackage (tempPackage);
-					}
 					ObjectPoolManager.Instance.mCombinePackagePool.recycle (mNetPackage as NetCombinePackage);
 				} else if (mNetPackage is NetUdpFixedSizePackage) {
 					RecycleNetUdpFixedPackage (mNetPackage as NetUdpFixedSizePackage);
@@ -93,6 +86,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			bool bSucccess = NetPackageEncryption.DeEncryption (mPackage);
 			if (bSucccess) {
 				if (mPackage.nPackageId >= 50) {
+					//DebugSystem.Log ("Server 111111111111111111111: " + mPackage.nOrderId + "|" + mPackage.nPackageId + " | " + mPackage.nGroupCount + " | " + mPackage.Length);
 					AddPackageToCheckQueue (mPackage);
 				} else {
 					AddLogicHandleQueue (mPackage);

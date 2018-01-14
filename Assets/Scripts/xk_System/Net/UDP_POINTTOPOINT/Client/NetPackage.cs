@@ -39,31 +39,18 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		public UInt16 nCombineGroupCount;
 		public UInt16 nCombinePackageId;
 
-		public Dictionary<UInt16, NetUdpFixedSizePackage> mReceivePackageDic;
-		public List<NetUdpFixedSizePackage> mNeedRecyclePackage;
+		public Queue<NetUdpFixedSizePackage> mCombinePackageQueue;
+		public Queue<NetUdpFixedSizePackage> mNeedRecyclePackageQueue;
 
 		public NetCombinePackage ()
 		{
 			base.buffer = new byte[ClientConfig.nUdpCombinePackageFixedSize];
-
-			mReceivePackageDic = new Dictionary<ushort, NetUdpFixedSizePackage> ();
-			mNeedRecyclePackage = new List<NetUdpFixedSizePackage> ();
-		}
-
-		public bool bInCombinePackage(NetUdpFixedSizePackage mPackage)
-		{
-			UInt16 nOrderId = mPackage.nOrderId;
-			if (this.nCombineGroupId + this.nCombineGroupCount > nOrderId && this.nCombineGroupId < nOrderId) {
-				return true;
-			} else {
-				return false;
-			}
-
+			mCombinePackageQueue = new Queue<NetUdpFixedSizePackage> ();
 		}
 
 		public bool CheckCombineFinish ()
 		{
-			if (mReceivePackageDic.Count == nCombineGroupCount) {
+			if (mCombinePackageQueue.Count == nCombineGroupCount) {
 				SetPackage ();
 
 				return true;
@@ -80,14 +67,18 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			}
 
 			base.Length = ClientConfig.nUdpPackageFixedHeadSize;
-			for (UInt16 i = nCombineGroupId; i < nCombineGroupId + nCombineGroupCount; i++) {
-				byte[] tempBuf = mReceivePackageDic [i].buffer;
-				Array.Copy (tempBuf, ClientConfig.nUdpPackageFixedHeadSize, base.buffer, base.Length, (mReceivePackageDic [i].Length - ClientConfig.nUdpPackageFixedHeadSize));
-				base.Length += (mReceivePackageDic [i].Length - ClientConfig.nUdpPackageFixedHeadSize);
+			while (mCombinePackageQueue.Count > 0) {
+				NetUdpFixedSizePackage tempPackage = mCombinePackageQueue.Dequeue ();
+				Array.Copy (tempPackage.buffer, ClientConfig.nUdpPackageFixedHeadSize, base.buffer, base.Length, tempPackage.Length - ClientConfig.nUdpPackageFixedHeadSize);
+				base.Length += (tempPackage.Length - ClientConfig.nUdpPackageFixedHeadSize);
+
+				mNeedRecyclePackageQueue.Enqueue (tempPackage);
 			}
 
 			base.nPackageId = nCombinePackageId;
 		}
+
+
 	}
 }
 
