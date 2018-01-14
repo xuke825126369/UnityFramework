@@ -17,10 +17,12 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 		public void Update(double elapsed)
 		{
-			if (!mClientDic.IsEmpty) {
-				var iter = mClientDic.GetEnumerator ();
-				while (iter.MoveNext ()) {
-					iter.Current.Value.Update (elapsed);
+			lock (mClientDic) {
+				if (!mClientDic.IsEmpty) {
+					var iter = mClientDic.GetEnumerator ();
+					while (iter.MoveNext ()) {
+						iter.Current.Value.Update (elapsed);
+					}
 				}
 			}
 		}
@@ -39,11 +41,12 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 		public ClientPeer FindClient(UInt16 port)
 		{
+			ClientPeer peer = null;
 			if (IsExist (port)) {
-				ClientPeer peer = null;
-				if (!mClientDic.TryGetValue (port, out peer)) {
-					DebugSystem.LogError ("FindClient Error");
+				lock (mClientDic) {
+					peer = mClientDic [port];
 				}
+
 				return peer;
 			}
 
@@ -72,5 +75,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 				mClientDic [iter.Current].SendNetData (id, data);
 			}
 		}
+
 	}
 }

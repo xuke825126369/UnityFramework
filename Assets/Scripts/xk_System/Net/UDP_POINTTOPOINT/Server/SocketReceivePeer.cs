@@ -13,22 +13,20 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 {
 	public abstract class SocketReceivePeer
 	{
+		protected ConcurrentQueue<NetUdpFixedSizePackage> mNeedCheckPackageQueue = null;
 		protected ConcurrentQueue<NetPackage> mNeedHandlePackageQueue = null;
-		protected SafeObjectPool<NetCombinePackage> mCombinePackagePool = null;
-
 		protected UdpCheckPool mUdpCheckPool = null;
 
 		public SocketReceivePeer ()
 		{
+			mNeedCheckPackageQueue = new ConcurrentQueue<NetUdpFixedSizePackage> ();
 			mNeedHandlePackageQueue = new ConcurrentQueue<NetPackage> ();
-			mCombinePackagePool = new SafeObjectPool<NetCombinePackage> ();
-
 			mUdpCheckPool = new UdpCheckPool (this as ClientPeer);
 		}
 
 		public NetCombinePackage GetNetCombinePackage()
 		{
-			return mCombinePackagePool.Pop ();
+			return ObjectPoolManager.Instance.mCombinePackagePool.Pop();
 		}
 
 		public void RecycleNetUdpFixedPackage(NetUdpFixedSizePackage mPackage)
@@ -41,12 +39,27 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			mNeedHandlePackageQueue.Enqueue (mPackage);
 		}
 
+		private void AddPackageToCheckQueue(NetUdpFixedSizePackage mPackage)
+		{
+			mNeedCheckPackageQueue.Enqueue (mPackage);
+		}
+
 		public virtual void Update (double elapsed)
 		{
 			mUdpCheckPool.Update (elapsed);
 
+			while (!mNeedCheckPackageQueue.IsEmpty) {
+				NetUdpFixedSizePackage mNetPackage = null;
+				if (!mNeedCheckPackageQueue.TryDequeue (out mNetPackage)) {
+					break;
+				}
+
+				mUdpCheckPool.AddReceiveCheck (mNetPackage);
+
+			}
+
 			int nPackageCount = 0;
-			while (mNeedHandlePackageQueue.Count > 0) {
+			while (!mNeedHandlePackageQueue.IsEmpty) {
 				NetPackage mNetPackage = null;
 				if (!mNeedHandlePackageQueue.TryDequeue (out mNetPackage)) {
 					break;
@@ -56,12 +69,14 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 				if (mNetPackage is NetCombinePackage) {
 					NetCombinePackage mCombinePackage = mNetPackage as NetCombinePackage;
-					var iter = mCombinePackage.mNeedRecyclePackage.GetEnumerator ();
-					while (iter.MoveNext ()) {
-						RecycleNetUdpFixedPackage (iter.Current);
+					while (!mCombinePackage.mNeedRecyclePackage.IsEmpty) {
+						NetUdpFixedSizePackage tempPackage = null;
+						if (!mCombinePackage.mNeedRecyclePackage.TryTake (out tempPackage)) {
+							DebugSystem.LogError ("拿走包");
+						}
+						RecycleNetUdpFixedPackage (tempPackage);
 					}
-					mCombinePackage.mNeedRecyclePackage.Clear ();
-					mCombinePackagePool.recycle (mNetPackage as NetCombinePackage);
+					ObjectPoolManager.Instance.mCombinePackagePool.recycle (mNetPackage as NetCombinePackage);
 				} else if (mNetPackage is NetUdpFixedSizePackage) {
 					RecycleNetUdpFixedPackage (mNetPackage as NetUdpFixedSizePackage);
 				}
@@ -79,7 +94,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			bool bSucccess = NetPackageEncryption.DeEncryption (mPackage);
 			if (bSucccess) {
 				if (mPackage.nPackageId >= 50) {
-					mUdpCheckPool.AddReceiveCheck (mPackage);
+					AddPackageToCheckQueue (mPackage);
 				} else {
 					AddLogicHandleQueue (mPackage);
 				}

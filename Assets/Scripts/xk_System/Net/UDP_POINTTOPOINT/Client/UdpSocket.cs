@@ -46,7 +46,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				try {
 					NetUdpFixedSizePackage mReceiveStream = null;
 					mReceiveStream = mReceivePackagePool.Pop ();
-
 					length = mSocket.ReceiveFrom (mReceiveStream.buffer, 0, mReceiveStream.buffer.Length, SocketFlags.None, ref remoteEndPoint);
 					if (length > 0) {
 						//DebugSystem.Log("ReceiveLength: " + length);
@@ -75,6 +74,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			if (Length < ClientConfig.nUdpPackageFixedHeadSize) {
 				DebugSystem.LogError ("Client 发送包的长度 小于 包头长度 ");
 			}
+				
 			mSocket.SendTo (msg, offset, Length, SocketFlags.None, remoteEndPoint);
 		}
 

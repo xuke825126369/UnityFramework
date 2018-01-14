@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System;
+using System.Collections.Concurrent;
 using Google.Protobuf;
 
 namespace xk_System.Net.UDP.POINTTOPOINT.Server
@@ -39,15 +40,15 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		public UInt16 nCombineGroupCount;
 		public UInt16 nCombinePackageId;
 
-		public Dictionary<UInt16, NetUdpFixedSizePackage> mReceivePackageDic;
-		public List<NetUdpFixedSizePackage> mNeedRecyclePackage;
+		public ConcurrentDictionary<UInt16, NetUdpFixedSizePackage> mReceivePackageDic;
+		public ConcurrentBag<NetUdpFixedSizePackage> mNeedRecyclePackage;
 
 		public NetCombinePackage ()
 		{
 			base.buffer = new byte[ServerConfig.nUdpCombinePackageFixedSize];
 
-			mReceivePackageDic = new Dictionary<ushort, NetUdpFixedSizePackage> ();
-			mNeedRecyclePackage = new List<NetUdpFixedSizePackage> ();
+			mReceivePackageDic = new ConcurrentDictionary<ushort, NetUdpFixedSizePackage> ();
+			mNeedRecyclePackage = new ConcurrentBag<NetUdpFixedSizePackage> ();
 		}
 
 		public bool bInCombinePackage(NetUdpFixedSizePackage mPackage)
@@ -88,6 +89,8 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 			base.nPackageId = nCombinePackageId;
 		}
+
 	}
+
 }
 

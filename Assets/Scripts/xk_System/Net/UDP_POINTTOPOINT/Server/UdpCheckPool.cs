@@ -65,6 +65,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 					if (!mWaitCheckSendDic.TryRemove (nOrderId, out mCheckInfo)) {
 						DebugSystem.LogError ("mWaitCheckSendDic Remove 失败");
 					}
+					mCheckPackagePool.recycle (mCheckInfo);
 				} else {
 					DebugSystem.LogError ("不存在的发送 OrderId: " + nOrderId);
 				}
@@ -75,6 +76,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 					if (!mWaitCheckReceiveDic.TryRemove (nOrderId, out mCheckInfo)) {
 						DebugSystem.LogError ("mWaitCheckReceiveDic Remove 失败");
 					}
+					mCheckPackagePool.recycle (mCheckInfo);
 				} else {
 					DebugSystem.LogError ("不存在的接受 OrderId: " + nOrderId);
 				}
@@ -100,7 +102,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 				CheckCombinePackage (mReceiveLogicPackage);
 				return;
 			}
-				
+
 			CheckReceivePackageLoss (mReceiveLogicPackage);
 
 			PackageCheckResult mResult = new PackageCheckResult ();
@@ -154,7 +156,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			if (mPackage.nGroupCount > 1) {
 				NetCombinePackage cc = mUdpPeer.GetNetCombinePackage ();
 				cc.mReceivePackageDic.Clear ();
-				cc.mNeedRecyclePackage.Clear ();
 
 				cc.nCombineGroupId = mPackage.nOrderId;
 				cc.nCombinePackageId = mPackage.nPackageId;

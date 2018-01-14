@@ -22,14 +22,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 		protected NETSTATE m_state;
 		protected Queue<peer_event> mPeerEventQueue = new Queue<peer_event> ();
-
-		private ConcurrentQueue<NetUdpFixedSizePackage> mReceivePackageQueue = null;
-
-		public SocketUdp_Server_Basic()
-		{
-			mReceivePackageQueue = new ConcurrentQueue<NetUdpFixedSizePackage> ();
-		}
-
 		public void InitNet (string ip, UInt16 ServerPort)
 		{
 			this.port = ServerPort;
@@ -49,11 +41,12 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		private void HandData()
 		{
 			while (true) {
+				Thread.Sleep (10);
 				int length = 0;
 				try {
-					//remoteEndPoint = new IPEndPoint (IPAddress.Any, 0);
+					remoteEndPoint = new IPEndPoint (IPAddress.Any, 0);
 					NetUdpFixedSizePackage mPackage = ObjectPoolManager.Instance.mUdpFixedSizePackagePool.Pop ();
-					length = mSocket.ReceiveFrom (mPackage.buffer, 0, mPackage.buffer.Length, SocketFlags.None, ref remoteEndPoint);
+					length = mSocket.ReceiveFrom (mPackage.buffer, ref remoteEndPoint);
 					mPackage.Length = length;
 
 					if (length > 0) {
