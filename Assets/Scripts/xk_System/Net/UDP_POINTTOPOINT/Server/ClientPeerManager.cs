@@ -43,10 +43,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		{
 			ClientPeer peer = null;
 			if (IsExist (port)) {
-				lock (mClientDic) {
-					peer = mClientDic [port];
-				}
-
+				peer = mClientDic [port];
 				return peer;
 			}
 

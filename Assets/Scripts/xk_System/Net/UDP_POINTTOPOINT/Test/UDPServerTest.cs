@@ -37,16 +37,17 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 			}
 		}
 
-		public static int nReceiveCount = 0;
 
+		public static int nReceiveCount = 0;
 		private void Receive_ServerSenddata (ClientPeer peer, NetPackage package)
 		{
 			//DebugSystem.Log ("Server packageLength: ew");
 			csChatData mServerSendData = Protocol3Utility.getData<csChatData> (package);
+			//mServerSendData.Id = peer.getPort ();
 			//DebugSystem.Log ("Server: " + mServerSendData.TalkMsg);
 
-			peer.SendNetData (UdpNetCommand.COMMAND_TESTCHAT, mServerSendData);
 			nReceiveCount++;
+			peer.SendNetData (UdpNetCommand.COMMAND_TESTCHAT, mServerSendData);
 		}
 	}
 

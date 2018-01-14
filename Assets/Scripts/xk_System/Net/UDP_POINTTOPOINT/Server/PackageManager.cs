@@ -3,23 +3,30 @@ using System.Collections.Generic;
 using System;
 using System.Collections.Concurrent;
 using xk_System.Debug;
+using UdpPointtopointProtocols;
+using xk_System.Net.UDP.POINTTOPOINT.Protocol;
 
 namespace xk_System.Net.UDP.POINTTOPOINT.Server
 {
 	public class PackageManager : Singleton<PackageManager>
 	{
-		private ConcurrentQueue<NetUdpFixedSizePackage> mReceivePackageQueue = null;
 		private Dictionary<UInt16, Action<ClientPeer, NetPackage>> mNetEventDic = null;
-
 		public PackageManager()
 		{
-			mReceivePackageQueue = new ConcurrentQueue<NetUdpFixedSizePackage> ();
 			mNetEventDic = new Dictionary<ushort, Action<ClientPeer, NetPackage>> ();
+
+			this.InitUdpSystemCommand ();
+		}
+
+		private void InitUdpSystemCommand()
+		{
+			addNetListenFun (UdpNetCommand.COMMAND_PACKAGECHECK, ReceiveUdpCheckPackage);
+			addNetListenFun (UdpNetCommand.COMMAND_HEARTBEAT, ReceiveServerHeartBeat);
 		}
 
 		public void UpdateToClient()
 		{
-			
+						
 		}
 
 		public void Execute(ClientPeer peer,NetPackage mPackage)
@@ -38,6 +45,16 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			} else {
 				mNetEventDic [id] += func;
 			}
+		}
+
+		private void ReceiveServerHeartBeat(ClientPeer peer,NetPackage mPackage)
+		{
+			peer.ReceiveUdpClientHeart (mPackage);
+		}
+
+		private void ReceiveUdpCheckPackage(ClientPeer peer,NetPackage mPackage)
+		{
+			peer.ReceiveUdpCheckPackage (mPackage);
 		}
 	}
 

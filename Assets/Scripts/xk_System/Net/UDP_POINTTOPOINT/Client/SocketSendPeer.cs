@@ -8,17 +8,26 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 {
 	public class SocketSendPeer : SocketUdp_Basic
 	{
-		private ObjectPool<NetUdpFixedSizePackage> mSendPackgePool = null;
 		private UInt16 nPackageOrderId;
 
 		public SocketSendPeer()
 		{
-			nPackageOrderId = 1;
-			mSendPackgePool = new ObjectPool<NetUdpFixedSizePackage> (50);
+			nPackageOrderId = ClientConfig.nUdpMinOrderId;
+		}
+
+		private void AddPackageOrderId()
+		{
+			if (nPackageOrderId == ClientConfig.nUdpMaxOrderId) {
+				nPackageOrderId = ClientConfig.nUdpMinOrderId;
+			} else {
+				nPackageOrderId++;
+			}
 		}
 
 		public void SendNetData (UInt16 id, byte[] buffer)
 		{
+			DebugSystem.Assert (id > 50, "Udp 系统内置命令 此逻辑不处理");
+
 			int readBytes = 0;
 			int nBeginIndex = 0;
 
@@ -28,7 +37,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			} else {
 				groupCount = (UInt16)(buffer.Length / ClientConfig.nUdpPackageFixedBodySize + 1);
 			}
-				
+
 			//DebugSystem.Log ("Client bufferLength: " + buffer.Length);
 			while (nBeginIndex < buffer.Length) {
 				if (nBeginIndex + ClientConfig.nUdpPackageFixedBodySize > buffer.Length) {
@@ -37,7 +46,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 					readBytes = ClientConfig.nUdpPackageFixedBodySize;
 				}
 
-				var mPackage = mSendPackgePool.Pop ();
+				var mPackage = SafeGetNetUdpFixedPackage ();
 				mPackage.nOrderId = this.nPackageOrderId;
 				mPackage.nGroupCount = groupCount;
 				mPackage.nPackageId = id;
@@ -45,29 +54,24 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				Array.Copy (buffer, nBeginIndex, mPackage.buffer, ClientConfig.nUdpPackageFixedHeadSize, readBytes);
 
 				NetPackageEncryption.Encryption (mPackage);
-				SendNetStream (mPackage);
 
-				if (id >= 50) {
-					mUdpCheckPool.AddSendCheck (mPackage);
-					this.nPackageOrderId++;
-					if (this.nPackageOrderId == 0) {
-						this.nPackageOrderId = 1;
-					}
-				} else {
-					mSendPackgePool.recycle (mPackage);
-				}
+				mUdpCheckPool.AddSendCheck (mPackage);
+
+				AddPackageOrderId ();
+				groupCount = 1;
 
 				nBeginIndex += readBytes;
-				groupCount = 1;
 			}
 		}
 
-		public NetUdpFixedSizePackage GetCheckResultPackage(UInt16 id, object data)
+		public NetUdpFixedSizePackage GetUdpSystemPackage(UInt16 id, object data)
 		{
+			DebugSystem.Assert (id <= 50, "不是 Udp 系统内置命令");
+
 			IMessage data1 = data as IMessage;
 			byte[] stream = Protocol3Utility.SerializePackage (data1);
 
-			var mPackage = mSendPackgePool.Pop ();
+			var mPackage = SafeGetNetUdpFixedPackage ();
 			mPackage.nOrderId = 0;
 			mPackage.nGroupCount = 0;
 			mPackage.nPackageId = id;
@@ -79,18 +83,15 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			return mPackage;
 		}
 
-		public void RecycleSendPackage(NetUdpFixedSizePackage mPackage)
-		{
-			mSendPackgePool.recycle (mPackage);
-		}
-
-		public void SendNetStream(NetUdpFixedSizePackage mPackage)
+		public void SendNetStream(NetPackage mPackage)
 		{
 			SendNetStream (mPackage.buffer, 0, mPackage.Length);
 		}
 
 		public void SendNetData (UInt16 id, object data)
 		{
+			DebugSystem.Assert (id > 50, "Udp 系统内置命令 此逻辑不处理");
+
 			IMessage data1 = data as IMessage;
 			byte[] stream = Protocol3Utility.SerializePackage (data1);
 			SendNetData (id, stream);

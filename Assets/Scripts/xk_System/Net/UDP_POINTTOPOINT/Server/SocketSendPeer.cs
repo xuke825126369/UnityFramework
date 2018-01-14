@@ -12,11 +12,22 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 		public SocketSendPeer()
 		{
-			nPackageOrderId = 1;
+			nPackageOrderId = ServerConfig.nUdpMinOrderId;
+		}
+
+		private void AddPackageOrderId()
+		{
+			if (nPackageOrderId == ServerConfig.nUdpMaxOrderId) {
+				nPackageOrderId = ServerConfig.nUdpMinOrderId;
+			} else {
+				nPackageOrderId++;
+			}
 		}
 
 		public void SendNetData (UInt16 id, byte[] buffer)
 		{
+			DebugSystem.Assert (id > 50, "Udp 系统内置命令 此逻辑不处理");
+
 			int readBytes = 0;
 			int nBeginIndex = 0;
 
@@ -27,16 +38,14 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 				groupCount = (UInt16)(buffer.Length / ServerConfig.nUdpPackageFixedBodySize + 1);
 			}
 
-			//DebugSystem.Log ("Client bufferLength: " + buffer.Length);
 			while (nBeginIndex < buffer.Length) {
 				if (nBeginIndex + ServerConfig.nUdpPackageFixedBodySize > buffer.Length) {
 					readBytes = buffer.Length - nBeginIndex;
 				} else {
 					readBytes = ServerConfig.nUdpPackageFixedBodySize;
 				}
-
-				NetUdpFixedSizePackage mPackage = null;
-				mPackage = ObjectPoolManager.Instance.mUdpFixedSizePackagePool.Pop ();
+					
+				NetUdpFixedSizePackage mPackage = ObjectPoolManager.Instance.mUdpFixedSizePackagePool.Pop ();
 
 				mPackage.nOrderId = this.nPackageOrderId;
 				mPackage.nGroupCount = groupCount;
@@ -45,25 +54,18 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 				Array.Copy (buffer, nBeginIndex, mPackage.buffer, ServerConfig.nUdpPackageFixedHeadSize, readBytes);
 
 				NetPackageEncryption.Encryption (mPackage);
-				SendNetStream (mPackage);
-
-				if (id >= 50) {
-					mUdpCheckPool.AddSendCheck (this.nPackageOrderId, mPackage);
-					this.nPackageOrderId++;
-					if (this.nPackageOrderId == 0) {
-						this.nPackageOrderId = 1;
-					}
-				} else {
-					ObjectPoolManager.Instance.mUdpFixedSizePackagePool.recycle (mPackage);
-				}
+				mUdpCheckPool.AddSendCheck (mPackage);
+				AddPackageOrderId ();
 
 				nBeginIndex += readBytes;
 				groupCount = 1;
 			}
 		}
 
-		public NetUdpFixedSizePackage GetCheckResultPackage(UInt16 id, object data)
+		public NetUdpFixedSizePackage GetUdpSystemPackage(UInt16 id, object data)
 		{
+			DebugSystem.Assert (id <= 50, "不是 Udp 系统内置命令");
+
 			IMessage data1 = data as IMessage;
 			byte[] stream = Protocol3Utility.SerializePackage (data1);
 
@@ -79,7 +81,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			return mPackage;
 		}
 
-		public void SendNetStream(NetUdpFixedSizePackage mPackage)
+		public void SendNetStream(NetPackage mPackage)
 		{
 			SendNetStream (mPackage.buffer, 0, mPackage.Length);
 		}

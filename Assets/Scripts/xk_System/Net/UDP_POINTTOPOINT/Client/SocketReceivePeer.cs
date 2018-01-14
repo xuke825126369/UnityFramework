@@ -35,17 +35,17 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			mUdpCheckPool = new UdpCheckPool (this as ClientPeer);
 		}
 
-		public NetCombinePackage GetNetCombinePackage()
+		public NetCombinePackage SafeGetNetCombinePackage()
 		{
 			return mReceiveCombinePackagePool.Pop ();
 		}
 
-		public NetUdpFixedSizePackage GetNetUdpFixedPackage()
+		public NetUdpFixedSizePackage SafeGetNetUdpFixedPackage()
 		{
 			return mReceivePackagePool.Pop ();
 		}
 
-		public void RecycleReceivePackage(NetUdpFixedSizePackage mPackage)
+		public void SafeRecycleReceivePackage(NetUdpFixedSizePackage mPackage)
 		{
 			mReceivePackagePool.recycle (mPackage);
 		}
@@ -85,15 +85,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 					DebugSystem.LogError ("Dequeue Error");
 				}
 
-				bool bSucccess = NetPackageEncryption.DeEncryption (mPackage);
-				if (bSucccess) {
-					if (mPackage.nPackageId >= 50) {
-						mUdpCheckPool.AddReceiveCheck (mPackage);
-					} else {
-						AddLogicHandleQueue (mPackage);
-					}
-				}
-
+				mUdpCheckPool.AddReceiveCheck (mPackage);
 			}
 
 			int nPackageCount = 0;
@@ -109,12 +101,12 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 					NetCombinePackage mCombinePackage = mNetPackage as NetCombinePackage;
 					var iter = mCombinePackage.mNeedRecyclePackage.GetEnumerator ();
 					while (iter.MoveNext ()) {
-						RecycleReceivePackage (iter.Current);
+						SafeRecycleReceivePackage (iter.Current);
 					}
 					mCombinePackage.mNeedRecyclePackage.Clear ();
 					mReceiveCombinePackagePool.recycle (mNetPackage as NetCombinePackage);
 				} else if (mNetPackage is NetUdpFixedSizePackage) {
-					RecycleReceivePackage (mNetPackage as NetUdpFixedSizePackage);
+					SafeRecycleReceivePackage (mNetPackage as NetUdpFixedSizePackage);
 				}
 
 				nPackageCount++;
@@ -130,7 +122,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			bool bSucccess = NetPackageEncryption.DeEncryption (mPackage);
 			if (bSucccess) {
 				if (mPackage.nPackageId >= 50) {
-					mUdpCheckPool.AddReceiveCheck (mPackage);
+					mReceiveSocketPackageQueue.Enqueue (mPackage);
 				} else {
 					AddLogicHandleQueue (mPackage);
 				}

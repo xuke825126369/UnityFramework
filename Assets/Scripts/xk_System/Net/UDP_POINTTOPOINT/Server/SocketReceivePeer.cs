@@ -55,7 +55,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 				}
 
 				mUdpCheckPool.AddReceiveCheck (mNetPackage);
-
 			}
 
 			int nPackageCount = 0;

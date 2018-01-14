@@ -27,7 +27,9 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		private void SendHeartBeat()
 		{
 			HeartBeat sendMsg = new HeartBeat ();
-			SendNetData (UdpNetCommand.COMMAND_HEARTBEAT, sendMsg);
+			NetUdpFixedSizePackage mPackage = GetUdpSystemPackage (UdpNetCommand.COMMAND_HEARTBEAT, sendMsg);
+			SendNetStream (mPackage);
+			SafeRecycleReceivePackage (mPackage);
 		}
 
 		private void ReceiveServerHeartBeat(NetPackage mPackage)

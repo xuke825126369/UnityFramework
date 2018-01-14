@@ -11,7 +11,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 		public UDPLikeTCPPeer()
 		{
-			PackageManager.Instance.addNetListenFun (UdpNetCommand.COMMAND_HEARTBEAT, ReceiveServerHeartBeat);
+			
 		}
 
 		public override void Update (double elapsed)
@@ -24,16 +24,23 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			}
 		}
 
-		private void SendHeartBeat()
+		public void SendHeartBeat()
 		{
 			HeartBeat sendMsg = new HeartBeat ();
-			SendNetData (UdpNetCommand.COMMAND_HEARTBEAT, sendMsg);
+			NetUdpFixedSizePackage mPackage = GetUdpSystemPackage (UdpNetCommand.COMMAND_HEARTBEAT, sendMsg);
+			SendNetStream (mPackage);
+			RecycleNetUdpFixedPackage (mPackage);
 		}
 
-		private void ReceiveServerHeartBeat(ClientPeer peer,NetPackage mPackage)
+		public void ReceiveUdpClientHeart(NetPackage mPackage)
 		{
 			HeartBeat msg = Protocol3Utility.getData<HeartBeat> (mPackage);
+			SendNetStream (mPackage);
+		}
 
+		public void ReceiveUdpCheckPackage(NetPackage mPackage)
+		{
+			mUdpCheckPool.ReceiveCheckPackage (mPackage);
 		}
 	}
 }

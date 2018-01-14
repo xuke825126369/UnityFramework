@@ -29,25 +29,28 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 
 		IEnumerator SendBroadCast ()
 		{
-			int i = 0;
 			while (true) {
 				yield return new WaitForSeconds (0.1f);
-				Send ();
-				i++;
-				if (i == 100) {
+				if (nSendCount >= 1000) {
 					break;
 				}
+				Send ();
 			}
 
-			yield return new WaitForSeconds (1f);
+			DebugSystem.Log ("服务器接受的数量：" + UDPServerTest.nReceiveCount);
+			DebugSystem.Log ("客户端 发送接受数量： " + nSendCount + " | " + nReceiveCount);
 
-			DebugSystem.Log ("发送接受数量： " + nSendCount + " | " + nReceiveCount);
+			while (nSendCount > nReceiveCount) {
+				yield return new WaitForSeconds (1f);
+				DebugSystem.Log ("服务器接受的数量：" + UDPServerTest.nReceiveCount);
+				DebugSystem.Log ("客户端 发送接受数量： " + nSendCount + " | " + nReceiveCount);
+			}
 		}
 
 		private void Send ()
 		{
 			csChatData msg = new csChatData ();
-			if (UnityEngine.Random.Range (1, 5) == 10) {
+			if (UnityEngine.Random.Range (1, 1) == 2) {
 				msg.Id = 10000000;
 				msg.TalkMsg = "127.0.0.1";	
 			} else if (UnityEngine.Random.Range (1, 5) == 2) {
