@@ -23,7 +23,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		}
 
 		private const int nMaxReSendCount = 5;
-		private const float nReSendTime = 1000.0f;
+		private const double nReSendTime = 1000.00;
 		private const bool bClient = false;
 
 		private SafeObjectPool<CheckPackageInfo> mCheckPackagePool = null;
@@ -76,7 +76,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 					mCheckPackagePool.recycle (mRemovePackage);
 				} else {
-					DebugSystem.LogError ("已经确认的Send OrderId: " + nOrderId);
+					DebugSystem.LogError ("Server 已经确认的Send OrderId: " + nOrderId);
 				}
 			} else {
 				CheckPackageInfo mRemovePackage = null;
@@ -86,7 +86,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 					mCheckPackagePool.recycle (mRemovePackage);
 				} else {
-					DebugSystem.LogError ("已经确认的Receive OrderId: " + nOrderId);
+					DebugSystem.LogError ("Server 已经确认的Receive OrderId: " + nOrderId);
 				}
 			}
 		}
@@ -104,6 +104,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 							break;
 						}
 
+						DebugSystem.Log ("Server ReSendPackage: " + iter1.Current.Key);
 						this.mUdpPeer.SendNetStream (mCheckInfo.mPackage);
 						mCheckInfo.mTimer.restart ();
 					}
@@ -121,6 +122,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 							break;
 						}
 
+						DebugSystem.Log ("Server ReSend SureReceive Package: " + iter2.Current.Key);
 						this.mUdpPeer.SendNetStream (mCheckInfo.mPackage);
 						mCheckInfo.mTimer.restart ();
 					}
@@ -163,7 +165,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 				mCheckInfo.mTimer.restart ();
 
 				if (!mWaitCheckReceiveDic.TryAdd (mReceiveLogicPackage.nOrderId, mCheckInfo)) {
-					DebugSystem.LogError ("Server Add SendCheck Error ");
+					DebugSystem.LogError ("Server Add ReceiveCheck Error : " + mReceiveLogicPackage.nOrderId);
 				}
 
 				mUdpPeer.SendNetStream (mCheckResultPackage);
@@ -193,6 +195,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 				if (!mReceiveLossPackageDic.TryAdd (mPackage.nOrderId, mPackage)) {
 					DebugSystem.LogError ("Server Add Loss Package Error");
 				}
+
 			} else {
 				DebugSystem.Log ("Server 接受 过去的 废物包： " + mPackage.nPackageId);
 				mUdpPeer.RecycleNetUdpFixedPackage (mPackage);

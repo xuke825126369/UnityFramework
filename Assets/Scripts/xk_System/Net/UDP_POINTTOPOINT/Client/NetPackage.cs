@@ -40,7 +40,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		public UInt16 nCombinePackageId;
 
 		public Queue<NetUdpFixedSizePackage> mCombinePackageQueue;
-		public Queue<NetUdpFixedSizePackage> mNeedRecyclePackageQueue;
 
 		public NetCombinePackage ()
 		{
@@ -72,13 +71,11 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				Array.Copy (tempPackage.buffer, ClientConfig.nUdpPackageFixedHeadSize, base.buffer, base.Length, tempPackage.Length - ClientConfig.nUdpPackageFixedHeadSize);
 				base.Length += (tempPackage.Length - ClientConfig.nUdpPackageFixedHeadSize);
 
-				mNeedRecyclePackageQueue.Enqueue (tempPackage);
+				ObjectPoolManager.Instance.mUdpFixedSizePackagePool.recycle (tempPackage);
 			}
 
 			base.nPackageId = nCombinePackageId;
 		}
-
-
 	}
 }
 

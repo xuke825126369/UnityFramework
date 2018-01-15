@@ -17,9 +17,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		protected ConcurrentQueue<NetPackage> mNeedHandlePackageQueue = null;
 
 		protected ConcurrentQueue<NetUdpFixedSizePackage> mReceiveSocketPackageQueue = null;
-		protected SafeObjectPool<NetUdpFixedSizePackage> mReceivePackagePool = null;
-		protected SafeObjectPool<NetCombinePackage> mReceiveCombinePackagePool = null;
-
 		protected UdpCheckPool mUdpCheckPool = null;
 
 		public SocketReceivePeer ()
@@ -27,26 +24,23 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			mLogicFuncDic = new Dictionary<UInt16, Action<NetPackage>> ();
 
 			mReceiveSocketPackageQueue = new ConcurrentQueue<NetUdpFixedSizePackage> ();
-			mReceivePackagePool = new SafeObjectPool<NetUdpFixedSizePackage> ();
-			mReceiveCombinePackagePool = new SafeObjectPool<NetCombinePackage> ();
-
 			mNeedHandlePackageQueue = new ConcurrentQueue<NetPackage> ();
 			mUdpCheckPool = new UdpCheckPool (this as ClientPeer);
 		}
 
 		public NetCombinePackage SafeGetNetCombinePackage()
 		{
-			return mReceiveCombinePackagePool.Pop ();
+			return ObjectPoolManager.Instance.mCombinePackagePool.Pop ();
 		}
 
 		public NetUdpFixedSizePackage SafeGetNetUdpFixedPackage()
 		{
-			return mReceivePackagePool.Pop ();
+			return ObjectPoolManager.Instance.mUdpFixedSizePackagePool.Pop ();
 		}
 
 		public void SafeRecycleReceivePackage(NetUdpFixedSizePackage mPackage)
 		{
-			mReceivePackagePool.recycle (mPackage);
+			ObjectPoolManager.Instance.mUdpFixedSizePackagePool.recycle (mPackage);
 		}
 
 		public void AddLogicHandleQueue (NetPackage mPackage)
@@ -92,20 +86,15 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			while (mNeedHandlePackageQueue.Count > 0) {
 				NetPackage mNetPackage = null;
 				if (!mNeedHandlePackageQueue.TryDequeue (out mNetPackage)) {
-					DebugSystem.Log ("Dequeue 失败");
 					break;
 				}
 
 				mLogicFuncDic [mNetPackage.nPackageId] (mNetPackage);
 
 				if (mNetPackage is NetCombinePackage) {
-					NetCombinePackage mCombinePackage = mNetPackage as NetCombinePackage;
-					while (mCombinePackage.mNeedRecyclePackageQueue.Count > 0) {
-						SafeRecycleReceivePackage (mCombinePackage.mNeedRecyclePackageQueue.Dequeue ());
-					}
-					mReceiveCombinePackagePool.recycle (mNetPackage as NetCombinePackage);
+					ObjectPoolManager.Instance.mCombinePackagePool.recycle (mNetPackage as NetCombinePackage);
 				} else if (mNetPackage is NetUdpFixedSizePackage) {
-					SafeRecycleReceivePackage (mNetPackage as NetUdpFixedSizePackage);
+					ObjectPoolManager.Instance.mUdpFixedSizePackagePool.recycle (mNetPackage as NetUdpFixedSizePackage);
 				}
 
 				nPackageCount++;

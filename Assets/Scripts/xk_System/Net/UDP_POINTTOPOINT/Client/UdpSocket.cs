@@ -44,14 +44,14 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			while (true) {
 				int length = 0;
 				try {
-					NetUdpFixedSizePackage mReceiveStream = mReceivePackagePool.Pop ();
+					NetUdpFixedSizePackage mReceiveStream = ObjectPoolManager.Instance.mUdpFixedSizePackagePool.Pop ();
 					length = mSocket.ReceiveFrom (mReceiveStream.buffer, 0, mReceiveStream.buffer.Length, SocketFlags.None, ref remoteEndPoint);
 					if (length > 0) {
 						//DebugSystem.Log("ReceiveLength: " + length);
 						mReceiveStream.Length = length;
 						ReceiveNetPackage (mReceiveStream);
 					} else {
-						mReceivePackagePool.recycle (mReceiveStream);
+						ObjectPoolManager.Instance.mUdpFixedSizePackagePool.recycle (mReceiveStream);
 					}
 				} catch (SocketException e) {
 					DebugSystem.LogError (e.SocketErrorCode);

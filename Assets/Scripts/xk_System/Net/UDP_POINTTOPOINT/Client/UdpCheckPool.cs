@@ -76,7 +76,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 					mWaitCheckSendDic.Remove (nOrderId);
 					mCheckPackagePool.recycle (mRemovePackage);
 				} else {
-					DebugSystem.LogError ("我已经收到 Send确认包了: " + nOrderId);
+					DebugSystem.LogError ("Client 我已经收到 Send确认包了: " + nOrderId);
 				}
 			} else {
 				CheckPackageInfo mRemovePackage = null;
@@ -87,7 +87,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 					mWaitCheckReceiveDic.Remove (nOrderId);
 					mCheckPackagePool.recycle (mRemovePackage);
 				} else {
-					DebugSystem.LogError ("我已经收到Receive确认包了: " + nOrderId);
+					DebugSystem.LogError ("Client 我已经收到Receive确认包了: " + nOrderId);
 				}
 			}
 		}
@@ -102,11 +102,10 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				mCheckInfo.mPackage = mPackage;
 				mCheckInfo.mTimer.restart ();
 
-
 				if (!mWaitCheckSendDic.ContainsKey (nOrderId)) {
 					mWaitCheckSendDic.Add (nOrderId, mCheckInfo);
 				} else {
-					DebugSystem.LogError ("Add SendCheck Repeated !!!" + nOrderId);
+					DebugSystem.LogError ("Client Add SendCheck Repeated !!!" + nOrderId);
 				}
 			}
 
@@ -123,6 +122,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				} else {
 					mResult.NWhoOrderId = (UInt32)(1 << 16 | nOrderId);
 				}
+
 				NetUdpFixedSizePackage mCheckResultPackage = mUdpPeer.GetUdpSystemPackage (UdpNetCommand.COMMAND_PACKAGECHECK, mResult);
 
 				CheckPackageInfo mCheckInfo = mCheckPackagePool.Pop ();
@@ -131,10 +131,9 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				mCheckInfo.mTimer.restart ();
 
 				if (!mWaitCheckReceiveDic.ContainsKey (nOrderId)) {
-					DebugSystem.Log ("Add ReceiveCheck :  " + nOrderId);
 					mWaitCheckReceiveDic.Add (nOrderId, mCheckInfo);
 				} else {
-					DebugSystem.LogError ("Add ReceiveCheck Repeated !:  " + nOrderId);
+					DebugSystem.LogError ("Client Add ReceiveCheck Repeated !:  " + nOrderId);
 				}
 
 				mUdpPeer.SendNetStream (mCheckResultPackage);
@@ -154,8 +153,8 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 					if (mReceiveLossPackageDic.ContainsKey (nCurrentWaitReceiveOrderId)) {
 						mPackage = mReceiveLossPackageDic [nCurrentWaitReceiveOrderId];
 						mReceiveLossPackageDic.Remove (nCurrentWaitReceiveOrderId);
-						CheckCombinePackage (mPackage);
 
+						CheckCombinePackage (mPackage);
 						AddPackageOrderId ();
 					} else {
 						break;
@@ -164,7 +163,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			} else if (mPackage.nOrderId > nCurrentWaitReceiveOrderId) {
 				mReceiveLossPackageDic [mPackage.nOrderId] = mPackage;
 			} else {
-				DebugSystem.Log ("接受 过去的 废物包： " + mPackage.nPackageId);
+				DebugSystem.Log ("Client 接受 过去的 废物包： " + mPackage.nPackageId);
 			}
 		}
 
@@ -202,10 +201,11 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				if (mCheckInfo.mTimer.elapsed () > nReSendTime) {
 					mCheckInfo.nReSendCount++;
 					if (mCheckInfo.nReSendCount > nMaxReSendCount) {
-						DebugSystem.LogError ("发送超时");
+						DebugSystem.LogError ("Client 发送超时");
 						break;
 					}
 
+					DebugSystem.Log ("Client ReSend Package: " + iter1.Current.Key);
 					this.mUdpPeer.SendNetStream (mCheckInfo.mPackage);
 					mCheckInfo.mTimer.restart ();
 				}
@@ -217,10 +217,11 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				if (mCheckInfo.mTimer.elapsed () > nReSendTime) {
 					mCheckInfo.nReSendCount++;
 					if (mCheckInfo.nReSendCount > nMaxReSendCount) {
-						DebugSystem.LogError ("发送超时");
+						DebugSystem.LogError ("Client 发送超时");
 						break;
 					}
 
+					DebugSystem.Log ("Client ReSend SureReceive Package: " + iter2.Current.Key);
 					this.mUdpPeer.SendNetStream (mCheckInfo.mPackage);
 					mCheckInfo.mTimer.restart ();
 				}
