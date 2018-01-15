@@ -7,7 +7,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 	public class ClientConfig
 	{
 		public const bool IsLittleEndian = false;
-		public const bool bNeedCheckPackage = true;
+		public const bool bNeedCheckPackage = false;
 
 		//Udp Package OrderId
 		public const UInt16 nUdpMinOrderId = 5;

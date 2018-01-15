@@ -22,7 +22,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			}
 		}
 
-		private const int nMaxReSendCount = 5;
+		private const int nMaxReSendCount = 3;
 		private const double nReSendTime = 1000.00;
 		private const bool bClient = false;
 

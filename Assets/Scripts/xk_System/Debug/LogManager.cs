@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System;
 
 namespace xk_System.Debug
 {
@@ -12,7 +13,8 @@ namespace xk_System.Debug
         public static void Log(object s)
         {
 #if UNITY_EDITOR || UNITY_STANDALONE_WIN
-            UnityEngine.Debug.Log(s);
+
+			UnityEngine.Debug.Log(DateTime.Now.ToShortTimeString() +" | "+ s);
 #else
            // Console.WriteLine(s);
 #endif
@@ -20,7 +22,7 @@ namespace xk_System.Debug
         public static void LogWarning(object s)
         {
 #if UNITY_EDITOR || UNITY_STANDALONE_WIN
-            UnityEngine.Debug.LogWarning(s);
+			UnityEngine.Debug.LogWarning(DateTime.Now.ToShortTimeString() +" | "+ s);
 #else
            // Console.WriteLine(s);
 #endif
@@ -29,7 +31,7 @@ namespace xk_System.Debug
         public static void LogError(object s)
         {
 #if UNITY_EDITOR || UNITY_STANDALONE_WIN
-            UnityEngine.Debug.LogError(s);
+			UnityEngine.Debug.LogError(DateTime.Now.ToShortTimeString() +" | "+ s);
 #else
             //Console.WriteLine(s);
 #endif

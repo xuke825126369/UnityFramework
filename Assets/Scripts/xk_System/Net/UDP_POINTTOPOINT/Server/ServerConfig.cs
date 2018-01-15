@@ -10,7 +10,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		public const bool IsLittleEndian = false;
 
 		//or Need Check Package
-		public const bool bNeedCheckPackage = true;
+		public const bool bNeedCheckPackage = false;
 
 		//Udp Package OrderId
 		public const UInt16 nUdpMinOrderId = 5;

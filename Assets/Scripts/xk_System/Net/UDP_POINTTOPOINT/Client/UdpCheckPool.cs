@@ -21,8 +21,8 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			}
 		}
 
-		private const int nMaxReSendCount = 5;
-		private const float nReSendTime = 1000.00f;
+		private const int nMaxReSendCount = 3;
+		private const double nReSendTime = 1000.00;
 		private const bool bClient = true;
 
 		private ObjectPool<CheckPackageInfo> mCheckPackagePool = null;

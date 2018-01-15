@@ -109,7 +109,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		{			
 			bool bSucccess = NetPackageEncryption.DeEncryption (mPackage);
 			if (bSucccess) {
-				if (mPackage.nPackageId >= 50) {
+				if (mPackage.nPackageId > 50) {
 					mReceiveSocketPackageQueue.Enqueue (mPackage);
 				} else {
 					AddLogicHandleQueue (mPackage);
