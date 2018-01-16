@@ -17,7 +17,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 		public void Update(double elapsed)
 		{
-			if (elapsed > 0.1) {
+			if (elapsed > ServerConfig.FrameSpendMaxTime) {
 				DebugSystem.LogError ("帧 时间 太长: " + elapsed);
 			}
 

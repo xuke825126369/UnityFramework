@@ -12,16 +12,19 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 {
 	public class SocketUdp_Server_Basic
 	{
-		private EndPoint bindEndPoint = null;
-		private EndPoint remoteEndPoint = null;
-		private Socket mSocket = null;
-		private Thread mThread = null;
-
 		private string ip;
 		private UInt16 port;
 
+		private List<Socket> mSocketPool = null;
+
 		protected NETSTATE m_state;
 		protected Queue<peer_event> mPeerEventQueue = new Queue<peer_event> ();
+
+		public SocketUdp_Server_Basic()
+		{
+			mSocketPool = new List<Socket> ();
+		}
+
 		public void InitNet (string ip, UInt16 ServerPort)
 		{
 			this.port = ServerPort;
@@ -40,11 +43,9 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 			EndPoint bindEndPoint = new IPEndPoint (IPAddress.Parse (ip), port);
 			mSocket.Bind (bindEndPoint);
-			EndPoint remoteEndPoint = new IPEndPoint (IPAddress.Any, 0);
 
 			HandData (mSocket);
 		}
-
 
 		private void HandData(Socket mSocket)
 		{
@@ -93,10 +94,9 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 		public void CloseNet ()
 		{
-			if (mSocket != null) {
-				mSocket.Close ();
+			for (int i = 0; i < mSocketPool.Count; i++) {
+				mSocketPool [i].Close ();
 			}
-			mThread.Abort ();
 		}
 	}
 
