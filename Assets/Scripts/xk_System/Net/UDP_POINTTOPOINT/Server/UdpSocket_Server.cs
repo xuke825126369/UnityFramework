@@ -28,23 +28,30 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			this.ip = ip;
 			m_state = NETSTATE.DISCONNECTED;
 
-			mSocket = new Socket (AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-
-			bindEndPoint = new IPEndPoint (IPAddress.Parse (ip), port);
-			mSocket.Bind (bindEndPoint);
-			remoteEndPoint = new IPEndPoint (IPAddress.Any, 0);
-
-			mThread = new Thread (HandData);
-			mThread.Start ();
+			for (int i = 0; i < 10; i++) {
+				ThreadPool.QueueUserWorkItem (new WaitCallback (WorkItem));
+			}
 		}
 
-		private void HandData()
+		private void WorkItem(object state)
+		{
+			Socket mSocket = new Socket (AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+			mSocket.ExclusiveAddressUse = false;
+
+			EndPoint bindEndPoint = new IPEndPoint (IPAddress.Parse (ip), port);
+			mSocket.Bind (bindEndPoint);
+			EndPoint remoteEndPoint = new IPEndPoint (IPAddress.Any, 0);
+
+			HandData (mSocket);
+		}
+
+
+		private void HandData(Socket mSocket)
 		{
 			while (true) {
 				int length = 0;
 				try {
-					Thread.Sleep(10);
-					remoteEndPoint = new IPEndPoint (IPAddress.Any, 0);
+					EndPoint remoteEndPoint = new IPEndPoint (IPAddress.Any, 0);
 					NetUdpFixedSizePackage mPackage = ObjectPoolManager.Instance.mUdpFixedSizePackagePool.Pop ();
 					length = mSocket.ReceiveFrom (mPackage.buffer, ref remoteEndPoint);
 					mPackage.Length = length;

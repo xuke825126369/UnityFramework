@@ -48,6 +48,8 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		{
 			mUdpCheckPool.Update (elapsed);
 
+			int nPackageCount = 0;
+
 			while (!mNeedCheckPackageQueue.IsEmpty) {
 				NetUdpFixedSizePackage mNetPackage = null;
 				if (!mNeedCheckPackageQueue.TryDequeue (out mNetPackage)) {
@@ -57,7 +59,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 				mUdpCheckPool.AddReceiveCheck (mNetPackage);
 			}
 
-			int nPackageCount = 0;
 			while (!mNeedHandlePackageQueue.IsEmpty) {
 				NetPackage mNetPackage = null;
 				if (!mNeedHandlePackageQueue.TryDequeue (out mNetPackage)) {
@@ -86,7 +87,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			bool bSucccess = NetPackageEncryption.DeEncryption (mPackage);
 			if (bSucccess) {
 				if (mPackage.nPackageId >= 50) {
-					DebugSystem.Log ("Server ReceiveInfo: " + mPackage.nOrderId + " | " + mPackage.nGroupCount + " | " + mPackage.Length);
 					AddPackageToCheckQueue (mPackage);
 				} else {
 					AddLogicHandleQueue (mPackage);

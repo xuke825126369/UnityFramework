@@ -64,6 +64,8 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			UInt16 whoId = (UInt16)(mPackageCheckResult.NWhoOrderId >> 16);
 			UInt16 nOrderId = (UInt16)(mPackageCheckResult.NWhoOrderId & 0x0000FFFF);
 
+			//DebugSystem.Log ("Client Check: nWhoId: " + whoId + " | nOrderId: " + nOrderId);
+
 			bool bSender = bClient ? whoId == 1 : whoId == 2;
 			if (bSender) {
 				this.mUdpPeer.SendNetStream (mPackage);
@@ -132,8 +134,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 				if (!mWaitCheckReceiveDic.ContainsKey (nOrderId)) {
 					mWaitCheckReceiveDic.Add (nOrderId, mCheckInfo);
-				} else {
-					DebugSystem.LogError ("Client Add ReceiveCheck Repeated !:  " + nOrderId);
 				}
 
 				mUdpPeer.SendNetStream (mCheckResultPackage);
@@ -163,7 +163,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			} else if (mPackage.nOrderId > nCurrentWaitReceiveOrderId) {
 				mReceiveLossPackageDic [mPackage.nOrderId] = mPackage;
 			} else {
-				DebugSystem.Log ("Client 接受 过去的 废物包： " + mPackage.nPackageId);
+				DebugSystem.LogError ("Client 接受 过去的 废物包： " + mPackage.nOrderId);
 			}
 		}
 
@@ -205,7 +205,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 						break;
 					}
 
-					DebugSystem.Log ("Client ReSend Package: " + iter1.Current.Key);
+					DebugSystem.LogError ("Client ReSend Package: " + iter1.Current.Key);
 					this.mUdpPeer.SendNetStream (mCheckInfo.mPackage);
 					mCheckInfo.mTimer.restart ();
 				}
@@ -221,7 +221,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 						break;
 					}
 
-					DebugSystem.Log ("Client ReSend SureReceive Package: " + iter2.Current.Key);
+					DebugSystem.LogError ("Client ReSend SureReceive Package: " + iter2.Current.Key);
 					this.mUdpPeer.SendNetStream (mCheckInfo.mPackage);
 					mCheckInfo.mTimer.restart ();
 				}

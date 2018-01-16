@@ -53,7 +53,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 			if (UnityEngine.Random.Range (1, 1) == 2) {
 				msg.Id = 10000000;
 				msg.TalkMsg = "127.0.0.1";	
-			} else if (UnityEngine.Random.Range (1, 5) == 2) {
+			} else if (UnityEngine.Random.Range (1, 3) == 1) {
 				byte[] aa = new byte[2048];
 				msg.TalkMsg = BitConverter.ToString (aa);
 			} else if (UnityEngine.Random.Range (1, 5) == 30) {
@@ -78,7 +78,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 		{
 			//DebugSystem.Log ("Client packageLength: " + package.Length);
 			csChatData mServerSendData = Protocol3Utility.getData<csChatData> (package);
-			DebugSystem.Log ("Client: " + mServerSendData.Id + " | " + mServerSendData.TalkMsg);
+			//DebugSystem.Log ("Client: " + mServerSendData.Id + " | " + mServerSendData.TalkMsg);
 			nReceiveCount++;
 
 		}

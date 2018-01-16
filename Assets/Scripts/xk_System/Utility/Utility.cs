@@ -41,6 +41,7 @@ public static class TimeUtility
         DateTime startTime = TimeZone.CurrentTimeZone.ToLocalTime(new  DateTime(1970, 1, 1));
         return (ulong)(time - startTime).TotalSeconds;
     }
+
 }
 
 public class Timer

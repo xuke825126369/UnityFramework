@@ -66,16 +66,11 @@ namespace xk_System
 
 		public T Pop()
 		{
-			if (!mObjectPool.IsEmpty) {
-				T t = default(T);
-				if (!mObjectPool.TryDequeue (out t)) {
-					DebugSystem.LogError ("Pop 失败");
-					return default(T);
-				}
-				return t;
-			} else {
+			T t = default(T);
+			if (!mObjectPool.TryDequeue (out t)) {
 				return new T ();
 			}
+			return t;
 		}
 
 		public void recycle(T t)

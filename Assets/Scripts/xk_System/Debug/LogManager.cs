@@ -10,11 +10,17 @@ namespace xk_System.Debug
     //用来打印日志文件或写入日志文件
     public static class DebugSystem
     {
+		private static string GetTimeString()
+		{
+			DateTime now = DateTime.Now;
+			return now.Hour + " : " + now.Minute + " : " + now.Second + " : " + now.Millisecond;
+		}
+
         public static void Log(object s)
         {
 #if UNITY_EDITOR || UNITY_STANDALONE_WIN
 
-			UnityEngine.Debug.Log(DateTime.Now.ToShortTimeString() +" | "+ s);
+			UnityEngine.Debug.Log(GetTimeString() +" | "+ s);
 #else
            // Console.WriteLine(s);
 #endif
@@ -22,7 +28,7 @@ namespace xk_System.Debug
         public static void LogWarning(object s)
         {
 #if UNITY_EDITOR || UNITY_STANDALONE_WIN
-			UnityEngine.Debug.LogWarning(DateTime.Now.ToShortTimeString() +" | "+ s);
+			UnityEngine.Debug.LogWarning(GetTimeString() +" | "+ s);
 #else
            // Console.WriteLine(s);
 #endif
@@ -31,11 +37,11 @@ namespace xk_System.Debug
         public static void LogError(object s)
         {
 #if UNITY_EDITOR || UNITY_STANDALONE_WIN
-			UnityEngine.Debug.LogError(DateTime.Now.ToShortTimeString() +" | "+ s);
+			UnityEngine.Debug.LogError(GetTimeString() +" | "+ s);
 #else
             //Console.WriteLine(s);
 #endif
-        }
+		}
 
 		public static void Assert(bool bSure, object s = null)
 		{

@@ -64,7 +64,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			UInt16 whoId = (UInt16)(mPackageCheckResult.NWhoOrderId >> 16);
 			UInt16 nOrderId = (UInt16)(mPackageCheckResult.NWhoOrderId & 0x0000FFFF);
 
-			//DebugSystem.Log ("Server: nWhoId: " + whoId + " | nOrderId: " + nOrderId);
+			//DebugSystem.Log ("ServerCheck: nWhoId: " + whoId + " | nOrderId: " + nOrderId);
 			bool bSender = bClient ? whoId == 1 : whoId == 2;
 			if (bSender) {
 				this.mUdpPeer.SendNetStream (mPackage);
@@ -104,7 +104,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 							break;
 						}
 
-						DebugSystem.Log ("Server ReSendPackage: " + iter1.Current.Key);
+						DebugSystem.LogError ("Server ReSendPackage: " + iter1.Current.Key);
 						this.mUdpPeer.SendNetStream (mCheckInfo.mPackage);
 						mCheckInfo.mTimer.restart ();
 					}
@@ -122,7 +122,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 							break;
 						}
 
-						DebugSystem.Log ("Server ReSend SureReceive Package: " + iter2.Current.Key);
+						DebugSystem.LogError ("Server ReSend SureReceive Package: " + iter2.Current.Key);
 						this.mUdpPeer.SendNetStream (mCheckInfo.mPackage);
 						mCheckInfo.mTimer.restart ();
 					}
@@ -150,6 +150,15 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 		public void AddReceiveCheck (NetUdpFixedSizePackage mReceiveLogicPackage)
 		{
+#if Test
+			DebugSystem.Log ("Server ReceiveInfo: " + mReceiveLogicPackage.nOrderId + " | " + mReceiveLogicPackage.nGroupCount + " | " + mReceiveLogicPackage.Length);
+			if (nCurrentWaitReceiveOrderId != mReceiveLogicPackage.nOrderId) {
+				DebugSystem.LogError ("丢包： " + nCurrentWaitReceiveOrderId);
+			} else {
+				AddPackageOrderId ();
+			}
+#endif
+
 			if (ServerConfig.bNeedCheckPackage) {
 				PackageCheckResult mResult = new PackageCheckResult ();
 				if (bClient) {
@@ -164,10 +173,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 				mCheckInfo.mPackage = mCheckResultPackage;
 				mCheckInfo.mTimer.restart ();
 
-				if (!mWaitCheckReceiveDic.TryAdd (mReceiveLogicPackage.nOrderId, mCheckInfo)) {
-					DebugSystem.LogError ("Server Add ReceiveCheck Error : " + mReceiveLogicPackage.nOrderId);
-				}
-
+				mWaitCheckReceiveDic.TryAdd (mReceiveLogicPackage.nOrderId, mCheckInfo);
 				mUdpPeer.SendNetStream (mCheckResultPackage);
 
 				CheckReceivePackageLoss (mReceiveLogicPackage);
@@ -192,12 +198,12 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 					}
 				}
 			} else if (mPackage.nOrderId > nCurrentWaitReceiveOrderId) {
-				if (!mReceiveLossPackageDic.TryAdd (mPackage.nOrderId, mPackage)) {
-					DebugSystem.LogError ("Server Add Loss Package Error");
+				if (mReceiveLossPackageDic.TryAdd (mPackage.nOrderId, mPackage)) {
+					DebugSystem.LogError ("mPackage Loss: " + nCurrentWaitReceiveOrderId + " | " + mPackage.nOrderId);
 				}
 
 			} else {
-				DebugSystem.Log ("Server 接受 过去的 废物包： " + mPackage.nPackageId);
+				DebugSystem.LogError ("Server 接受 过去的 废物包： " + mPackage.nOrderId);
 				mUdpPeer.RecycleNetUdpFixedPackage (mPackage);
 			}
 		}
