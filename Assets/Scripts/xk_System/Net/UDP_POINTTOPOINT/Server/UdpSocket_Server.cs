@@ -15,23 +15,27 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		private string ip;
 		private UInt16 port;
 
-		private List<Socket> mSocketPool = null;
+		private ConcurrentBag<Socket> mSocketPool = null;
 
 		protected NETSTATE m_state;
 		protected Queue<peer_event> mPeerEventQueue = new Queue<peer_event> ();
 
+		private bool bClosed = false;
+		private int nMaxThreadCount = 16;
+
 		public SocketUdp_Server_Basic()
 		{
-			mSocketPool = new List<Socket> ();
+			mSocketPool = new ConcurrentBag<Socket> ();
 		}
 
 		public void InitNet (string ip, UInt16 ServerPort)
 		{
+			bClosed = false;
 			this.port = ServerPort;
 			this.ip = ip;
 			m_state = NETSTATE.DISCONNECTED;
 
-			for (int i = 0; i < 10; i++) {
+			for (int i = 0; i < 16; i++) {
 				ThreadPool.QueueUserWorkItem (new WaitCallback (WorkItem));
 			}
 		}
@@ -44,12 +48,13 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			EndPoint bindEndPoint = new IPEndPoint (IPAddress.Parse (ip), port);
 			mSocket.Bind (bindEndPoint);
 
+			mSocketPool.Add (mSocket);
 			HandData (mSocket);
 		}
 
 		private void HandData(Socket mSocket)
 		{
-			while (true) {
+			while (!bClosed) {
 				int length = 0;
 				try {
 					EndPoint remoteEndPoint = new IPEndPoint (IPAddress.Any, 0);
@@ -94,8 +99,14 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 		public void CloseNet ()
 		{
-			for (int i = 0; i < mSocketPool.Count; i++) {
-				mSocketPool [i].Close ();
+			bClosed = true;
+			while (!mSocketPool.IsEmpty) {
+				Socket mSocket = null;
+				if (mSocketPool.TryTake (out mSocket)) {
+					mSocket.Close ();
+				} else {
+					break;
+				}
 			}
 		}
 	}
