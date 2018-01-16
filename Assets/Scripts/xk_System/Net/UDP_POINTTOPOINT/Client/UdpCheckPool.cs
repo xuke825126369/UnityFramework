@@ -176,13 +176,13 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				cc.nCombinePackageId = mPackage.nPackageId;
 				cc.nCombineGroupCount = mPackage.nGroupCount;
 
-				cc.mCombinePackageQueue.Enqueue (mPackage);
+				cc.Add (mPackage);
 
 				mReceiveGroupList.Enqueue (cc);
 			} else {
 				if (mReceiveGroupList.Count > 0) {
 					var currentGroup = mReceiveGroupList.Peek ();
-					currentGroup.mCombinePackageQueue.Enqueue (mPackage);
+					currentGroup.Add (mPackage);
 
 					if (currentGroup.CheckCombineFinish ()) {
 						mUdpPeer.AddLogicHandleQueue (mReceiveGroupList.Dequeue ());

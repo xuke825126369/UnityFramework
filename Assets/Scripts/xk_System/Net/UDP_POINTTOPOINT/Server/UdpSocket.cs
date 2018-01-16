@@ -36,7 +36,9 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 		public void SendNetStream (byte[] msg,int offset,int Length)
 		{
-			mSocket.SendTo (msg, offset, Length, SocketFlags.None, remoteEndPoint);
+			DebugSystem.Assert (Length >= ServerConfig.nUdpPackageFixedHeadSize, "发送长度要大于等于 包头： " + Length);
+			int nSendLength = mSocket.SendTo (msg, offset, Length, SocketFlags.None, remoteEndPoint);
+			DebugSystem.Assert (nSendLength > 0, "Server 发送失败： " + nSendLength);
 		}
 
 	}

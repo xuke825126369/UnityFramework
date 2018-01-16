@@ -29,11 +29,11 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 		}
 
 		IEnumerator Run ()
-		{    
+		{
 			for (int i = 0; i < 1; i++) {
 				GameObject obj = new GameObject ();
 				obj.AddComponent<UDPClientTest> ();
-				yield return new WaitForSeconds (1f);
+				yield return new WaitForSeconds (0.01f);
 			}
 		}
 

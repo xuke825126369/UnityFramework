@@ -211,24 +211,21 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 				cc.nCombinePackageId = mPackage.nPackageId;
 				cc.nCombineGroupCount = mPackage.nGroupCount;
 
-				cc.mCombinePackageQueue.Enqueue (mPackage);
+				cc.Add (mPackage);
 
 				mCombinePackageQueue.Enqueue (cc);
 			} else {
 				if (!mCombinePackageQueue.IsEmpty) {
 					NetCombinePackage currentGroup = null;
 					if (mCombinePackageQueue.TryPeek (out currentGroup)) {
-						currentGroup.mCombinePackageQueue.Enqueue (mPackage);
+						currentGroup.Add (mPackage);
 
 						if (currentGroup.CheckCombineFinish ()) {
 							NetCombinePackage mRemoveNetCombinePackage = null;
 							if (mCombinePackageQueue.TryDequeue (out mRemoveNetCombinePackage)) {
 								mUdpPeer.AddLogicHandleQueue (mRemoveNetCombinePackage);
-							} else {
-								DebugSystem.LogError ("移除失败");
 							}
 						}
-					
 					}
 				} else {
 					mUdpPeer.AddLogicHandleQueue (mPackage);

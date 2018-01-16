@@ -70,11 +70,9 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 		public void SendNetStream (byte[] msg, int offset, int Length)
 		{
-			if (Length < ClientConfig.nUdpPackageFixedHeadSize) {
-				DebugSystem.LogError ("Client 发送包的长度 小于 包头长度 ");
-			}
-				
-			mSocket.SendTo (msg, offset, Length, SocketFlags.None, remoteEndPoint);
+			DebugSystem.Assert (Length >= ClientConfig.nUdpPackageFixedHeadSize, "发送长度要大于等于 包头： " + Length);
+			int nSendLength = mSocket.SendTo (msg, offset, Length, SocketFlags.None, remoteEndPoint);
+			DebugSystem.Assert (nSendLength > 0, "Client 发送失败： " + nSendLength);
 		}
 
 		protected virtual void reConnectServer ()

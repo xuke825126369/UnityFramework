@@ -86,7 +86,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			bool bSucccess = NetPackageEncryption.DeEncryption (mPackage);
 			if (bSucccess) {
 				if (mPackage.nPackageId >= 50) {
-					//DebugSystem.Log ("Server 111111111111111111111: " + mPackage.nOrderId + "|" + mPackage.nPackageId + " | " + mPackage.nGroupCount + " | " + mPackage.Length);
+					DebugSystem.Log ("Server ReceiveInfo: " + mPackage.nOrderId + " | " + mPackage.nGroupCount + " | " + mPackage.Length);
 					AddPackageToCheckQueue (mPackage);
 				} else {
 					AddLogicHandleQueue (mPackage);

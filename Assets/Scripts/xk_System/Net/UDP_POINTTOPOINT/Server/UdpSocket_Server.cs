@@ -41,9 +41,9 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		private void HandData()
 		{
 			while (true) {
-				Thread.Sleep (10);
 				int length = 0;
 				try {
+					Thread.Sleep(10);
 					remoteEndPoint = new IPEndPoint (IPAddress.Any, 0);
 					NetUdpFixedSizePackage mPackage = ObjectPoolManager.Instance.mUdpFixedSizePackagePool.Pop ();
 					length = mSocket.ReceiveFrom (mPackage.buffer, ref remoteEndPoint);

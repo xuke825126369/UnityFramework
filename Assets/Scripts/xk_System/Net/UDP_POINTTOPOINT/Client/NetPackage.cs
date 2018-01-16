@@ -39,12 +39,17 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		public UInt16 nCombineGroupCount;
 		public UInt16 nCombinePackageId;
 
-		public Queue<NetUdpFixedSizePackage> mCombinePackageQueue;
+		private Queue<NetUdpFixedSizePackage> mCombinePackageQueue;
 
 		public NetCombinePackage ()
 		{
 			base.buffer = new byte[ClientConfig.nUdpCombinePackageFixedSize];
 			mCombinePackageQueue = new Queue<NetUdpFixedSizePackage> ();
+		}
+
+		public void Add(NetUdpFixedSizePackage mPackage)
+		{
+			mCombinePackageQueue.Enqueue (mPackage);
 		}
 
 		public bool CheckCombineFinish ()

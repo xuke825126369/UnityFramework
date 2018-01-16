@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System;
 using System.Collections.Concurrent;
 using Google.Protobuf;
+using xk_System.Debug;
 
 namespace xk_System.Net.UDP.POINTTOPOINT.Server
 {
@@ -40,12 +41,19 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		public UInt16 nCombineGroupCount;
 		public UInt16 nCombinePackageId;
 
-		public ConcurrentQueue<NetUdpFixedSizePackage> mCombinePackageQueue;
-
+		private ConcurrentQueue<NetUdpFixedSizePackage> mCombinePackageQueue;
+		//private List<NetUdpFixedSizePackage> mTestList = null;
 		public NetCombinePackage ()
 		{
 			base.buffer = new byte[ServerConfig.nUdpCombinePackageFixedSize];
 			mCombinePackageQueue = new ConcurrentQueue<NetUdpFixedSizePackage> ();
+			//mTestList = new List<NetUdpFixedSizePackage> ();
+		}
+
+		public void Add(NetUdpFixedSizePackage mPackage)
+		{
+			mCombinePackageQueue.Enqueue (mPackage);
+			//mTestList.Add (mPackage);
 		}
 
 		public bool CheckCombineFinish ()
@@ -67,15 +75,33 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			}
 
 			base.Length = ServerConfig.nUdpPackageFixedHeadSize;
+			//int nCurrentOrderId = nCombineGroupId; 
 			while (!mCombinePackageQueue.IsEmpty) {
 				NetUdpFixedSizePackage tempPackage = null;
 				if (mCombinePackageQueue.TryDequeue (out tempPackage)) {
 					Array.Copy (tempPackage.buffer, ServerConfig.nUdpPackageFixedHeadSize, base.buffer, base.Length, tempPackage.Length - ServerConfig.nUdpPackageFixedHeadSize);
 					base.Length += (tempPackage.Length - ServerConfig.nUdpPackageFixedHeadSize);
 
+					/*if (tempPackage.nOrderId != nCurrentOrderId) {
+						DebugSystem.LogError ("Server 组包失败 检测开始 ");
+
+						foreach (var v in mTestList) {
+							DebugSystem.LogError (v.nOrderId);
+						}
+
+						throw new Exception ("Server 组包失败 检查结束: " + mTestList.Count);
+					}
+
+					if (nCurrentOrderId == ServerConfig.nUdpMaxOrderId) {
+						nCurrentOrderId = ServerConfig.nUdpMinOrderId;
+					} else {
+						nCurrentOrderId++;
+					}*/
+
 					ObjectPoolManager.Instance.mUdpFixedSizePackagePool.recycle (tempPackage);
 				}
 			}
+			//mTestList.Clear ();
 
 			base.nPackageId = nCombinePackageId;
 		}
