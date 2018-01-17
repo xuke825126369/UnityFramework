@@ -8,6 +8,7 @@ using xk_System.Debug;
 using System.Net.Sockets;
 using Google.Protobuf;
 using xk_System.Net.UDP.POINTTOPOINT.Protocol;
+using System.Threading;
 
 namespace xk_System.Net.UDP.POINTTOPOINT.Server
 {
@@ -87,6 +88,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			bool bSucccess = NetPackageEncryption.DeEncryption (mPackage);
 			if (bSucccess) {
 				if (mPackage.nPackageId >= 50) {
+					//DebugSystem.LogError("当前线程ID: " + Thread.CurrentThread.Name +" | " +mPackage.nOrderId);
 					AddPackageToCheckQueue (mPackage);
 				} else {
 					AddLogicHandleQueue (mPackage);

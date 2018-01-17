@@ -30,7 +30,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 		IEnumerator SendBroadCast ()
 		{
 			while (true) {
-				yield return new WaitForSeconds (0.01f);
+				yield return new WaitForSeconds (0.1f);
 				if (nSendCount >= 1000) {
 					break;
 				}

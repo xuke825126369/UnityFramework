@@ -15,7 +15,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 
 		private void Start ()
 		{
-			gameObject.AddComponent<LogManager> ();
 			mNetSystem = gameObject.AddComponent<NetServer> ();
 
 			mNetSystem.Init ();

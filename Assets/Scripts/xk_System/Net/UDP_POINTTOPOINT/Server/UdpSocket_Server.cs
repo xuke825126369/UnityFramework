@@ -43,8 +43,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		private void WorkItem(object state)
 		{
 			Socket mSocket = new Socket (AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-			mSocket.ExclusiveAddressUse = false;
-
+			mSocket.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, 1);
 			EndPoint bindEndPoint = new IPEndPoint (IPAddress.Parse (ip), port);
 			mSocket.Bind (bindEndPoint);
 
@@ -57,12 +56,15 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			while (!bClosed) {
 				int length = 0;
 				try {
+					DebugSystem.LogWarning ("当前线程ID: 00000000000: " + Thread.CurrentThread.ManagedThreadId);
 					EndPoint remoteEndPoint = new IPEndPoint (IPAddress.Any, 0);
 					NetUdpFixedSizePackage mPackage = ObjectPoolManager.Instance.mUdpFixedSizePackagePool.Pop ();
 					length = mSocket.ReceiveFrom (mPackage.buffer, ref remoteEndPoint);
 					mPackage.Length = length;
 
 					if (length > 0) {
+						DebugSystem.LogWarning ("当前线程ID 1111111111111: " + Thread.CurrentThread.ManagedThreadId);
+
 						IPEndPoint point = remoteEndPoint as IPEndPoint;
 						UInt16 tempPort = (UInt16)point.Port;
 
