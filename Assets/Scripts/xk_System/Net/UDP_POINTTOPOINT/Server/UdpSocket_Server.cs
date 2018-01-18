@@ -15,17 +15,17 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		private string ip;
 		private UInt16 port;
 
-		private ConcurrentBag<Socket> mSocketPool = null;
-
 		protected NETSTATE m_state;
 		protected Queue<peer_event> mPeerEventQueue = new Queue<peer_event> ();
+	
+		private Socket mSocket = null;
+		private Thread mThread = null;
 
 		private bool bClosed = false;
-		private int nMaxThreadCount = 16;
 
 		public SocketUdp_Server_Basic()
 		{
-			mSocketPool = new ConcurrentBag<Socket> ();
+
 		}
 
 		public void InitNet (string ip, UInt16 ServerPort)
@@ -35,35 +35,26 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			this.ip = ip;
 			m_state = NETSTATE.DISCONNECTED;
 
-			for (int i = 0; i < 16; i++) {
-				ThreadPool.QueueUserWorkItem (new WaitCallback (WorkItem));
-			}
-		}
-
-		private void WorkItem(object state)
-		{
-			Socket mSocket = new Socket (AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-			mSocket.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, 1);
+			mSocket = new Socket (AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+			mSocket.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
 			EndPoint bindEndPoint = new IPEndPoint (IPAddress.Parse (ip), port);
 			mSocket.Bind (bindEndPoint);
 
-			mSocketPool.Add (mSocket);
-			HandData (mSocket);
+			mThread = new Thread (HandData);
+			mThread.Start ();
 		}
 
-		private void HandData(Socket mSocket)
+		private void HandData()
 		{
 			while (!bClosed) {
 				int length = 0;
 				try {
-					DebugSystem.LogWarning ("当前线程ID: 00000000000: " + Thread.CurrentThread.ManagedThreadId);
 					EndPoint remoteEndPoint = new IPEndPoint (IPAddress.Any, 0);
 					NetUdpFixedSizePackage mPackage = ObjectPoolManager.Instance.mUdpFixedSizePackagePool.Pop ();
 					length = mSocket.ReceiveFrom (mPackage.buffer, ref remoteEndPoint);
 					mPackage.Length = length;
 
 					if (length > 0) {
-						DebugSystem.LogWarning ("当前线程ID 1111111111111: " + Thread.CurrentThread.ManagedThreadId);
 
 						IPEndPoint point = remoteEndPoint as IPEndPoint;
 						UInt16 tempPort = (UInt16)point.Port;
@@ -81,6 +72,9 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 						mPeer.ReceiveUdpSocketFixedPackage (mPackage);
 					} else {
 						ObjectPoolManager.Instance.mUdpFixedSizePackagePool.recycle (mPackage);
+
+						DebugSystem.LogError("接受长度： " + length);
+						break;
 					}
 				} catch (SocketException e) {
 					DebugSystem.LogError ("SocketException: " + e.SocketErrorCode);
@@ -95,21 +89,13 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 					break;
 				}
-
 			}
 		}
 
 		public void CloseNet ()
 		{
 			bClosed = true;
-			while (!mSocketPool.IsEmpty) {
-				Socket mSocket = null;
-				if (mSocketPool.TryTake (out mSocket)) {
-					mSocket.Close ();
-				} else {
-					break;
-				}
-			}
+			mSocket.Close ();
 		}
 	}
 

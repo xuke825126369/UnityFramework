@@ -3,25 +3,17 @@ using System.Collections.Generic;
 using Google.Protobuf;
 using System;
 using xk_System.Debug;
+using System.Collections.Concurrent;
 
 namespace xk_System.Net.UDP.POINTTOPOINT.Server
 {
 	public class SocketSendPeer : SocketUdp_Basic
 	{
-		private UInt16 nPackageOrderId;
-
+		private ConcurrentQueue<IMessage> mSendPackageQueue = null;
+		
 		public SocketSendPeer()
 		{
-			nPackageOrderId = ServerConfig.nUdpMinOrderId;
-		}
-
-		private void AddPackageOrderId()
-		{
-			if (nPackageOrderId == ServerConfig.nUdpMaxOrderId) {
-				nPackageOrderId = ServerConfig.nUdpMinOrderId;
-			} else {
-				nPackageOrderId++;
-			}
+			mSendPackageQueue = new ConcurrentQueue<IMessage> ();
 		}
 
 		public void SendNetData (UInt16 id, byte[] buffer)
@@ -46,8 +38,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 				}
 					
 				NetUdpFixedSizePackage mPackage = ObjectPoolManager.Instance.mUdpFixedSizePackagePool.Pop ();
-
-				mPackage.nOrderId = this.nPackageOrderId;
 				mPackage.nGroupCount = groupCount;
 				mPackage.nPackageId = id;
 				mPackage.Length = readBytes + ServerConfig.nUdpPackageFixedHeadSize;
@@ -55,7 +45,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 				NetPackageEncryption.Encryption (mPackage);
 				mUdpCheckPool.AddSendCheck (mPackage);
-				AddPackageOrderId ();
 
 				nBeginIndex += readBytes;
 				groupCount = 1;
@@ -94,4 +83,5 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		}
 
 	}
+
 }
