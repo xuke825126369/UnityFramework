@@ -29,7 +29,9 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 
 		IEnumerator Run ()
 		{
-			for (int i = 0; i < 10; i++) {
+			yield return new WaitForSeconds (1f);
+			
+			for (int i = 0; i < 100; i++) {
 				GameObject obj = new GameObject ();
 				obj.AddComponent<UDPClientTest> ();
 				yield return new WaitForSeconds (0.01f);
@@ -42,7 +44,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 			//DebugSystem.Log ("Server packageLength: " + package.nOrderId + "|" + package.nPackageId + " | " + package.nGroupCount + " | " + package.Length);
 			csChatData mServerSendData = Protocol3Utility.getData<csChatData> (package);
 			//mServerSendData.Id = peer.getPort ();
-			//DebugSystem.Log ("Server: " + mServerSendData.TalkMsg);
+			DebugSystem.Log ("Server: " + mServerSendData.TalkMsg);
 
 			nReceiveCount++;
 			peer.SendNetData (UdpNetCommand.COMMAND_TESTCHAT, mServerSendData);

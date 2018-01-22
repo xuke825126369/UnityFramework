@@ -162,6 +162,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				}
 			} else if (mPackage.nOrderId > nCurrentWaitReceiveOrderId) {
 				mReceiveLossPackageDic [mPackage.nOrderId] = mPackage;
+				DebugSystem.Log ("Client loss Pcakge: " + nCurrentWaitReceiveOrderId + " | " + mPackage.nOrderId);
 			} else {
 				DebugSystem.LogError ("Client 接受 过去的 废物包： " + mPackage.nOrderId);
 			}

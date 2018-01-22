@@ -7,24 +7,8 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 {
 	public class UDPLikeTCPPeer : SocketSendPeer
 	{
-		private double fHeartBeatTime = 0.0;
-
-		public UDPLikeTCPPeer()
-		{
-			
-		}
-
-		public override void Update (double elapsed)
-		{
-			base.Update (elapsed);
-			fHeartBeatTime += elapsed;
-			if (fHeartBeatTime >= 3) {
-				SendHeartBeat ();
-				fHeartBeatTime = 0.0;
-			}
-		}
-
-		public void SendHeartBeat()
+		
+		private void SendHeartBeat()
 		{
 			HeartBeat sendMsg = new HeartBeat ();
 			NetUdpFixedSizePackage mPackage = GetUdpSystemPackage (UdpNetCommand.COMMAND_HEARTBEAT, sendMsg);
@@ -35,6 +19,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		public void ReceiveUdpClientHeart(NetPackage mPackage)
 		{
 			HeartBeat msg = Protocol3Utility.getData<HeartBeat> (mPackage);
+			SendHeartBeat ();
 		}
 
 		public void ReceiveUdpCheckPackage(NetPackage mPackage)
@@ -42,4 +27,5 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			mUdpCheckPool.ReceiveCheckPackage (mPackage);
 		}
 	}
+
 }

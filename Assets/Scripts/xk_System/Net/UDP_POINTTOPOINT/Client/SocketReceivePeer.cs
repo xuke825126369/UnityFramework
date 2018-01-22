@@ -100,16 +100,18 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				nPackageCount++;
 			}
 
-			if (nPackageCount > 10) {
+			if (nPackageCount > -1) {
 				//DebugSystem.Log ("客户端 处理逻辑包的数量： " + nPackageCount);
 			}
+
 		}
 
 		protected void ReceiveNetPackage (NetUdpFixedSizePackage mPackage)
-		{			
+		{
 			bool bSucccess = NetPackageEncryption.DeEncryption (mPackage);
 			if (bSucccess) {
 				if (mPackage.nPackageId > 50) {
+					//DebugSystem.Log ("Client ReceiveInfo: " + mPackage.nOrderId + " | " + mPackage.nGroupCount + " | " + mPackage.Length);
 					mReceiveSocketPackageQueue.Enqueue (mPackage);
 				} else {
 					AddLogicHandleQueue (mPackage);

@@ -16,7 +16,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		private UInt16 port;
 
 		protected NETSTATE m_state;
-		protected Queue<peer_event> mPeerEventQueue = new Queue<peer_event> ();
+		protected ConcurrentQueue<peer_event> mPeerEventQueue = new ConcurrentQueue<peer_event> ();
 	
 		private Socket mSocket = null;
 		private Thread mThread = null;
@@ -73,7 +73,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 					} else {
 						ObjectPoolManager.Instance.mUdpFixedSizePackagePool.recycle (mPackage);
 
-						DebugSystem.LogError("接受长度： " + length);
+						DebugSystem.LogError ("接受长度： " + length);
 						break;
 					}
 				} catch (SocketException e) {

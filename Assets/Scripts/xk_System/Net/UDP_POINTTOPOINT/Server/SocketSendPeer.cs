@@ -10,10 +10,21 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 	public class SocketSendPeer : SocketUdp_Basic
 	{
 		private ConcurrentQueue<IMessage> mSendPackageQueue = null;
-		
+
+		private UInt16 nCurrentWaitSendOrderId;
 		public SocketSendPeer()
 		{
 			mSendPackageQueue = new ConcurrentQueue<IMessage> ();
+			nCurrentWaitSendOrderId = ServerConfig.nUdpMinOrderId;
+		}
+
+		private void AddSendPackageOrderId()
+		{
+			if (nCurrentWaitSendOrderId == ServerConfig.nUdpMaxOrderId) {
+				nCurrentWaitSendOrderId = ServerConfig.nUdpMinOrderId;
+			} else {
+				nCurrentWaitSendOrderId++;
+			}
 		}
 
 		public void SendNetData (UInt16 id, byte[] buffer)
@@ -40,12 +51,14 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 				NetUdpFixedSizePackage mPackage = ObjectPoolManager.Instance.mUdpFixedSizePackagePool.Pop ();
 				mPackage.nGroupCount = groupCount;
 				mPackage.nPackageId = id;
+				mPackage.nOrderId = nCurrentWaitSendOrderId;
 				mPackage.Length = readBytes + ServerConfig.nUdpPackageFixedHeadSize;
 				Array.Copy (buffer, nBeginIndex, mPackage.buffer, ServerConfig.nUdpPackageFixedHeadSize, readBytes);
 
 				NetPackageEncryption.Encryption (mPackage);
 				mUdpCheckPool.AddSendCheck (mPackage);
 
+				AddSendPackageOrderId ();
 				nBeginIndex += readBytes;
 				groupCount = 1;
 			}

@@ -31,7 +31,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 		{
 			while (true) {
 				yield return 0;
-				if (nSendCount >= 1000) {
+				if (nSendCount >= 2000) {
 					break;
 				}
 				Send ();
@@ -78,7 +78,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 		{
 			//DebugSystem.Log ("Client packageLength: " + package.Length);
 			csChatData mServerSendData = Protocol3Utility.getData<csChatData> (package);
-			//DebugSystem.Log ("Client: " + mServerSendData.Id + " | " + mServerSendData.TalkMsg);
+			DebugSystem.Log ("Client: " + mServerSendData.Id + " | " + mServerSendData.TalkMsg);
 			nReceiveCount++;
 
 		}

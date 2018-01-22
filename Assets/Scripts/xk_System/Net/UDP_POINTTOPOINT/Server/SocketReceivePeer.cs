@@ -1,24 +1,20 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using xk_System.DataStructure;
-using System;
+﻿using System;
+using System.Collections;
 using System.Collections.Concurrent;
-using xk_System.Event;
 using xk_System.Debug;
-using System.Net.Sockets;
-using Google.Protobuf;
-using xk_System.Net.UDP.POINTTOPOINT.Protocol;
-using System.Threading;
 
 namespace xk_System.Net.UDP.POINTTOPOINT.Server
 {
 	public abstract class SocketReceivePeer
 	{
+		protected ConcurrentQueue<NetCombinePackage> mNeedHandleCombinePackageQueue = null;
 		protected ConcurrentQueue<NetPackage> mNeedHandlePackageQueue = null;
+
 		protected UdpCheckPool mUdpCheckPool = null;
 
 		public SocketReceivePeer ()
 		{
+			mNeedHandleCombinePackageQueue = new ConcurrentQueue<NetCombinePackage> ();
 			mNeedHandlePackageQueue = new ConcurrentQueue<NetPackage> ();
 			mUdpCheckPool = new UdpCheckPool (this as ClientPeer);
 		}
@@ -30,8 +26,9 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 		public virtual void Update (double elapsed)
 		{
-			int nPackageCount = 0;
+			mUdpCheckPool.Update (elapsed);
 
+			int nPackageCount = 0;
 			while (!mNeedHandlePackageQueue.IsEmpty) {
 				NetPackage mNetPackage = null;
 				if (!mNeedHandlePackageQueue.TryDequeue (out mNetPackage)) {
@@ -60,6 +57,8 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			bool bSucccess = NetPackageEncryption.DeEncryption (mPackage);
 			if (bSucccess) {
 				mUdpCheckPool.AddReceiveCheck (mPackage);
+			} else {
+				throw new Exception ("解码失败 !!!");
 			}
 		}
 

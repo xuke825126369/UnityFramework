@@ -47,7 +47,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 					NetUdpFixedSizePackage mReceiveStream = ObjectPoolManager.Instance.mUdpFixedSizePackagePool.Pop ();
 					length = mSocket.ReceiveFrom (mReceiveStream.buffer, 0, mReceiveStream.buffer.Length, SocketFlags.None, ref remoteEndPoint);
 					if (length > 0) {
-						//DebugSystem.Log("ReceiveLength: " + length);
+						//DebugSystem.Log("Client ReceiveLength: " + length);
 						mReceiveStream.Length = length;
 						ReceiveNetPackage (mReceiveStream);
 					} else {
