@@ -31,24 +31,32 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 		{
 			yield return new WaitForSeconds (1f);
 			
-			for (int i = 0; i < 100; i++) {
+			for (int i = 0; i < 50; i++) {
 				GameObject obj = new GameObject ();
 				obj.AddComponent<UDPClientTest> ();
 				yield return new WaitForSeconds (0.01f);
 			}
+
+			while (nSendCount >= nMaxSendCount) {
+				yield return new WaitForSeconds (1f);
+				DebugSystem.Log ("客户端 发送接受数量： " + nSendCount + " | " + nReceiveCount);
+			}
 		}
 
+		public static int nMaxSendCount = 2000;
+		public static int nSendCount = 0;
 		public static int nReceiveCount = 0;
+
 		private void Receive_ServerSenddata (ClientPeer peer, NetPackage package)
 		{
 			//DebugSystem.Log ("Server packageLength: " + package.nOrderId + "|" + package.nPackageId + " | " + package.nGroupCount + " | " + package.Length);
 			csChatData mServerSendData = Protocol3Utility.getData<csChatData> (package);
 			//mServerSendData.Id = peer.getPort ();
-			DebugSystem.Log ("Server: " + mServerSendData.TalkMsg);
-
-			nReceiveCount++;
+			//DebugSystem.Log ("Server: " + mServerSendData.TalkMsg);
+	
 			peer.SendNetData (UdpNetCommand.COMMAND_TESTCHAT, mServerSendData);
 		}
+
 	}
 
 }

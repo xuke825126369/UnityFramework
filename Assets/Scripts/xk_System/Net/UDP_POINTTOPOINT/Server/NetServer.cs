@@ -19,14 +19,14 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			mServer = new SocketUdp_Server_Basic ();
 			mServer.InitNet (ip, port);
 
-			//mThread = new Thread (sUpdate);
-			//mThread.Start ();
+			mThread = new Thread (sUpdate);
+			mThread.Start ();
 		}
 
-		private void Update()
+		/*private void Update()
 		{
 			ClientPeerManager.Instance.Update (Time.deltaTime);
-		}
+		}*/
 
 		private void sUpdate()
 		{
@@ -36,8 +36,8 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 				ClientPeerManager.Instance.Update (lastFrameTime / 1000f);
 
 				lastFrameTime = mTimer.elapsed ();
-				if (lastFrameTime < 100) {
-					Thread.Sleep (100);
+				if (lastFrameTime < 10) {
+					Thread.Sleep (10);
 				}
 				mTimer.restart ();
 			}
@@ -51,4 +51,5 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 		}
 	}
+
 }

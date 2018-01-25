@@ -5,9 +5,9 @@ using UdpPointtopointProtocols;
 
 namespace xk_System.Net.UDP.POINTTOPOINT.Server
 {
+
 	public class UDPLikeTCPPeer : SocketSendPeer
 	{
-		
 		private void SendHeartBeat()
 		{
 			HeartBeat sendMsg = new HeartBeat ();
@@ -26,6 +26,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		{
 			mUdpCheckPool.ReceiveCheckPackage (mPackage);
 		}
+
 	}
 
 }

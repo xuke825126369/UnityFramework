@@ -10,8 +10,8 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 	public class SocketSendPeer : SocketUdp_Basic
 	{
 		private ConcurrentQueue<IMessage> mSendPackageQueue = null;
-
 		private UInt16 nCurrentWaitSendOrderId;
+
 		public SocketSendPeer()
 		{
 			mSendPackageQueue = new ConcurrentQueue<IMessage> ();

@@ -24,27 +24,18 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 			StartCoroutine (SendBroadCast ());
 		}
 
-		private static int nSendCount = 0;
-		private static int nReceiveCount = 0;
-
 		IEnumerator SendBroadCast ()
 		{
 			while (true) {
 				yield return 0;
-				if (nSendCount >= 2000) {
+				if (UDPServerTest.nSendCount >= UDPServerTest.nMaxSendCount) {
 					break;
 				}
-				Send ();
+				for (int i = 0; i < 16; i++) {
+					Send ();
+				}
 			}
 
-			DebugSystem.Log ("服务器接受的数量：" + UDPServerTest.nReceiveCount);
-			DebugSystem.Log ("客户端 发送接受数量： " + nSendCount + " | " + nReceiveCount);
-
-			while (nSendCount > nReceiveCount) {
-				yield return new WaitForSeconds (1f);
-				DebugSystem.Log ("服务器接受的数量：" + UDPServerTest.nReceiveCount);
-				DebugSystem.Log ("客户端 发送接受数量： " + nSendCount + " | " + nReceiveCount);
-			}
 		}
 
 		private void Send ()
@@ -71,7 +62,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 			}
 
 			mNetSystem.sendNetData (UdpNetCommand.COMMAND_TESTCHAT, msg);
-			nSendCount++;
+			UDPServerTest.nSendCount++;
 		}
 
 		private void Receive_ServerSenddata (NetPackage package)
@@ -79,7 +70,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 			//DebugSystem.Log ("Client packageLength: " + package.Length);
 			csChatData mServerSendData = Protocol3Utility.getData<csChatData> (package);
 			DebugSystem.Log ("Client: " + mServerSendData.Id + " | " + mServerSendData.TalkMsg);
-			nReceiveCount++;
+			UDPServerTest.nReceiveCount++;
 
 		}
 	}
