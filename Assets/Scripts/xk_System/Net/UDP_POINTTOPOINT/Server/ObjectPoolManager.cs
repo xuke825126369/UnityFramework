@@ -9,12 +9,14 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		public SafeObjectPool<NetUdpFixedSizePackage> mUdpFixedSizePackagePool;
 		public SafeObjectPool<NetCombinePackage> mCombinePackagePool;
 		public SafeObjectPool<ClientPeer> mClientPeerPool;
+		public SafeObjectPool<NetEndPointPackage> mNetEndPointPackagePool;
 
 		public ObjectPoolManager()
 		{
 			mUdpFixedSizePackagePool = new SafeObjectPool<NetUdpFixedSizePackage> ();
 			mCombinePackagePool = new SafeObjectPool<NetCombinePackage> ();
 			mClientPeerPool = new SafeObjectPool<ClientPeer> ();
+			mNetEndPointPackagePool = new SafeObjectPool<NetEndPointPackage> ();
 		}
 
 	}

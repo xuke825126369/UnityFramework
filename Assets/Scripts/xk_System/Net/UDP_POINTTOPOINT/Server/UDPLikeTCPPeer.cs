@@ -12,8 +12,8 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		{
 			HeartBeat sendMsg = new HeartBeat ();
 			NetUdpFixedSizePackage mPackage = GetUdpSystemPackage (UdpNetCommand.COMMAND_HEARTBEAT, sendMsg);
-			SendNetStream (mPackage);
-			ObjectPoolManager.Instance.mUdpFixedSizePackagePool.recycle (mPackage);
+			SendNetPackage (mPackage);
+			//ObjectPoolManager.Instance.mUdpFixedSizePackagePool.recycle (mPackage);
 		}
 
 		public void ReceiveUdpClientHeart(NetPackage mPackage)

@@ -11,22 +11,15 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		public UInt16 port = 7878;
 		public string ip = "192.168.122.24";
 
-		private SocketUdp_Server_Basic mServer = null;
 		private Thread mThread = null;
 
 		public void Init()
 		{
-			mServer = new SocketUdp_Server_Basic ();
-			mServer.InitNet (ip, port);
+			SocketUdp_Server_Basic.Instance.InitNet (ip, port);
 
 			mThread = new Thread (sUpdate);
 			mThread.Start ();
 		}
-
-		/*private void Update()
-		{
-			ClientPeerManager.Instance.Update (Time.deltaTime);
-		}*/
 
 		private void sUpdate()
 		{
@@ -45,9 +38,9 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 		private void OnDestroy()
 		{
+			SocketUdp_Server_Basic.Instance.CloseNet ();
 			mThread.Abort ();
 			mThread = null;
-			mServer.CloseNet ();
 
 		}
 	}

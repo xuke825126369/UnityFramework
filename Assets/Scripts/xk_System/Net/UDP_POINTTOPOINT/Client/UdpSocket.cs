@@ -6,6 +6,7 @@ using xk_System.Debug;
 using System.Text;
 using System;
 using System.Threading;
+using System.Collections.Concurrent;
 
 namespace xk_System.Net.UDP.POINTTOPOINT.Client
 {
@@ -14,7 +15,8 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		private EndPoint remoteEndPoint = null;
 
 		private Socket mSocket = null;
-		private Thread mThread = null;
+		private Thread mReceiveThread = null;
+		private Thread mSendThread = null;
 
 		private string ip;
 		private UInt16 port;
@@ -23,8 +25,11 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		protected NETSTATE m_state;
 		protected Queue<peer_event> mPeerEventQueue = new Queue<peer_event> ();
 
+		private ConcurrentQueue<NetPackage> mSendPackageQueue = null;
+		private bool bClosed = false;
 		public void InitNet (string ip, UInt16 ServerPort)
 		{
+			bClosed = false;
 			this.port = ServerPort;
 			this.ip = ip;
 			m_state = NETSTATE.DISCONNECTED;
@@ -35,13 +40,19 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 			mSocket.Connect (remoteEndPoint);
 
-			mThread = new Thread (HandData);
-			mThread.Start ();
-		}
+			mReceiveThread = new Thread (ReceiveThreadUpdate);
+			mReceiveThread.IsBackground = true;
+			mReceiveThread.Start ();
 
-		private void HandData()
+			mSendPackageQueue = new ConcurrentQueue<NetPackage> ();
+			mSendThread = new Thread (SendThreadUpdate);
+			mSendThread.IsBackground = true;
+			mSendThread.Start ();
+		}
+		
+		private void ReceiveThreadUpdate()
 		{
-			while (true) {
+			while (!bClosed) {
 				int length = 0;
 				try {
 					NetUdpFixedSizePackage mReceiveStream = ObjectPoolManager.Instance.mUdpFixedSizePackagePool.Pop ();
@@ -54,10 +65,14 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 						ObjectPoolManager.Instance.mUdpFixedSizePackagePool.recycle (mReceiveStream);
 					}
 				} catch (SocketException e) {
-					DebugSystem.LogError (e.SocketErrorCode);
+					if (e.SocketErrorCode == SocketError.Shutdown) {
+						DebugSystem.LogWarning ("Socket 接受操作被禁止");
+					} else {
+						DebugSystem.LogWarning ("ScoketException: " + e.SocketErrorCode);
+					}
+					break;
 				} catch (Exception e) {
 					DebugSystem.LogError (e.Message);
-					//this.CloseNet ();
 
 					m_state = NETSTATE.DISCONNECTED;
 					peer_event mEvent = new peer_event ();
@@ -66,9 +81,38 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 					break;
 				}
 			}
+
+			DebugSystem.LogWarning ("Client ReceiveThread Safe Quit !");
 		}
 
-		public void SendNetStream (byte[] msg, int offset, int Length)
+		private void SendThreadUpdate()
+		{
+			while (true) {
+				Thread.Sleep (10);
+				while (!mSendPackageQueue.IsEmpty) {
+					NetPackage mNetPackage = null;
+					if (!mSendPackageQueue.TryDequeue (out mNetPackage)) {
+						break;
+					}
+
+					SendNetStream (mNetPackage.buffer, 0, mNetPackage.Length);
+					Thread.Sleep (1);
+				}
+
+				if (bClosed) {
+					break;
+				}
+			}
+
+			DebugSystem.LogWarning ("Client SendThread Safe Quit !");
+		}
+
+		public void SendNetPackage(NetPackage mNetPackage)
+		{
+			mSendPackageQueue.Enqueue (mNetPackage);
+		}
+
+		private void SendNetStream (byte[] msg, int offset, int Length)
 		{
 			DebugSystem.Assert (Length >= ClientConfig.nUdpPackageFixedHeadSize, "发送长度要大于等于 包头： " + Length);
 			int nSendLength = mSocket.SendTo (msg, offset, Length, SocketFlags.None, remoteEndPoint);
@@ -82,11 +126,11 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 		public void CloseNet ()
 		{
-			if (mSocket != null) {
-				mSocket.Close ();
-			}
-			mThread.Abort ();
+			bClosed = true;
+			mSocket.Shutdown (SocketShutdown.Receive);
+			mSocket.Close ();
 		}
+
 	}
 
 	public class SocketUdp_Poll : SocketReceivePeer

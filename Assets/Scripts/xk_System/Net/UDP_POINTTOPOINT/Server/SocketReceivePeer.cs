@@ -56,7 +56,11 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		{
 			bool bSucccess = NetPackageEncryption.DeEncryption (mPackage);
 			if (bSucccess) {
-				mUdpCheckPool.AddReceiveCheck (mPackage);
+				if (mPackage.nPackageId > 50) {
+					mUdpCheckPool.ReceiveCheckPackage (mPackage);
+				} else {
+					PackageManager.Instance.Execute (this as ClientPeer, mPackage);
+				}
 			} else {
 				throw new Exception ("解码失败 !!!");
 			}

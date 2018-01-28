@@ -12,16 +12,12 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 	public class SocketUdp_Basic:SocketReceivePeer
 	{
 		private EndPoint remoteEndPoint = null;
-		private Socket mSocket = null;
-		private Thread mThread = null;
-
 		protected NETSTATE m_state;
 		protected Queue<peer_event> mPeerEventQueue = new Queue<peer_event> ();
 
-		public void ConnectClient (Socket mSocket, EndPoint remoteEndPoint)
+		public void AcceptClient (Socket mSocket, EndPoint remoteEndPoint)
 		{
 			this.m_state = NETSTATE.DISCONNECTED;
-			this.mSocket = mSocket;
 			this.remoteEndPoint = remoteEndPoint;
 		}
 
@@ -34,14 +30,17 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			return (UInt16)(point.Port);
 		}
 
-		public void SendNetStream (byte[] msg,int offset,int Length)
+		public void SendNetPackage(NetPackage mNetPackage)
 		{
-			DebugSystem.Assert (Length >= ServerConfig.nUdpPackageFixedHeadSize, "发送长度要大于等于 包头： " + Length);
-			int nSendLength = mSocket.SendTo (msg, offset, Length, SocketFlags.None, remoteEndPoint);
-			DebugSystem.Assert (nSendLength > 0, "Server 发送失败： " + nSendLength);
+			NetEndPointPackage mPackage = ObjectPoolManager.Instance.mNetEndPointPackagePool.Pop ();
+			mPackage.mRemoteEndPoint = remoteEndPoint;
+			mPackage.mPackage = mNetPackage;
+
+			SocketUdp_Server_Basic.Instance.SendNetPackage (mPackage);
 		}
 
 	}
+
 }
 
 

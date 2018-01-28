@@ -10,23 +10,23 @@ using System.Collections.Concurrent;
 
 namespace xk_System.Net.UDP.POINTTOPOINT.Server
 {
-	public class SocketUdp_Server_Basic
+	public class SocketUdp_Server_Basic:Singleton<SocketUdp_Server_Basic>
 	{
 		private string ip;
 		private UInt16 port;
 
 		protected NETSTATE m_state;
 		protected ConcurrentQueue<peer_event> mPeerEventQueue = new ConcurrentQueue<peer_event> ();
-	
 		private Socket mSocket = null;
-		private Thread mThread = null;
+
+		private Thread mSendThread = null;
+		private Thread mReceiveThread = null;
+		private Thread mHandleReceiveDataThread = null;
 
 		private bool bClosed = false;
 
-		public SocketUdp_Server_Basic()
-		{
-
-		}
+		private ConcurrentQueue<NetEndPointPackage> mSendPackageQueue = null;
+		private ConcurrentQueue<NetEndPointPackage> mReceivePackageQueue = null;
 
 		public void InitNet (string ip, UInt16 ServerPort)
 		{
@@ -40,36 +40,42 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			EndPoint bindEndPoint = new IPEndPoint (IPAddress.Parse (ip), port);
 			mSocket.Bind (bindEndPoint);
 
-			mThread = new Thread (HandData);
-			mThread.Start ();
+			//mEndPointPool = new SafeObjectPool<IPEndPoint> (100);
+			mSendPackageQueue = new ConcurrentQueue<NetEndPointPackage> ();
+			mReceivePackageQueue = new ConcurrentQueue<NetEndPointPackage> ();
+
+			mHandleReceiveDataThread = new Thread (HandleReceiveData);
+			mHandleReceiveDataThread.IsBackground = false;
+			mHandleReceiveDataThread.Start ();
+
+			mReceiveThread = new Thread (ReceiveThreadUpdate);
+			mReceiveThread.IsBackground = false;
+			mReceiveThread.Start ();
+
+			mSendThread = new Thread (SendThreadUpdate);
+			mSendThread.IsBackground = false;
+			mSendThread.Start ();
+
+			mSocket.ReceiveBufferSize = 1024 * 1024;
+			DebugSystem.Log ("Server ReceiveBufferSize: " + mSocket.ReceiveBufferSize);
+			DebugSystem.Log ("Server SendBufferSize: " + mSocket.SendBufferSize);
 		}
 
-		private void HandData()
+		private void ReceiveThreadUpdate()
 		{
-			while (!bClosed) {
+			while (true) {
 				int length = 0;
 				try {
-					EndPoint remoteEndPoint = new IPEndPoint (IPAddress.Any, 0);
+					EndPoint tempEndPoint = new IPEndPoint (IPAddress.Broadcast, 0);
 					NetUdpFixedSizePackage mPackage = ObjectPoolManager.Instance.mUdpFixedSizePackagePool.Pop ();
-					length = mSocket.ReceiveFrom (mPackage.buffer, ref remoteEndPoint);
+					length = mSocket.ReceiveFrom (mPackage.buffer, ref tempEndPoint);
 					mPackage.Length = length;
 
 					if (length > 0) {
-
-						IPEndPoint point = remoteEndPoint as IPEndPoint;
-						UInt16 tempPort = (UInt16)point.Port;
-
-						ClientPeer mPeer = null;
-						if (!ClientPeerManager.Instance.IsExist (tempPort)) {
-							mPeer = ObjectPoolManager.Instance.mClientPeerPool.Pop ();
-							mPeer.ConnectClient (mSocket, point);
-							ClientPeerManager.Instance.AddClient (mPeer);
-
-							DebugSystem.Log ("增加 客户端信息： " + tempPort);
-						}
-
-						mPeer = ClientPeerManager.Instance.FindClient (tempPort);
-						mPeer.ReceiveUdpSocketFixedPackage (mPackage);
+						NetEndPointPackage mEndPointPackage = ObjectPoolManager.Instance.mNetEndPointPackagePool.Pop ();
+						mEndPointPackage.mPackage = mPackage;
+						mEndPointPackage.mRemoteEndPoint = tempEndPoint;
+						mReceivePackageQueue.Enqueue (mEndPointPackage);
 					} else {
 						ObjectPoolManager.Instance.mUdpFixedSizePackagePool.recycle (mPackage);
 
@@ -77,7 +83,11 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 						break;
 					}
 				} catch (SocketException e) {
-					DebugSystem.LogError ("SocketException: " + e.SocketErrorCode);
+					if (e.SocketErrorCode == SocketError.Interrupted) {
+						DebugSystem.LogWarning ("阻塞Socket 调用已被取消");
+					} else {
+						DebugSystem.LogWarning ("SocketException: " + e.SocketErrorCode);
+					}
 					break;
 				} catch (Exception e) {
 					DebugSystem.LogError ("服务器 异常： " + e.Message + " | " + e.StackTrace);
@@ -90,14 +100,91 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 					break;
 				}
 			}
+
+			DebugSystem.LogWarning ("Server ReceiveThread Safe Quit !");
+		}
+
+		private void HandleReceiveData()
+		{
+			while (true) {
+				while (!mReceivePackageQueue.IsEmpty) {
+					NetEndPointPackage mEndPointPackage = null;
+					if (!mReceivePackageQueue.TryDequeue (out mEndPointPackage)) {
+						break;
+					}
+
+					IPEndPoint point = mEndPointPackage.mRemoteEndPoint as IPEndPoint;
+					UInt16 tempPort = (UInt16)point.Port;
+
+					ClientPeer mPeer = null;
+					if (!ClientPeerManager.Instance.IsExist (tempPort)) {
+						mPeer = ObjectPoolManager.Instance.mClientPeerPool.Pop ();
+						mPeer.AcceptClient (mSocket, point);
+						ClientPeerManager.Instance.AddClient (mPeer);
+
+						DebugSystem.Log ("增加 客户端信息： " + tempPort);
+					}
+
+					mPeer = ClientPeerManager.Instance.FindClient (tempPort);
+					mPeer.ReceiveUdpSocketFixedPackage (mEndPointPackage.mPackage as NetUdpFixedSizePackage);
+
+					Thread.Sleep (1);
+				}
+
+				if (bClosed) {
+					break;
+				}
+
+				Thread.Sleep (10);
+			}
+
+			DebugSystem.LogWarning ("Server HandleReceiveLogicThread Safe Quit !");
+		}
+
+		private void SendThreadUpdate()
+		{
+			while (!bClosed) {
+				Thread.Sleep (10);
+				while (!mSendPackageQueue.IsEmpty) {
+					NetEndPointPackage mNetPackage = null;
+					if (!mSendPackageQueue.TryDequeue (out mNetPackage)) {
+						break;
+					}
+
+					this.SendNetStream (mNetPackage);
+					Thread.Sleep (1);
+				}
+			}
+
+			DebugSystem.LogWarning ("Server SendThread Safe Quit !");
+		}
+
+		public void SendNetPackage(NetEndPointPackage mNetPackage)
+		{
+			mSendPackageQueue.Enqueue (mNetPackage);
+		}
+
+		public void SendNetStream (NetEndPointPackage mEndPointPacakge)
+		{
+			EndPoint remoteEndPoint = mEndPointPacakge.mRemoteEndPoint;
+			NetPackage mPackage = mEndPointPacakge.mPackage;
+
+			DebugSystem.Assert (mPackage.Length >= ServerConfig.nUdpPackageFixedHeadSize, "发送长度要大于等于 包头： " + mPackage.Length);
+			int nSendLength = mSocket.SendTo (mPackage.buffer, 0, mPackage.Length, SocketFlags.None, remoteEndPoint);
+			DebugSystem.Assert (nSendLength > 0, "Server 发送失败： " + nSendLength);
+
+			ObjectPoolManager.Instance.mNetEndPointPackagePool.recycle (mEndPointPacakge);
 		}
 
 		public void CloseNet ()
 		{
 			bClosed = true;
+			mSocket.Shutdown (SocketShutdown.Send);
 			mSocket.Close ();
 		}
+
 	}
+	
 
 	public class SocketUdp_Server_Poll : SocketReceivePeer
 	{

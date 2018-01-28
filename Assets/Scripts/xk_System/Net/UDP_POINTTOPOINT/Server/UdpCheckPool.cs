@@ -73,7 +73,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 						}
 
 						DebugSystem.LogError ("Server ReSendPackage: " + iter1.Current.Key);
-						this.mUdpPeer.SendNetStream (mCheckInfo.mPackage);
+						this.mUdpPeer.SendNetPackage (mCheckInfo.mPackage);
 						mCheckInfo.mTimer.restart ();
 					}
 				}
@@ -91,7 +91,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 						}
 
 						DebugSystem.LogError ("Server ReSend SureReceive Package: " + iter2.Current.Key);
-						this.mUdpPeer.SendNetStream (mCheckInfo.mPackage);
+						this.mUdpPeer.SendNetPackage (mCheckInfo.mPackage);
 						mCheckInfo.mTimer.restart ();
 					}
 				}
@@ -125,7 +125,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			//DebugSystem.Log ("ServerCheck: nWhoId: " + whoId + " | nOrderId: " + nOrderId);
 			bool bSender = bClient ? whoId == 1 : whoId == 2;
 			if (bSender) {
-				this.mUdpPeer.SendNetStream (mPackage);
+				this.mUdpPeer.SendNetPackage (mPackage);
 
 				CheckPackageInfo mRemovePackage = null;
 				if (mWaitCheckSendDic.TryRemove (nOrderId, out mRemovePackage)) {
@@ -149,7 +149,45 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			}
 		}
 
-		public void AddSendCheck (NetUdpFixedSizePackage mPackage)
+		public void SendCheckPackage (UInt16 id, byte[] buffer)
+		{
+			DebugSystem.Assert (id > 50, "Udp 系统内置命令 此逻辑不处理");
+
+			int readBytes = 0;
+			int nBeginIndex = 0;
+
+			UInt16 groupCount = 0;
+			if (buffer.Length % ServerConfig.nUdpPackageFixedBodySize == 0) {
+				groupCount = (UInt16)(buffer.Length / ServerConfig.nUdpPackageFixedBodySize);
+			} else {
+				groupCount = (UInt16)(buffer.Length / ServerConfig.nUdpPackageFixedBodySize + 1);
+			}
+
+			while (nBeginIndex < buffer.Length) {
+				if (nBeginIndex + ServerConfig.nUdpPackageFixedBodySize > buffer.Length) {
+					readBytes = buffer.Length - nBeginIndex;
+				} else {
+					readBytes = ServerConfig.nUdpPackageFixedBodySize;
+				}
+
+				NetUdpFixedSizePackage mPackage = ObjectPoolManager.Instance.mUdpFixedSizePackagePool.Pop ();
+				mPackage.nGroupCount = groupCount;
+				mPackage.nPackageId = id;
+				mPackage.nOrderId = nCurrentWaitSendOrderId;
+				mPackage.Length = readBytes + ServerConfig.nUdpPackageFixedHeadSize;
+				Array.Copy (buffer, nBeginIndex, mPackage.buffer, ServerConfig.nUdpPackageFixedHeadSize, readBytes);
+
+				NetPackageEncryption.Encryption (mPackage);
+				AddSendCheck (mPackage);
+
+				AddSendPackageOrderId ();
+				nBeginIndex += readBytes;
+				groupCount = 1;
+			}
+
+		}
+
+		private void AddSendCheck (NetUdpFixedSizePackage mPackage)
 		{
 			if (ServerConfig.bNeedCheckPackage) {
 				//mPackage.nOrderId = nCurrentWaitSendOrderId;
@@ -169,19 +207,10 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 			DebugSystem.Assert (mPackage.nOrderId >= ServerConfig.nUdpMinOrderId);
 			//DebugSystem.Log ("Server Send nOrderId: " + mPackage.nOrderId);
-			mUdpPeer.SendNetStream (mPackage);
+			mUdpPeer.SendNetPackage (mPackage);
 		}
 
-		public void AddReceiveCheck (NetUdpFixedSizePackage mPackage)
-		{
-			if (mPackage.nPackageId > 50) {
-				ReceiveLogicPackage (mPackage);
-			} else {
-				PackageManager.Instance.Execute (mUdpPeer, mPackage);
-			}
-		}
-
-		private void ReceiveLogicPackage(NetUdpFixedSizePackage mPackage)
+		public void ReceiveCheckPackage (NetUdpFixedSizePackage mPackage)
 		{
 			//DebugSystem.Log ("Server ReceiveInfo: " + mPackage.nOrderId + " | " + mPackage.nGroupCount + " | " + mPackage.Length);
 
@@ -200,15 +229,17 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 				mCheckInfo.mTimer.restart ();
 				mWaitCheckReceiveDic.TryAdd (mPackage.nOrderId, mCheckInfo);
 
-				mUdpPeer.SendNetStream (mCheckResultPackage);
+				mUdpPeer.SendNetPackage (mCheckResultPackage);
 
 				CheckReceivePackageLoss (mPackage);
 			} else {
-#if Test
-				if (nCurrentWaitReceiveOrderId != mPackage.nOrderId) {
-					DebugSystem.LogError ("丢包： " + nCurrentWaitReceiveOrderId);
-				} else {
-					AddReceivePackageOrderId ();
+#if !Test
+				if (ServerConfig.IsLocalAreaNetWork) {
+					if (nCurrentWaitReceiveOrderId != mPackage.nOrderId) {
+						DebugSystem.LogError ("服务器端 丢包： " + mUdpPeer.getPort () + " | " + nCurrentWaitReceiveOrderId);
+					} else {
+						AddReceivePackageOrderId ();
+					}
 				}
 #endif
 				CheckCombinePackage (mPackage);

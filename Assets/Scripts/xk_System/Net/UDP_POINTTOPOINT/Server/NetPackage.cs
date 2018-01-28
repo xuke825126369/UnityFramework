@@ -4,6 +4,7 @@ using System;
 using System.Collections.Concurrent;
 using Google.Protobuf;
 using xk_System.Debug;
+using System.Net;
 
 namespace xk_System.Net.UDP.POINTTOPOINT.Server
 {
@@ -106,6 +107,12 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			base.nPackageId = nCombinePackageId;
 		}
 
+	}
+
+	public class NetEndPointPackage
+	{
+		public EndPoint mRemoteEndPoint = null;
+		public NetPackage mPackage = null;
 	}
 
 }

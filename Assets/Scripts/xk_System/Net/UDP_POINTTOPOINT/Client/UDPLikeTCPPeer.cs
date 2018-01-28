@@ -28,13 +28,14 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		{
 			HeartBeat sendMsg = new HeartBeat ();
 			NetUdpFixedSizePackage mPackage = GetUdpSystemPackage (UdpNetCommand.COMMAND_HEARTBEAT, sendMsg);
-			SendNetStream (mPackage);
-			SafeRecycleReceivePackage (mPackage);
+			SendNetPackage (mPackage);
 		}
 
 		private void ReceiveServerHeartBeat(NetPackage mPackage)
 		{
 			HeartBeat msg = Protocol3Utility.getData<HeartBeat> (mPackage);
 		}
+
 	}
+
 }
