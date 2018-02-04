@@ -29,9 +29,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 				ClientPeerManager.Instance.Update (lastFrameTime / 1000f);
 
 				lastFrameTime = mTimer.elapsed ();
-				if (lastFrameTime < 10) {
-					Thread.Sleep (10);
-				}
+				Thread.Sleep (50);
 				mTimer.restart ();
 			}
 		}

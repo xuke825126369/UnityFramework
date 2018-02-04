@@ -31,7 +31,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 		{
 			yield return new WaitForSeconds (1f);
 			
-			for (int i = 0; i < 100; i++) {
+			for (int i = 0; i < 50; i++) {
 				GameObject obj = new GameObject ();
 				obj.AddComponent<UDPClientTest> ();
 				yield return 0;
@@ -51,7 +51,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 		}
 
 		public static bool bStartSendPackage = false;
-		public const int nMaxSendCount = 100000;
+		public const int nMaxSendCount = 10000;
 		public static int nSendCount = 0;
 		public static int nReceiveCount = 0;
 		public static int nServerReceiveCount = 0;
@@ -69,3 +69,5 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 	}
 
 }
+
+

@@ -88,7 +88,6 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		private void SendThreadUpdate()
 		{
 			while (true) {
-				Thread.Sleep (10);
 				while (!mSendPackageQueue.IsEmpty) {
 					NetPackage mNetPackage = null;
 					if (!mSendPackageQueue.TryDequeue (out mNetPackage)) {
@@ -102,6 +101,8 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 				if (bClosed) {
 					break;
 				}
+
+				Thread.Sleep (50);
 			}
 
 			DebugSystem.LogWarning ("Client SendThread Safe Quit !");

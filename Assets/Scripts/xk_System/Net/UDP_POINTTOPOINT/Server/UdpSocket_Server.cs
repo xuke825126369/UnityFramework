@@ -131,7 +131,8 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 					nHandlePackageCount++;
 					if (nHandlePackageCount > 50) {
-						break;
+						nHandlePackageCount = 0;
+						Thread.Sleep (1);
 					}
 				}
 
@@ -148,7 +149,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		private void SendThreadUpdate()
 		{
 			while (!bClosed) {
-				Thread.Sleep (10);
+				int nPackageCount = 0;
 				while (!mSendPackageQueue.IsEmpty) {
 					NetEndPointPackage mNetPackage = null;
 					if (!mSendPackageQueue.TryDequeue (out mNetPackage)) {
@@ -156,8 +157,15 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 					}
 
 					this.SendNetStream (mNetPackage);
-					Thread.Sleep (1);
+
+					nPackageCount++;
+					if (nPackageCount > 50) {
+						nPackageCount = 0;
+						Thread.Sleep (1);
+					}
 				}
+
+				Thread.Sleep (50);
 			}
 
 			DebugSystem.LogWarning ("Server SendThread Safe Quit !");
@@ -168,7 +176,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			mSendPackageQueue.Enqueue (mNetPackage);
 		}
 
-		public void SendNetStream (NetEndPointPackage mEndPointPacakge)
+		private void SendNetStream (NetEndPointPackage mEndPointPacakge)
 		{
 			EndPoint remoteEndPoint = mEndPointPacakge.mRemoteEndPoint;
 			NetPackage mPackage = mEndPointPacakge.mPackage;
