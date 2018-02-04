@@ -226,13 +226,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		{
 			if (mPackage.nGroupCount > 1) {
 				NetCombinePackage cc = ObjectPoolManager.Instance.mCombinePackagePool.Pop ();
-
-				cc.nCombineGroupId = mPackage.nOrderId;
-				cc.nCombinePackageId = mPackage.nPackageId;
-				cc.nCombineGroupCount = mPackage.nGroupCount;
-
-				cc.Add (mPackage);
-
+				cc.Init (mPackage);
 				mReceiveGroupList.Enqueue (cc);
 			} else {
 				if (mReceiveGroupList.Count > 0) {

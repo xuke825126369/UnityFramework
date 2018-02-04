@@ -276,13 +276,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		{
 			if (mPackage.nGroupCount > 1) {
 				NetCombinePackage cc = ObjectPoolManager.Instance.mCombinePackagePool.Pop ();
-
-				cc.nCombineGroupId = mPackage.nOrderId;
-				cc.nCombinePackageId = mPackage.nPackageId;
-				cc.nCombineGroupCount = mPackage.nGroupCount;
-
-				cc.Add (mPackage);
-
+				cc.Init (mPackage);
 				mCombinePackageQueue.Enqueue (cc);
 			} else {
 				if (!mCombinePackageQueue.IsEmpty) {
@@ -291,9 +285,8 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 						currentGroup.Add (mPackage);
 
 						if (currentGroup.CheckCombineFinish ()) {
-							NetCombinePackage mRemoveNetCombinePackage = null;
-							if (mCombinePackageQueue.TryDequeue (out mRemoveNetCombinePackage)) {
-								mUdpPeer.AddLogicHandleQueue (mRemoveNetCombinePackage);
+							if (mCombinePackageQueue.TryDequeue (out currentGroup)) {
+								mUdpPeer.AddLogicHandleQueue (currentGroup);
 							}
 						}
 					}

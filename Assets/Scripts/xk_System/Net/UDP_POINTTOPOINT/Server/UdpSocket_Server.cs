@@ -56,7 +56,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			mSendThread.IsBackground = false;
 			mSendThread.Start ();
 
-			mSocket.ReceiveBufferSize = 1024 * 1024;
+			mSocket.ReceiveBufferSize = 1024 * 1024 * 2;
 			DebugSystem.Log ("Server ReceiveBufferSize: " + mSocket.ReceiveBufferSize);
 			DebugSystem.Log ("Server SendBufferSize: " + mSocket.SendBufferSize);
 		}
@@ -107,6 +107,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 		private void HandleReceiveData()
 		{
 			while (true) {
+				int nHandlePackageCount = 0;
 				while (!mReceivePackageQueue.IsEmpty) {
 					NetEndPointPackage mEndPointPackage = null;
 					if (!mReceivePackageQueue.TryDequeue (out mEndPointPackage)) {
@@ -128,14 +129,17 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 					mPeer = ClientPeerManager.Instance.FindClient (tempPort);
 					mPeer.ReceiveUdpSocketFixedPackage (mEndPointPackage.mPackage as NetUdpFixedSizePackage);
 
-					Thread.Sleep (1);
+					nHandlePackageCount++;
+					if (nHandlePackageCount > 50) {
+						break;
+					}
 				}
 
 				if (bClosed) {
 					break;
 				}
 
-				Thread.Sleep (10);
+				Thread.Sleep (50);
 			}
 
 			DebugSystem.LogWarning ("Server HandleReceiveLogicThread Safe Quit !");

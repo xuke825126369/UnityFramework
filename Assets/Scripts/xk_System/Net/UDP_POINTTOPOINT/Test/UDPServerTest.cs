@@ -37,6 +37,8 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 				yield return 0;
 			}
 
+			bStartSendPackage = true;
+
 			while (true) {
 				if (nSendCount >= nMaxSendCount && nSendCount >= nReceiveCount) {
 					DebugSystem.LogWarning ("客户端 发送接受数量： " + nSendCount + " | " + nServerReceiveCount + " | " + nReceiveCount);
@@ -46,9 +48,9 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 					yield return 0;
 				}
 			}
-
 		}
 
+		public static bool bStartSendPackage = false;
 		public const int nMaxSendCount = 100000;
 		public static int nSendCount = 0;
 		public static int nReceiveCount = 0;

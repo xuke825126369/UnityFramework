@@ -64,7 +64,9 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			} else {
 				throw new Exception ("解码失败 !!!");
 			}
+
 		}
+
 
 		public virtual void release ()
 		{

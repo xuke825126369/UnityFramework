@@ -38,73 +38,47 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 
 	public class NetCombinePackage : NetPackage
 	{
-		public UInt16 nCombineGroupId;
-		public UInt16 nCombineGroupCount;
-		public UInt16 nCombinePackageId;
-
-		private ConcurrentQueue<NetUdpFixedSizePackage> mCombinePackageQueue;
-		//private List<NetUdpFixedSizePackage> mTestList = null;
+		private int nGetCombineCount;
 		public NetCombinePackage ()
 		{
 			base.buffer = new byte[ServerConfig.nUdpCombinePackageFixedSize];
-			mCombinePackageQueue = new ConcurrentQueue<NetUdpFixedSizePackage> ();
-			//mTestList = new List<NetUdpFixedSizePackage> ();
 		}
 
-		public void Add(NetUdpFixedSizePackage mPackage)
+		public void Init(NetUdpFixedSizePackage mPackage)
 		{
-			mCombinePackageQueue.Enqueue (mPackage);
-			//mTestList.Add (mPackage);
-		}
+			base.nPackageId = mPackage.nPackageId;
+			base.nGroupCount = mPackage.nGroupCount;
+			base.nOrderId = mPackage.nOrderId;
 
-		public bool CheckCombineFinish ()
-		{
-			if (mCombinePackageQueue.Count == nCombineGroupCount) {
-				SetPackage ();
-
-				return true;
-			} else {
-				return false;
-			}
-		}
-
-		private void SetPackage ()
-		{
-			int nSumLength = nCombineGroupCount * ServerConfig.nUdpPackageFixedBodySize + ServerConfig.nUdpPackageFixedHeadSize;
+			int nSumLength = base.nGroupCount * ServerConfig.nUdpPackageFixedBodySize + ServerConfig.nUdpPackageFixedHeadSize;
 			if (base.buffer.Length < nSumLength) {
 				base.buffer = new byte[nSumLength];
 			}
 
 			base.Length = ServerConfig.nUdpPackageFixedHeadSize;
-			//int nCurrentOrderId = nCombineGroupId; 
-			while (!mCombinePackageQueue.IsEmpty) {
-				NetUdpFixedSizePackage tempPackage = null;
-				if (mCombinePackageQueue.TryDequeue (out tempPackage)) {
-					Array.Copy (tempPackage.buffer, ServerConfig.nUdpPackageFixedHeadSize, base.buffer, base.Length, tempPackage.Length - ServerConfig.nUdpPackageFixedHeadSize);
-					base.Length += (tempPackage.Length - ServerConfig.nUdpPackageFixedHeadSize);
 
-					/*if (tempPackage.nOrderId != nCurrentOrderId) {
-						DebugSystem.LogError ("Server 组包失败 检测开始 ");
+			nGetCombineCount = 0;
+			Add (mPackage);
+		}
 
-						foreach (var v in mTestList) {
-							DebugSystem.LogError (v.nOrderId);
-						}
+		public void Add(NetUdpFixedSizePackage mPackage)
+		{
+			Combine (mPackage);
+			nGetCombineCount++;
 
-						throw new Exception ("Server 组包失败 检查结束: " + mTestList.Count);
-					}
+			ObjectPoolManager.Instance.mUdpFixedSizePackagePool.recycle (mPackage);
+		}
 
-					if (nCurrentOrderId == ServerConfig.nUdpMaxOrderId) {
-						nCurrentOrderId = ServerConfig.nUdpMinOrderId;
-					} else {
-						nCurrentOrderId++;
-					}*/
+		public bool CheckCombineFinish ()
+		{
+			return nGetCombineCount == base.nGroupCount;
+		}
 
-					ObjectPoolManager.Instance.mUdpFixedSizePackagePool.recycle (tempPackage);
-				}
-			}
-			//mTestList.Clear ();
-
-			base.nPackageId = nCombinePackageId;
+		private void Combine (NetUdpFixedSizePackage mPackage)
+		{
+			int nCopyLength = mPackage.Length - ServerConfig.nUdpPackageFixedHeadSize;
+			Array.Copy (mPackage.buffer, ServerConfig.nUdpPackageFixedHeadSize, base.buffer, base.Length, nCopyLength);
+			base.Length += nCopyLength;
 		}
 
 	}

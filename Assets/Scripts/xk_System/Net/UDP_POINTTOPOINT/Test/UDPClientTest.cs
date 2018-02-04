@@ -26,12 +26,16 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 
 		IEnumerator SendBroadCast ()
 		{
+			while (!UDPServerTest.bStartSendPackage) {
+				yield return 0;
+			}
+
 			while (true) {
 				yield return 0;
 				if (UDPServerTest.nSendCount > UDPServerTest.nMaxSendCount) {
 					break;
 				}
-				for (int i = 0; i < 50; i++) {
+				for (int i = 0; i < 1; i++) {
 					Send ();
 				}
 			}

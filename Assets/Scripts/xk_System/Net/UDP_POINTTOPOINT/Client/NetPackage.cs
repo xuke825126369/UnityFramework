@@ -35,52 +35,49 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 	public class NetCombinePackage : NetPackage
 	{
-		public UInt16 nCombineGroupId;
-		public UInt16 nCombineGroupCount;
-		public UInt16 nCombinePackageId;
-
-		private Queue<NetUdpFixedSizePackage> mCombinePackageQueue;
-
+		private int nGetCombineCount;
 		public NetCombinePackage ()
 		{
 			base.buffer = new byte[ClientConfig.nUdpCombinePackageFixedSize];
-			mCombinePackageQueue = new Queue<NetUdpFixedSizePackage> ();
 		}
 
-		public void Add(NetUdpFixedSizePackage mPackage)
+		public void Init(NetUdpFixedSizePackage mPackage)
 		{
-			mCombinePackageQueue.Enqueue (mPackage);
-		}
+			base.nPackageId = mPackage.nPackageId;
+			base.nGroupCount = mPackage.nGroupCount;
+			base.nOrderId = mPackage.nOrderId;
 
-		public bool CheckCombineFinish ()
-		{
-			if (mCombinePackageQueue.Count == nCombineGroupCount) {
-				SetPackage ();
-
-				return true;
-			} else {
-				return false;
-			}
-		}
-
-		private void SetPackage ()
-		{
-			int nSumLength = nCombineGroupCount * ClientConfig.nUdpPackageFixedBodySize + ClientConfig.nUdpPackageFixedHeadSize;
+			int nSumLength = base.nGroupCount * ClientConfig.nUdpPackageFixedBodySize + ClientConfig.nUdpPackageFixedHeadSize;
 			if (base.buffer.Length < nSumLength) {
 				base.buffer = new byte[nSumLength];
 			}
 
 			base.Length = ClientConfig.nUdpPackageFixedHeadSize;
-			while (mCombinePackageQueue.Count > 0) {
-				NetUdpFixedSizePackage tempPackage = mCombinePackageQueue.Dequeue ();
-				Array.Copy (tempPackage.buffer, ClientConfig.nUdpPackageFixedHeadSize, base.buffer, base.Length, tempPackage.Length - ClientConfig.nUdpPackageFixedHeadSize);
-				base.Length += (tempPackage.Length - ClientConfig.nUdpPackageFixedHeadSize);
 
-				ObjectPoolManager.Instance.mUdpFixedSizePackagePool.recycle (tempPackage);
-			}
-
-			base.nPackageId = nCombinePackageId;
+			nGetCombineCount = 0;
+			Add (mPackage);
 		}
+
+		public void Add(NetUdpFixedSizePackage mPackage)
+		{
+			Combine (mPackage);
+			nGetCombineCount++;
+
+			ObjectPoolManager.Instance.mUdpFixedSizePackagePool.recycle (mPackage);
+		}
+
+		public bool CheckCombineFinish ()
+		{
+			return nGetCombineCount == base.nGroupCount;
+		}
+
+		private void Combine (NetUdpFixedSizePackage mPackage)
+		{
+			int nCopyLength = mPackage.Length - ClientConfig.nUdpPackageFixedHeadSize;
+			Array.Copy (mPackage.buffer, ClientConfig.nUdpPackageFixedHeadSize, base.buffer, base.Length, nCopyLength);
+			base.Length += nCopyLength;
+		}
+
 	}
 }
 
