@@ -56,6 +56,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Server
 			mSendThread.IsBackground = false;
 			mSendThread.Start ();
 
+			mSocket.SendBufferSize = 1024 * 1024 * 2;
 			mSocket.ReceiveBufferSize = 1024 * 1024 * 2;
 			DebugSystem.Log ("Server ReceiveBufferSize: " + mSocket.ReceiveBufferSize);
 			DebugSystem.Log ("Server SendBufferSize: " + mSocket.SendBufferSize);

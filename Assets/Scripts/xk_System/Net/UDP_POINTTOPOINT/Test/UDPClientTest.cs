@@ -32,6 +32,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 
 			while (true) {
 				yield return 0;
+
 				if (UDPServerTest.nSendCount > UDPServerTest.nMaxSendCount) {
 					break;
 				}
@@ -39,6 +40,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 					Send ();
 				}
 			}
+
 		}
 
 		private void Send ()

@@ -31,7 +31,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Test
 		{
 			yield return new WaitForSeconds (1f);
 			
-			for (int i = 0; i < 50; i++) {
+			for (int i = 0; i < 2; i++) {
 				GameObject obj = new GameObject ();
 				obj.AddComponent<UDPClientTest> ();
 				yield return 0;

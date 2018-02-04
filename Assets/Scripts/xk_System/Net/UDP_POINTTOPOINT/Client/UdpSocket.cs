@@ -16,6 +16,7 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 
 		private Socket mSocket = null;
 		private Thread mReceiveThread = null;
+		private Thread mHandleDataThread = null;
 		private Thread mSendThread = null;
 
 		private string ip;
@@ -26,7 +27,10 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 		protected Queue<peer_event> mPeerEventQueue = new Queue<peer_event> ();
 
 		private ConcurrentQueue<NetPackage> mSendPackageQueue = null;
+		private ConcurrentQueue<NetUdpFixedSizePackage> mReceivePackageQueue = null;
+
 		private bool bClosed = false;
+
 		public void InitNet (string ip, UInt16 ServerPort)
 		{
 			bClosed = false;
@@ -38,13 +42,21 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			mSocket = new Socket (AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
 			remoteEndPoint = new IPEndPoint (IPAddress.Parse (ip), port);
 
+			mSocket.SendBufferSize = 1024 * 1024;
+			mSocket.ReceiveBufferSize = 1024 * 1024;
 			mSocket.Connect (remoteEndPoint);
+
+			mSendPackageQueue = new ConcurrentQueue<NetPackage> ();
+			mReceivePackageQueue = new ConcurrentQueue<NetUdpFixedSizePackage> ();
 
 			mReceiveThread = new Thread (ReceiveThreadUpdate);
 			mReceiveThread.IsBackground = true;
 			mReceiveThread.Start ();
 
-			mSendPackageQueue = new ConcurrentQueue<NetPackage> ();
+			mHandleDataThread = new Thread (HandleReceiveData);
+			mHandleDataThread.IsBackground = true;
+			mHandleDataThread.Start ();
+
 			mSendThread = new Thread (SendThreadUpdate);
 			mSendThread.IsBackground = true;
 			mSendThread.Start ();
@@ -58,10 +70,10 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 					NetUdpFixedSizePackage mReceiveStream = ObjectPoolManager.Instance.mUdpFixedSizePackagePool.Pop ();
 					length = mSocket.ReceiveFrom (mReceiveStream.buffer, 0, mReceiveStream.buffer.Length, SocketFlags.None, ref remoteEndPoint);
 					if (length > 0) {
-						//DebugSystem.Log("Client ReceiveLength: " + length);
 						mReceiveStream.Length = length;
-						ReceiveNetPackage (mReceiveStream);
+						mReceivePackageQueue.Enqueue (mReceiveStream);
 					} else {
+						DebugSystem.Log ("Client ReceiveLength: " + length);
 						ObjectPoolManager.Instance.mUdpFixedSizePackagePool.recycle (mReceiveStream);
 					}
 				} catch (SocketException e) {
@@ -85,8 +97,33 @@ namespace xk_System.Net.UDP.POINTTOPOINT.Client
 			DebugSystem.LogWarning ("Client ReceiveThread Safe Quit !");
 		}
 
+		private void HandleReceiveData()
+		{
+			while (!bClosed) {
+				NetUdpFixedSizePackage mPackage = null;
+				int nHandlePackageCount = 0;
+				while (!mReceivePackageQueue.IsEmpty) {
+					if (!mReceivePackageQueue.TryDequeue (out mPackage)) {
+						break;
+					}
+
+					ReceiveNetPackage (mPackage);
+
+					nHandlePackageCount++;
+					if (nHandlePackageCount > 50) {
+						nHandlePackageCount = 0;
+						Thread.Sleep (1);
+					}
+
+				}
+
+				Thread.Sleep (50);
+			}
+		}
+
 		private void SendThreadUpdate()
 		{
+			int nPackageCount = 0;
 			while (true) {
 				while (!mSendPackageQueue.IsEmpty) {
 					NetPackage mNetPackage = null;
