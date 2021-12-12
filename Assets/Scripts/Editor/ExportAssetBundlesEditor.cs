@@ -118,7 +118,7 @@ public class ExportAssetBundlesEditor : MonoBehaviour
 #elif UNITY_ANDROID
 		target = BuildTarget.Android;
 #elif UNITY_STANDALONE_OSX
-		target = BuildTarget.StandaloneOSXUniversal;
+		target = BuildTarget.StandaloneOSX;
 #elif UNITY_STANDALONE
 		target = BuildTarget.StandaloneWindows;
 #endif

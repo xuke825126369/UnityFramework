@@ -1,0 +1,275 @@
+Unity Editor version:    2020.3.22f1c1 (9ee66e5289da)
+Branch:                  2020.3/china_unity/release
+Build type:              Release
+Batch mode:              YES
+macOS version:           Version 11.6 (Build 20G165)
+Darwin version:          20.6.0
+Architecture:            x86_64
+Running under Rosetta:   NO
+Available memory:        8192 MB
+Using pre-set license
+Pro License: NO
+
+COMMAND LINE ARGUMENTS:
+/Applications/Unity/Hub/Editor/2020.3.22f1c1/Unity.app/Contents/MacOS/Unity
+-adb2
+-batchMode
+-noUpm
+-name
+AssetImportWorker0
+-projectPath
+/Users/xuke/MyProject/Project/UnityFramework
+-logFile
+Logs/AssetImportWorker0.log
+-srvPort
+52826
+Successfully changed project path to: /Users/xuke/MyProject/Project/UnityFramework
+/Users/xuke/MyProject/Project/UnityFramework
+Using Asset Import Pipeline V2.
+AS: AutoStreaming module initializing.Setting multithreaded rendering option only supported for iOS, tvOS and Android platforms, Undefined provided
+Multithreaded rendering setting removed for platform Samsung TV
+Refreshing native plugins compatible for Editor in 61.65 ms, found 2 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Initialize engine version: 2020.3.22f1c1 (9ee66e5289da)
+[Subsystems] Discovering subsystems at path /Applications/Unity/Hub/Editor/2020.3.22f1c1/Unity.app/Contents/Resources/UnitySubsystems
+[Subsystems] Discovering subsystems at path /Users/xuke/MyProject/Project/UnityFramework/Assets
+GfxDevice: creating device client; threaded=0
+2021-12-12 10:56:43.750 Unity[5177:92862] DELL U2419HS preferred device: Intel(R) UHD Graphics 630 (low power)
+2021-12-12 10:56:43.750 Unity[5177:92862] Metal devices available: 1
+2021-12-12 10:56:43.750 Unity[5177:92862] 0: Intel(R) UHD Graphics 630 (low power)
+2021-12-12 10:56:43.750 Unity[5177:92862] Using device Intel(R) UHD Graphics 630 (low power)
+Initializing Metal device caps: Intel(R) UHD Graphics 630
+Initialize mono
+Mono path[0] = '/Applications/Unity/Hub/Editor/2020.3.22f1c1/Unity.app/Contents/Managed'
+Mono path[1] = '/Applications/Unity/Hub/Editor/2020.3.22f1c1/Unity.app/Contents/MonoBleedingEdge/lib/mono/unityjit'
+Mono config path = '/Applications/Unity/Hub/Editor/2020.3.22f1c1/Unity.app/Contents/MonoBleedingEdge/etc'
+Using monoOptions --debugger-agent=transport=dt_socket,embedding=1,server=y,suspend=n,address=127.0.0.1:56177
+Begin MonoManager ReloadAssembly
+Registering precompiled unity dll's ...
+Register platform support module: /Applications/Unity/Hub/Editor/2020.3.22f1c1/PlaybackEngines/WebGLSupport/UnityEditor.WebGL.Extensions.dll
+Register platform support module: /Applications/Unity/Hub/Editor/2020.3.22f1c1/Unity.app/Contents/PlaybackEngines/MacStandaloneSupport/UnityEditor.OSXStandalone.Extensions.dll
+Registered in 0.002096 seconds.
+Native extension for OSXStandalone target not found
+Native extension for WebGL target not found
+Refreshing native plugins compatible for Editor in 44.27 ms, found 2 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Mono: successfully reloaded assembly
+- Completed reload, in  1.770 seconds
+Domain Reload Profiling:
+	ReloadAssembly (1770ms)
+		BeginReloadAssembly (59ms)
+			ExecutionOrderSort (0ms)
+			DisableScriptedObjects (0ms)
+			BackupInstance (0ms)
+			ReleaseScriptingObjects (0ms)
+			CreateAndSetChildDomain (1ms)
+		EndReloadAssembly (620ms)
+			LoadAssemblies (60ms)
+			RebuildTransferFunctionScriptingTraits (0ms)
+			SetupTypeCache (196ms)
+			ReleaseScriptCaches (0ms)
+			RebuildScriptCaches (51ms)
+			SetupLoadedEditorAssemblies (248ms)
+				LogAssemblyErrors (0ms)
+				InitializePlatformSupportModulesInManaged (5ms)
+				SetLoadedEditorAssemblies (0ms)
+				RefreshPlugins (44ms)
+				BeforeProcessingInitializeOnLoad (39ms)
+				ProcessInitializeOnLoadAttributes (129ms)
+				ProcessInitializeOnLoadMethodAttributes (30ms)
+				AfterProcessingInitializeOnLoad (0ms)
+				EditorAssembliesLoaded (0ms)
+			ExecutionOrderSort2 (0ms)
+			AwakeInstancesAfterBackupRestoration (0ms)
+Platform modules already initialized, skipping
+Registering precompiled user dll's ...
+Registered in 0.008988 seconds.
+Begin MonoManager ReloadAssembly
+Native extension for OSXStandalone target not found
+Native extension for WebGL target not found
+Refreshing native plugins compatible for Editor in 0.66 ms, found 2 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Mono: successfully reloaded assembly
+- Completed reload, in  1.322 seconds
+Domain Reload Profiling:
+	ReloadAssembly (1323ms)
+		BeginReloadAssembly (169ms)
+			ExecutionOrderSort (0ms)
+			DisableScriptedObjects (5ms)
+			BackupInstance (0ms)
+			ReleaseScriptingObjects (0ms)
+			CreateAndSetChildDomain (31ms)
+		EndReloadAssembly (1085ms)
+			LoadAssemblies (122ms)
+			RebuildTransferFunctionScriptingTraits (0ms)
+			SetupTypeCache (373ms)
+			ReleaseScriptCaches (0ms)
+			RebuildScriptCaches (62ms)
+			SetupLoadedEditorAssemblies (412ms)
+				LogAssemblyErrors (0ms)
+				InitializePlatformSupportModulesInManaged (6ms)
+				SetLoadedEditorAssemblies (1ms)
+				RefreshPlugins (1ms)
+				BeforeProcessingInitializeOnLoad (88ms)
+				ProcessInitializeOnLoadAttributes (263ms)
+				ProcessInitializeOnLoadMethodAttributes (52ms)
+				AfterProcessingInitializeOnLoad (1ms)
+				EditorAssembliesLoaded (0ms)
+			ExecutionOrderSort2 (0ms)
+			AwakeInstancesAfterBackupRestoration (7ms)
+Platform modules already initialized, skipping
+Validating Project structure ... 0.006869 seconds.
+
+LICENSE SYSTEM [20211212 10:56:48] Next license update check is after 2021-12-13T02:27:54
+
+Shader import version has changed; will reimport all shaders...
+Upgrading shader files ...0.011107 seconds.
+Application.AssetDatabase Initial Script Refresh Start
+RefreshInfo: InitialScriptRefreshV2(NoUpdateAssetOptions) scanfilter:  ... 1 filters
+RefreshProfiler: Total: 0.000ms
+Application.AssetDatabase Initial Script Refresh End
+Application.AssetDatabase.Refresh Start
+Application.AssetDatabase.Refresh End
+RefreshInfo: StopAssetImportingV2(ForceSynchronousImport) scanfilter: 
+RefreshProfiler: Total: 0.000ms
+Launching external process: /Applications/Unity/Hub/Editor/2020.3.22f1c1/Unity.app/Contents/Tools/UnityShaderCompiler
+Launched and connected shader compiler UnityShaderCompiler after 0.01 seconds
+Initializing Unity extensions:
+========================================================================
+Worker process is ready to serve import requests
+Setting multithreaded rendering option only supported for iOS, tvOS and Android platforms, Undefined provided
+Multithreaded rendering setting removed for platform Samsung TV
+Refreshing native plugins compatible for Editor in 0.56 ms, found 2 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Unloading 2264 Unused Serialized files (Serialized files now loaded: 0)
+System memory in use before: 194.4 MB.
+System memory in use after: 193.7 MB.
+
+Unloading 173 unused Assets to reduce memory usage. Loaded Objects now: 2704.
+Total: 6.444271 ms (FindLiveObjects: 0.221149 ms CreateObjectMapping: 0.096344 ms MarkObjects: 5.640735 ms  DeleteObjects: 0.485103 ms)
+
+AssetImportParameters requested are different than current active one (requested -> active):
+  custom:video-decoder-ogg-theora: a1e56fd34408186e4bbccfd4996cb3dc -> 
+  custom:container-muxer-webm: aa71ff27fc2769a1b78a27578f13a17b -> 
+  custom:container-demuxer-webm: 4f35f7cbe854078d1ac9338744f61a02 -> 
+  custom:container-demuxer-ogg: 62fdf1f143b41e24485cea50d1cbac27 -> 
+  custom:video-encoder-webm-vp8: eb34c28f22e8b96e1ab97ce403110664 -> 
+  custom:framework-osx-AVFoundation: e770b220cccbd017edd2c1fefb359320 -> 
+  custom:video-decoder-webm-vp8: 9c59270c3fd7afecdb556c50c9e8de78 -> 
+  custom:audio-decoder-ogg-vorbis: bf7c407c2cedff20999df2af8eb42d56 -> 
+  custom:audio-encoder-webm-vorbis: bf7c407c2cedff20999df2af8eb42d56 -> 
+========================================================================
+Received Import Request.
+  path: Assets/Scenes/init.unity
+  artifactKey: Guid(59d649ffa2fd8734ead03295fa6a29fe) Importer(815301076,1909f56bfc062723c751e8b465ee728b)
+Start importing Assets/Scenes/init.unity using Guid(59d649ffa2fd8734ead03295fa6a29fe) Importer(815301076,1909f56bfc062723c751e8b465ee728b)  -> (artifact id: '0e4f0fa321ad7bb49713b3a75d507350') in 0.010885 seconds 
+  Import took 0.014268 seconds .
+
+========================================================================
+Received Import Request.
+  Time since last request: 37.852118 seconds.
+  path: Assets/Scripts/tools/PingView.cs
+  artifactKey: Guid(c3ca1066aa8cef146bd3487fec05d8c7) Importer(815301076,1909f56bfc062723c751e8b465ee728b)
+Start importing Assets/Scripts/tools/PingView.cs using Guid(c3ca1066aa8cef146bd3487fec05d8c7) Importer(815301076,1909f56bfc062723c751e8b465ee728b)  -> (artifact id: '633f7df4a5ea7900cc963457315927e5') in 0.292954 seconds 
+  Import took 0.296757 seconds .
+
+========================================================================
+Received Import Request.
+  Time since last request: 2.163529 seconds.
+  path: Assets/Scripts/tools/MonoVersion.cs
+  artifactKey: Guid(3b04ff3afe11cf64ea2f672376405ca0) Importer(815301076,1909f56bfc062723c751e8b465ee728b)
+Start importing Assets/Scripts/tools/MonoVersion.cs using Guid(3b04ff3afe11cf64ea2f672376405ca0) Importer(815301076,1909f56bfc062723c751e8b465ee728b)  -> (artifact id: '18f50c51a1356d059bcd3a98234e0d95') in 0.001876 seconds 
+  Import took 0.005197 seconds .
+
+========================================================================
+Received Import Request.
+  Time since last request: 29.137589 seconds.
+  path: Assets/Scripts/xk_System/Debug/LogManager.cs
+  artifactKey: Guid(7d2544d2a9600bd42a7d777e22ad30a3) Importer(815301076,1909f56bfc062723c751e8b465ee728b)
+Start importing Assets/Scripts/xk_System/Debug/LogManager.cs using Guid(7d2544d2a9600bd42a7d777e22ad30a3) Importer(815301076,1909f56bfc062723c751e8b465ee728b)  -> (artifact id: 'ea3510e490bd0eb429f0219acef375a3') in 0.001450 seconds 
+  Import took 0.004614 seconds .
+
+========================================================================
+Received Import Request.
+  Time since last request: 6.083887 seconds.
+  path: Assets/Scripts/xk_System/Reflection/ReflectionSystem.cs
+  artifactKey: Guid(11b4f230fc8d0fc46b69e1e716d78b58) Importer(815301076,1909f56bfc062723c751e8b465ee728b)
+Start importing Assets/Scripts/xk_System/Reflection/ReflectionSystem.cs using Guid(11b4f230fc8d0fc46b69e1e716d78b58) Importer(815301076,1909f56bfc062723c751e8b465ee728b)  -> (artifact id: 'a9ba3df6e83b4bc7ef70d938459fa028') in 0.001424 seconds 
+  Import took 0.004850 seconds .
+
+========================================================================
+Received Import Request.
+  Time since last request: 21.632592 seconds.
+  path: Assets/Scripts/xk_System/Net/TCP/Client/NetReceiveSystem.cs
+  artifactKey: Guid(b404e5c231eb35e49a8db16817b8cfd7) Importer(815301076,1909f56bfc062723c751e8b465ee728b)
+Start importing Assets/Scripts/xk_System/Net/TCP/Client/NetReceiveSystem.cs using Guid(b404e5c231eb35e49a8db16817b8cfd7) Importer(815301076,1909f56bfc062723c751e8b465ee728b)  -> (artifact id: '06baac2f14b844a6a8e10941b4c01e99') in 0.001697 seconds 
+  Import took 0.005686 seconds .
+
+========================================================================
+Received Import Request.
+  Time since last request: 7.722351 seconds.
+  path: Assets/Scripts/xk_System/Net/TCP/Client/NetSendSystem.cs
+  artifactKey: Guid(f6f4c1e1fa713154ca1a09d846dcbe7c) Importer(815301076,1909f56bfc062723c751e8b465ee728b)
+Start importing Assets/Scripts/xk_System/Net/TCP/Client/NetSendSystem.cs using Guid(f6f4c1e1fa713154ca1a09d846dcbe7c) Importer(815301076,1909f56bfc062723c751e8b465ee728b)  -> (artifact id: 'c6c6fbeda6917f1f55ca55675e391888') in 0.001602 seconds 
+  Import took 0.006120 seconds .
+
+========================================================================
+Received Prepare
+Setting multithreaded rendering option only supported for iOS, tvOS and Android platforms, Undefined provided
+Multithreaded rendering setting removed for platform Samsung TV
+Registering precompiled user dll's ...
+Registered in 0.015076 seconds.
+Begin MonoManager ReloadAssembly
+Native extension for OSXStandalone target not found
+Native extension for WebGL target not found
+Refreshing native plugins compatible for Editor in 0.68 ms, found 2 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Mono: successfully reloaded assembly
+- Completed reload, in  1.424 seconds
+Domain Reload Profiling:
+	ReloadAssembly (1425ms)
+		BeginReloadAssembly (199ms)
+			ExecutionOrderSort (0ms)
+			DisableScriptedObjects (12ms)
+			BackupInstance (0ms)
+			ReleaseScriptingObjects (0ms)
+			CreateAndSetChildDomain (106ms)
+		EndReloadAssembly (1155ms)
+			LoadAssemblies (127ms)
+			RebuildTransferFunctionScriptingTraits (0ms)
+			SetupTypeCache (398ms)
+			ReleaseScriptCaches (1ms)
+			RebuildScriptCaches (68ms)
+			SetupLoadedEditorAssemblies (432ms)
+				LogAssemblyErrors (0ms)
+				InitializePlatformSupportModulesInManaged (6ms)
+				SetLoadedEditorAssemblies (1ms)
+				RefreshPlugins (1ms)
+				BeforeProcessingInitializeOnLoad (125ms)
+				ProcessInitializeOnLoadAttributes (247ms)
+				ProcessInitializeOnLoadMethodAttributes (51ms)
+				AfterProcessingInitializeOnLoad (1ms)
+				EditorAssembliesLoaded (0ms)
+			ExecutionOrderSort2 (0ms)
+			AwakeInstancesAfterBackupRestoration (8ms)
+Platform modules already initialized, skipping
+Refreshing native plugins compatible for Editor in 0.66 ms, found 2 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Unloading 2253 Unused Serialized files (Serialized files now loaded: 0)
+System memory in use before: 196.1 MB.
+System memory in use after: 196.3 MB.
+
+Unloading 54 unused Assets to reduce memory usage. Loaded Objects now: 2707.
+Total: 5.790333 ms (FindLiveObjects: 0.208329 ms CreateObjectMapping: 0.081098 ms MarkObjects: 5.444524 ms  DeleteObjects: 0.055768 ms)
+
+AssetImportParameters requested are different than current active one (requested -> active):
+  custom:video-decoder-ogg-theora: a1e56fd34408186e4bbccfd4996cb3dc -> 
+  custom:container-muxer-webm: aa71ff27fc2769a1b78a27578f13a17b -> 
+  custom:container-demuxer-webm: 4f35f7cbe854078d1ac9338744f61a02 -> 
+  custom:container-demuxer-ogg: 62fdf1f143b41e24485cea50d1cbac27 -> 
+  custom:video-encoder-webm-vp8: eb34c28f22e8b96e1ab97ce403110664 -> 
+  custom:framework-osx-AVFoundation: e770b220cccbd017edd2c1fefb359320 -> 
+  custom:video-decoder-webm-vp8: 9c59270c3fd7afecdb556c50c9e8de78 -> 
+  custom:audio-decoder-ogg-vorbis: bf7c407c2cedff20999df2af8eb42d56 -> 
+  custom:audio-encoder-webm-vorbis: bf7c407c2cedff20999df2af8eb42d56 -> 
+AssetImportWorkerClient::OnTransportError - code=2 error=End of file
